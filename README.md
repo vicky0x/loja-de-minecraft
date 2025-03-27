@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fantasy Cheats
 
-## Getting Started
+Fantasy Cheats é uma loja online moderna para venda de cheats para jogos, desenvolvida com tecnologias modernas e uma arquitetura robusta.
 
-First, run the development server:
+## Tecnologias Utilizadas
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Frontend**: React.js + Next.js
+- **Backend**: Node.js com Express
+- **Banco de Dados**: MongoDB com Mongoose
+- **Autenticação**: Cookies ao invés de JWT
+- **UI Framework**: TailwindCSS
+- **Gerenciamento de Estado**: React Context API
+
+## Estrutura do Projeto
+
+```
+fantasy-cheats/
+├── app/                    # Diretório principal do Next.js
+│   ├── (site)/             # Rotas públicas do site
+│   ├── admin/              # Dashboard administrativo
+│   ├── api/                # API routes do Next.js
+│   ├── auth/               # Páginas de autenticação
+│   ├── components/         # Componentes compartilhados
+│   ├── lib/                # Bibliotecas e utilitários
+│   │   ├── auth/           # Funções de autenticação
+│   │   ├── db/             # Conexão com banco de dados
+│   │   └── models/         # Modelos do Mongoose
+│   ├── products/           # Páginas de produtos
+│   └── user/               # Painel do usuário
+├── public/                 # Arquivos públicos
+└── middleware.ts           # Middleware para proteção de rotas
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Funcionalidades Principais
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Site Principal**: Página inicial, catálogo de produtos, FAQ
+- **Sistema de Autenticação**: Registro, login, recuperação de senha
+- **Catálogo de Produtos**: Listagem, categorias, detalhes
+- **Sistema de Pagamento**: PIX, cartão de crédito (Mercado Pago)
+- **Painel do Cliente**: Visualização dos produtos adquiridos, histórico
+- **Painel Administrativo**: Dashboard com estatísticas, gestão de produtos, usuários, pedidos, cupons e categorias
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Como Executar
 
-## Learn More
+1. Clone o repositório
+2. Instale as dependências:
+   ```
+   npm install
+   ```
+3. Crie um arquivo `.env` baseado no `.env.example`
+4. Execute o servidor de desenvolvimento:
+   ```
+   npm run dev
+   ```
+5. Acesse `http://localhost:3000`
 
-To learn more about Next.js, take a look at the following resources:
+## Desenvolvimento
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Este projeto foi desenvolvido com uma arquitetura modular e sustentável, visando facilitar a manutenção e escalabilidade. Cada componente e módulo foi cuidadosamente pensado para funcionar de forma independente, seguindo os princípios SOLID e boas práticas de desenvolvimento web.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Contribuição
 
-## Deploy on Vercel
+Contribuições são bem-vindas! Para contribuir, siga estes passos:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Fork o repositório
+2. Crie uma branch para sua feature (`git checkout -b feature/nome-da-feature`)
+3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
+4. Push para a branch (`git push origin feature/nome-da-feature`)
+5. Abra um Pull Request
