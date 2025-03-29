@@ -1,132 +1,162 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { NextRequest, NextResponse } from 'next/server';
+import { jwtVerify } from 'jose';
+import { encode, decode } from 'next/dist/compiled/base64url';
 
-// Segredo usado para verificar os tokens JWT
+// Rotas que requerem autenticação
+const PROTECTED_ROUTES = ['/dashboard', '/admin'];
+
+// Rotas de autenticação
+const AUTH_ROUTES = ['/auth/login', '/auth/register', '/auth/forgot-password'];
+
+// Segredo usado para assinar os tokens JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_jwt_aqui';
 
-// Rotas que necessitam de autenticação
-const authRoutes = [
-  '/dashboard',
-  '/admin',
-];
+// Nome do cookie de autenticação
+const AUTH_TOKEN_NAME = 'auth_token';
+const LEGACY_TOKEN_NAME = 'fantasy_cheats_auth';
 
-// Rotas que necessitam de permissão de administrador
-const adminRoutes = [
-  '/admin',
-];
-
-// Função para obter informações do token JWT
-function getTokenInfo(request: NextRequest) {
+// Função para verificar JWT com jose (compatível com Edge Runtime)
+async function verifyJWT(token: string) {
   try {
-    console.log('---- MIDDLEWARE CHECK ----');
-    console.log('URL solicitada:', request.nextUrl.pathname);
+    const secret = new TextEncoder().encode(JWT_SECRET);
     
-    // Listar todos os cookies disponíveis
-    console.log('Cookies disponíveis:', request.cookies.getAll().map(c => c.name).join(', '));
+    // Decodificar o token
+    const { payload } = await jwtVerify(token, secret);
     
-    const token = request.cookies.get('auth_token')?.value;
-    console.log('Token encontrado:', token ? 'Sim' : 'Não');
-    
-    if (!token) return null;
-    
-    // Decodificar token sem verificar assinatura (mais rápido para o middleware)
-    // A verificação completa será feita nas API routes
-    console.log('Decodificando token...');
-    const decoded = jwt.decode(token) as { id: string; role?: string } | null;
-    console.log('Token decodificado:', decoded ? JSON.stringify(decoded) : 'Falha na decodificação');
-    
-    if (!decoded || !decoded.id) return null;
-    
-    console.log('Informações do token - ID:', decoded.id, 'Role:', decoded.role || 'não especificada');
-    return decoded;
+    return {
+      id: payload.id as string,
+      role: payload.role as string,
+      iat: payload.iat as number,
+      exp: payload.exp as number
+    };
   } catch (error) {
-    console.error('Erro ao decodificar token:', error);
+    console.error('Erro ao verificar token JWT com jose:', error);
     return null;
   }
 }
 
-export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-  console.log('Middleware executando para:', pathname);
-  
-  const tokenInfo = getTokenInfo(request);
-  const isAuthenticated = !!tokenInfo;
-  const isAdmin = tokenInfo?.role === 'admin';
-  
-  console.log('Estado de autenticação:');
-  console.log('- Autenticado:', isAuthenticated);
-  console.log('- Admin:', isAdmin);
-  
-  // Verificar se há um parâmetro de consulta 'force' para forçar o acesso às páginas de login/registro
-  const forceAccess = request.nextUrl.searchParams.get('force') === 'true';
-  
-  // Redirecionar usuários autenticados para evitar login/registro redundante
-  // Apenas se não for forçado o acesso (para permitir logout/trocar conta)
-  if (isAuthenticated && !forceAccess && (pathname === '/login' || pathname === '/register' || pathname === '/auth/login' || pathname === '/auth/register')) {
-    console.log('Usuário autenticado tentando acessar página de login/registro');
-    console.log('Redirecionamento desativado para permitir logout e troca de conta');
-    // Comentado para permitir acesso às páginas de login mesmo autenticado
-    // if (isAdmin) {
-    //   console.log('Redirecionando admin para /admin');
-    //   return NextResponse.redirect(new URL('/admin', request.url));
-    // } else {
-    //   console.log('Redirecionando usuário para /dashboard');
-    //   return NextResponse.redirect(new URL('/dashboard', request.url));
-    // }
-  }
-  
-  // Proteger rotas do painel administrativo (apenas admins)
-  if (pathname.startsWith('/admin')) {
-    console.log('Tentativa de acesso à área administrativa');
-    if (!isAuthenticated) {
-      console.log('Acesso negado: usuário não autenticado');
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+// Middleware que verifica autenticação
+export async function middleware(req: NextRequest) {
+  try {
+    console.log('Middleware executando para:', req.nextUrl.pathname);
+    console.log('---- MIDDLEWARE CHECK ----');
+    console.log('URL solicitada:', req.nextUrl.pathname);
+    
+    // Log dos cookies disponíveis
+    const cookieHeader = req.headers.get('cookie') || '';
+    console.log('Cookies disponíveis:', cookieHeader.replace(/;/g, ', '));
+    
+    // 1. Verificar token em várias fontes
+    let token = null;
+    
+    // Verificar no cookie auth_token
+    token = req.cookies.get(AUTH_TOKEN_NAME)?.value;
+    
+    // Verificar no cookie legado
+    if (!token) {
+      token = req.cookies.get(LEGACY_TOKEN_NAME)?.value;
     }
     
-    if (!isAdmin) {
-      console.log('Acesso negado: usuário não é admin');
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Tentar extrair do header de cookie diretamente
+    if (!token) {
+      const authTokenMatch = cookieHeader.match(new RegExp(`${AUTH_TOKEN_NAME}=([^;]+)`));
+      if (authTokenMatch && authTokenMatch[1]) {
+        token = authTokenMatch[1];
+      } else {
+        const legacyTokenMatch = cookieHeader.match(new RegExp(`${LEGACY_TOKEN_NAME}=([^;]+)`));
+        if (legacyTokenMatch && legacyTokenMatch[1]) {
+          token = legacyTokenMatch[1];
+        }
+      }
     }
     
-    console.log('Acesso permitido à área administrativa');
-  }
-  
-  // Proteger rotas do dashboard de usuários (qualquer usuário autenticado)
-  if (pathname.startsWith('/dashboard')) {
-    console.log('Tentativa de acesso à área de dashboard');
-    if (!isAuthenticated) {
-      console.log('Acesso negado: usuário não autenticado');
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+    console.log('Token encontrado:', token ? 'Sim' : 'Não');
+    
+    let isAuthenticated = false;
+    let isAdmin = false;
+    let decodedToken = null;
+    
+    if (token) {
+      try {
+        console.log('Decodificando token...');
+        // Usar jose em vez de jsonwebtoken (para compatibilidade com Edge Runtime)
+        decodedToken = await verifyJWT(token);
+        
+        if (decodedToken) {
+          console.log('Token decodificado:', decodedToken);
+          console.log('Informações do token - ID:', decodedToken.id, 'Role:', decodedToken.role);
+          
+          isAuthenticated = true;
+          isAdmin = decodedToken.role === 'admin';
+        }
+      } catch (error) {
+        console.error('Erro ao verificar token JWT:', error);
+      }
     }
     
-    // Se o usuário for admin e estiver na dashboard, redirecionar para área admin
-    if (isAdmin && pathname === '/dashboard') {
-      console.log('Admin acessando dashboard - redirecionando para área admin');
-      return NextResponse.redirect(new URL('/admin', request.url));
+    console.log('Estado de autenticação:');
+    console.log('- Autenticado:', isAuthenticated);
+    console.log('- Admin:', isAdmin);
+    
+    // 2. Gerenciar acesso com base na rota e estado de autenticação
+    
+    // Se a rota for protegida e o usuário não estiver autenticado
+    if (PROTECTED_ROUTES.some(route => req.nextUrl.pathname.startsWith(route)) && !isAuthenticated) {
+      console.log('Tentativa de acesso a uma rota protegida sem autenticação');
+      
+      // Criar URL de redirecionamento para página de login
+      const redirectUrl = new URL('/auth/login', req.url);
+      redirectUrl.searchParams.set('redirect', req.nextUrl.pathname);
+      
+      console.log('Redirecionando para:', redirectUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
     }
     
-    console.log('Acesso permitido à área de dashboard');
+    // Se tentar acessar a área de admin sem ser admin
+    if (req.nextUrl.pathname.startsWith('/admin') && (!isAuthenticated || !isAdmin)) {
+      console.log('Tentativa de acesso à área administrativa sem permissão adequada');
+      
+      if (!isAuthenticated) {
+        const redirectUrl = new URL('/auth/login', req.url);
+        redirectUrl.searchParams.set('redirect', req.nextUrl.pathname);
+        console.log('Redirecionando para:', redirectUrl.pathname);
+        return NextResponse.redirect(redirectUrl);
+      } else {
+        console.log('Redirecionando para dashboard (usuário autenticado mas não é admin)');
+        return NextResponse.redirect(new URL('/dashboard', req.url));
+      }
+    }
+    
+    // Se estiver tentando acessar o dashboard
+    if (req.nextUrl.pathname.startsWith('/dashboard')) {
+      console.log('Tentativa de acesso à área de dashboard');
+      if (isAuthenticated) {
+        console.log('Acesso permitido à área de dashboard');
+      }
+    }
+    
+    // Se estiver autenticado e tentando acessar as páginas de login/registro
+    if (AUTH_ROUTES.includes(req.nextUrl.pathname) && isAuthenticated) {
+      console.log('Usuário autenticado tentando acessar página de login/registro');
+      console.log('Permitindo acesso para evitar loops de redirecionamento');
+    }
+    
+    console.log('Middleware concluído, permitindo acesso');
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Erro no middleware:', error);
+    return NextResponse.next();
   }
-  
-  // Redirecionar /user para /dashboard (para compatibilidade)
-  if (pathname === '/user' || pathname.startsWith('/user/')) {
-    return NextResponse.redirect(new URL(pathname.replace('/user', '/dashboard'), request.url));
-  }
-  
-  console.log('Middleware concluído, permitindo acesso');
-  return NextResponse.next();
 }
 
-// Configurar quais rotas devem passar pelo middleware
+// Configurar rotas para o middleware
 export const config = {
   matcher: [
     '/dashboard/:path*',
     '/admin/:path*',
-    '/login',
-    '/register',
     '/auth/login',
     '/auth/register',
-    '/user/:path*',
+    '/auth/forgot-password',
+    '/api/admin/:path*'
   ],
 }; 

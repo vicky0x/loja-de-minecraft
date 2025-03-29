@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { FiSearch, FiShoppingCart, FiUser, FiLogOut, FiSettings, FiPackage } from 'react-icons/fi';
+import { useCart } from '@/app/contexts/CartContext';
 
 // Interface para o usuário
 interface User {
@@ -26,6 +27,7 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const cart = useCart();
 
   // Efeito para verificar scroll
   useEffect(() => {
@@ -157,7 +159,7 @@ export default function Navbar() {
                 >
                   <FiShoppingCart size={22} />
                   <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    0
+                    {String(cart.getItemsCount())}
                   </span>
                 </Link>
 
@@ -250,7 +252,7 @@ export default function Navbar() {
               >
                 <FiShoppingCart size={22} />
                 <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {String(cart.getItemsCount())}
                 </span>
               </Link>
             )}

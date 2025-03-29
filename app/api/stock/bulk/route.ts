@@ -9,17 +9,26 @@ import mongoose from 'mongoose';
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação e permissões
-    const user = await checkAuth(request);
+    console.log('Iniciando verificação de autenticação para importação em massa');
+    const authResult = await checkAuth(request);
     
-    if (!user) {
+    console.log('Resultado da autenticação:', JSON.stringify(authResult, null, 2));
+    
+    if (!authResult.isAuthenticated || !authResult.user) {
+      console.log('Usuário não autenticado ou indefinido');
       return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
     }
     
+    const user = authResult.user;
+    console.log('Usuário autenticado:', user._id, 'Role:', user.role);
+    
     if (user.role !== 'admin') {
+      console.log('Usuário não é admin:', user.role);
       return NextResponse.json({ message: 'Acesso proibido' }, { status: 403 });
     }
     
     await connectDB();
+    console.log('Conectado ao banco de dados');
     
     // Processar o multipart form data
     const formData = await request.formData();
@@ -27,8 +36,11 @@ export async function POST(request: NextRequest) {
     const variantId = formData.get('variantId') as string;
     const file = formData.get('file') as File;
     
+    console.log('Dados do form recebidos:', { productId, variantId, file: file ? 'Arquivo presente' : 'Arquivo ausente' });
+    
     // Validar dados
     if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      console.log('ID de produto inválido:', productId);
       return NextResponse.json(
         { message: 'ID de produto inválido' },
         { status: 400 }
@@ -36,6 +48,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!variantId) {
+      console.log('ID de variante inválido:', variantId);
       return NextResponse.json(
         { message: 'ID de variante inválido' },
         { status: 400 }
@@ -43,6 +56,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!file) {
+      console.log('Arquivo não fornecido');
       return NextResponse.json(
         { message: 'É necessário fornecer um arquivo' },
         { status: 400 }
@@ -53,21 +67,27 @@ export async function POST(request: NextRequest) {
     const product = await Product.findById(productId);
     
     if (!product) {
+      console.log('Produto não encontrado:', productId);
       return NextResponse.json(
         { message: 'Produto não encontrado' },
         { status: 404 }
       );
     }
     
+    console.log('Produto encontrado:', product.name);
+    
     // Verificar se a variante existe
     const variantExists = product.variants.some((v) => v._id.toString() === variantId);
     
     if (!variantExists) {
+      console.log('Variante não encontrada no produto:', variantId);
       return NextResponse.json(
         { message: 'Variante não encontrada' },
         { status: 404 }
       );
     }
+    
+    console.log('Variante encontrada, lendo conteúdo do arquivo');
     
     // Ler o conteúdo do arquivo
     const text = await file.text();
@@ -75,7 +95,10 @@ export async function POST(request: NextRequest) {
     // Dividir o texto em linhas e filtrar linhas vazias
     const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
     
+    console.log(`Arquivo contém ${lines.length} linhas de código`);
+    
     if (lines.length === 0) {
+      console.log('Arquivo vazio ou sem códigos válidos');
       return NextResponse.json(
         { message: 'O arquivo não contém códigos válidos' },
         { status: 400 }
@@ -96,23 +119,30 @@ export async function POST(request: NextRequest) {
     
     // Inserir itens em lotes para melhor performance e lidar com possíveis duplicatas
     const batchSize = 100;
+    console.log(`Processando ${stockItems.length} itens em lotes de ${batchSize}`);
+    
     for (let i = 0; i < stockItems.length; i += batchSize) {
       const batch = stockItems.slice(i, i + batchSize);
+      console.log(`Processando lote ${Math.floor(i/batchSize) + 1} com ${batch.length} itens`);
       
       try {
         const result = await StockItem.insertMany(batch, { ordered: false });
         addedCount += result.length;
+        console.log(`Lote ${Math.floor(i/batchSize) + 1}: ${result.length} itens adicionados com sucesso`);
       } catch (error) {
         // Se houver erro de duplicação, continue com os itens não duplicados
         if (error.code === 11000) {
           // Contar os documentos que foram inseridos com sucesso
           if (error.insertedDocs) {
             addedCount += error.insertedDocs.length;
+            console.log(`Lote ${Math.floor(i/batchSize) + 1}: ${error.insertedDocs.length} itens adicionados (com duplicatas)`);
           }
           
           // Estimar o número de duplicatas
           duplicateCount += batch.length - (error.insertedDocs ? error.insertedDocs.length : 0);
+          console.log(`Lote ${Math.floor(i/batchSize) + 1}: aproximadamente ${duplicateCount} duplicatas encontradas`);
         } else {
+          console.error(`Erro inesperado no lote ${Math.floor(i/batchSize) + 1}:`, error);
           throw error; // Relançar outros erros
         }
       }
@@ -125,11 +155,15 @@ export async function POST(request: NextRequest) {
       isUsed: false
     });
     
+    console.log(`Contagem final de estoque para a variante: ${stockCount}`);
+    
     // Atualizar o estoque da variante
     await Product.updateOne(
       { _id: productId, 'variants._id': variantId },
       { $set: { 'variants.$.stock': stockCount } }
     );
+    
+    console.log('Estoque da variante atualizado com sucesso');
     
     return NextResponse.json({
       message: 'Importação concluída com sucesso',

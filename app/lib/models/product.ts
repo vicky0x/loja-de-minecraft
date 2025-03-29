@@ -103,7 +103,7 @@ const productSchema = new Schema<IProduct>(
     status: {
       type: String,
       enum: ['indetectavel', 'detectavel', 'manutencao', 'beta'],
-      default: 'indetectavel',
+      required: false,
     },
     requirements: [{
       type: String,
@@ -119,6 +119,41 @@ const productSchema = new Schema<IProduct>(
 productSchema.index({ name: 'text', description: 'text', shortDescription: 'text' });
 productSchema.index({ category: 1 });
 productSchema.index({ featured: 1 });
+
+// Adicionar hook pre-save para log de depuração
+productSchema.pre('save', function(next) {
+  console.log('Pre-save do produto:');
+  console.log('Status original:', this.status);
+
+  // Normalizar o status apenas se ele existir
+  if (this.status) {
+    const statusLower = this.status.toLowerCase();
+    
+    // Normalizar para os valores aceitos pelo enum
+    if (statusLower === 'indetectavel' || statusLower.includes('indetect')) {
+      this.status = 'indetectavel';
+    } 
+    else if (statusLower === 'detectavel' || (statusLower.includes('detect') && !statusLower.includes('indetect'))) {
+      this.status = 'detectavel';
+    }
+    else if (statusLower === 'manutencao' || statusLower.includes('manut')) {
+      this.status = 'manutencao';
+    }
+    else if (statusLower === 'beta' || statusLower.includes('beta')) {
+      this.status = 'beta';
+    }
+  }
+  
+  console.log('Status normalizado:', this.status);
+  console.log('Produto completo:', this);
+  next();
+});
+
+productSchema.pre('findOneAndUpdate', function(next) {
+  console.log('Pre-findOneAndUpdate do produto:');
+  console.log('Update operation:', this.getUpdate());
+  next();
+});
 
 // Verificar se o modelo já existe antes de criar um novo
 const Product = mongoose.models.Product || mongoose.model<IProduct>('Product', productSchema);

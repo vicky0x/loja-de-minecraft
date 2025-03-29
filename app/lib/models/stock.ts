@@ -1,5 +1,16 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+// Garantir que o modelo Product seja registrado antes de ser usado nas referências
+try {
+  // Importar o modelo Product se não estiver no cache
+  if (!mongoose.models.Product) {
+    require('./product');
+    console.log('Modelo Product carregado pelo StockItem');
+  }
+} catch (error) {
+  console.warn('Erro ao carregar modelo Product no StockItem:', error);
+}
+
 // Interface para cada item de estoque
 export interface IStockItem extends Document {
   product: mongoose.Types.ObjectId;

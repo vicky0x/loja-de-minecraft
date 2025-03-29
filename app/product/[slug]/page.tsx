@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import { FiArrowLeft, FiShoppingCart, FiPackage, FiCheck, FiClock, FiShield, FiDownload, FiAward, FiStar, FiLock, FiUser, FiTrendingUp, FiX, FiInfo } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import VariantStockModal from '@/app/components/VariantStockModal';
+import { useCart } from '@/app/contexts/CartContext';
+import toast from 'react-hot-toast';
 
 interface Variant {
   _id: string;
@@ -58,6 +60,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const [displayedCount, setDisplayedCount] = useState(0);
   const countRef = useRef<HTMLDivElement>(null);
   const animationTriggered = useRef(false);
+  const cart = useCart();
 
   useEffect(() => {
     async function fetchProduct() {
@@ -70,6 +73,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
         }
         
         const data = await response.json();
+        console.log('Dados brutos do produto recebidos da API:', data);
+        console.log('Status do produto recebido da API:', data.product.status);
+        
         setProduct(data.product);
         setLastStockUpdate(new Date());
         
@@ -177,7 +183,24 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const handleAddToCart = () => {
     if (!product || !selectedVariant) return;
     
-    console.log(`Adicionado ao carrinho: ${product.name} - Variante: ${selectedVariant} - Quantidade: ${quantity}`);
+    const variant = getSelectedVariant();
+    if (!variant) return;
+    
+    const item = {
+      productId: product._id,
+      productName: product.name,
+      productImage: product.images && product.images.length > 0 ? product.images[0] : '',
+      variantId: variant._id,
+      variantName: variant.name,
+      price: variant.price,
+      quantity: quantity,
+      stock: variant.stock,
+    };
+    
+    cart.addItem(item);
+    
+    // Feedback visual para o usuário
+    toast.success(`${product.name} - ${variant.name} foi adicionado ao seu carrinho.`);
   };
 
   const getStockClass = (stock: number) => {
@@ -194,62 +217,75 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   };
 
   const getStatusConfig = (status: string) => {
-    // Verificar se o status é válido
-    const validStatus = ['indetectavel', 'detectavel', 'manutencao', 'beta'].includes(status) 
-      ? status 
-      : 'indetectavel'; // Fallback para 'indetectavel' se o status for inválido
+    // Adicionar log para depuração
+    console.log('Status recebido na página de produto:', status);
     
-    switch (validStatus) {
-      case 'indetectavel':
-        return {
-          label: 'Indetectável',
-          bgColor: 'bg-green-900/30',
-          borderColor: 'border-green-500',
-          textColor: 'text-green-400',
-          icon: <FiShield className="mr-2" />,
-          description: 'Nosso sistema anti-detecção está ativo e funcionando perfeitamente.',
-          pulseColor: 'bg-green-500/30'
-        };
-      case 'detectavel':
-        return {
-          label: 'Risco de Detecção',
-          bgColor: 'bg-yellow-900/30',
-          borderColor: 'border-yellow-500',
-          textColor: 'text-yellow-400',
-          icon: <FiClock className="mr-2" />,
-          description: 'Use com cautela, estamos trabalhando para melhorar a proteção.',
-          pulseColor: 'bg-yellow-500/30'
-        };
-      case 'manutencao':
-        return {
-          label: 'Em Manutenção',
-          bgColor: 'bg-red-900/30',
-          borderColor: 'border-red-500',
-          textColor: 'text-red-400',
-          icon: <FiX className="mr-2" />,
-          description: 'Temporariamente indisponível enquanto realizamos atualizações.',
-          pulseColor: 'bg-red-500/30'
-        };
-      case 'beta':
-        return {
-          label: 'Versão Beta',
-          bgColor: 'bg-blue-900/30',
-          borderColor: 'border-blue-500',
-          textColor: 'text-blue-400',
-          icon: <FiAward className="mr-2" />,
-          description: 'Versão prévia com recursos experimentais. Use por sua conta e risco.',
-          pulseColor: 'bg-blue-500/30'
-        };
-      default:
-        return {
-          label: 'Status Desconhecido',
-          bgColor: 'bg-gray-900/30',
-          borderColor: 'border-gray-500',
-          textColor: 'text-gray-400',
-          icon: <FiInfo className="mr-2" />,
-          description: 'Informação não disponível no momento.',
-          pulseColor: 'bg-gray-500/30'
-        };
+    // Se o status for null, undefined ou string vazia
+    if (!status) {
+      return null; // Retornar null para indicar que não há status
+    }
+    
+    // Convertendo para minúsculas e garantindo que é uma string
+    const validStatus = status.toLowerCase();
+    console.log('Status convertido para minúsculas na página de produto:', validStatus);
+    
+    // Verificações mais específicas para cada status
+    if (validStatus === 'detectavel' || (validStatus.includes('detect') && !validStatus.includes('indetect'))) {
+      return {
+        label: 'Risco de Detecção',
+        bgColor: 'bg-yellow-900/30',
+        borderColor: 'border-yellow-500',
+        textColor: 'text-yellow-400',
+        icon: <FiClock className="flex-shrink-0" />,
+        description: 'Use com cautela, estamos trabalhando para melhorar a proteção.',
+        pulseColor: 'bg-yellow-500/30'
+      };
+    }
+    else if (validStatus === 'manutencao' || validStatus.includes('manut')) {
+      return {
+        label: 'Em Manutenção',
+        bgColor: 'bg-red-900/30',
+        borderColor: 'border-red-500',
+        textColor: 'text-red-400',
+        icon: <FiX className="flex-shrink-0" />,
+        description: 'Temporariamente indisponível enquanto realizamos atualizações.',
+        pulseColor: 'bg-red-500/30'
+      };
+    }
+    else if (validStatus === 'beta' || validStatus.includes('beta')) {
+      return {
+        label: 'Versão Beta',
+        bgColor: 'bg-blue-900/30',
+        borderColor: 'border-blue-500',
+        textColor: 'text-blue-400',
+        icon: <FiAward className="flex-shrink-0" />,
+        description: 'Versão prévia com recursos experimentais. Use por sua conta e risco.',
+        pulseColor: 'bg-blue-500/30'
+      };
+    }
+    else if (validStatus === 'indetectavel' || validStatus.includes('indetect')) {
+      return {
+        label: 'Indetectável',
+        bgColor: 'bg-green-900/30',
+        borderColor: 'border-green-500',
+        textColor: 'text-green-400',
+        icon: <FiShield className="flex-shrink-0" />,
+        description: 'Nosso sistema anti-detecção está ativo e funcionando perfeitamente.',
+        pulseColor: 'bg-green-500/30'
+      };
+    }
+    else {
+      // Caso padrão para qualquer outro valor
+      console.log('Status não reconhecido na página de produto, usando padrão Indetectável');
+      return {
+        label: 'Indetectável',
+        bgColor: 'bg-green-900/30',
+        borderColor: 'border-green-500',
+        textColor: 'text-green-400',
+        icon: <FiShield className="flex-shrink-0" />,
+        description: 'Nosso sistema anti-detecção está ativo e funcionando perfeitamente.',
+        pulseColor: 'bg-green-500/30'
+      };
     }
   };
 
@@ -581,7 +617,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                 <h1 className="text-2xl font-bold text-white mt-1">{product.name}</h1>
               </div>
               
-              {product.status && (
+              {product.status && getStatusConfig(product.status) && (
                 <motion.div 
                   className={`mb-6 p-4 rounded-lg border-l-4 ${getStatusConfig(product.status).borderColor} ${getStatusConfig(product.status).bgColor} relative overflow-hidden group`}
                   initial={{ opacity: 0, y: 10 }}
@@ -613,14 +649,22 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               )}
               
               <div className="flex items-center justify-between mb-6 text-sm">
-                <div className={`flex items-center ${getStatusConfig(product.status || 'indetectavel').textColor}`}>
-                  {getStatusConfig(product.status || 'indetectavel').icon}
-                  <span>{getStatusConfig(product.status || 'indetectavel').label}</span>
-                </div>
-                <div className="flex items-center text-gray-400">
-                  <FiClock className="mr-1" />
-                  <span>Atualizado: {formattedLastUpdate}</span>
-                </div>
+                {product.status && getStatusConfig(product.status) ? (
+                  <div className={`flex items-center ${getStatusConfig(product.status).textColor}`}>
+                    <span className="mr-2">{getStatusConfig(product.status).icon}</span>
+                    <span>{getStatusConfig(product.status).label}</span>
+                  </div>
+                ) : (
+                  <div></div> /* Espaço reservado quando não há status */
+                )}
+                {product.status && getStatusConfig(product.status) ? (
+                  <div className="flex items-center text-gray-400">
+                    <FiClock className="mr-1" />
+                    <span>Atualizado: {formattedLastUpdate}</span>
+                  </div>
+                ) : (
+                  <div></div> /* Não exibir "Atualizado" quando não há status */
+                )}
               </div>
               
               <div className="mb-6 overflow-hidden" ref={countRef}>
@@ -663,7 +707,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                     <span className="text-2xl font-bold text-primary">
                       R$ {variant.price.toFixed(2).replace('.', ',')}
                     </span>
-                    <span className="text-xs text-gray-400 ml-2">por licença</span>
+                    <span className="text-xs text-gray-400 ml-2"></span>
                   </div>
                   
                   <div className={`px-3 py-1 rounded-full text-xs font-medium ${

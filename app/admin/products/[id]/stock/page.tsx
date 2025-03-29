@@ -128,6 +128,11 @@ export default function ProductStockPage({ params }: { params: { id: string } })
     
     try {
       setActionInProgress(true);
+      console.log('Enviando requisição para adicionar itens:', {
+        productId: id,
+        variantId: selectedVariant,
+        itemsCount: itemsToAdd.length
+      });
       
       const response = await fetch('/api/stock', {
         method: 'POST',
@@ -142,6 +147,7 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       });
       
       const data = await response.json();
+      console.log('Resposta da API:', data);
       
       if (!response.ok) {
         throw new Error(data.message || 'Erro ao adicionar itens ao estoque');
@@ -166,9 +172,27 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       fetchStockItems();
       
       alert(`${data.added} itens adicionados ao estoque com sucesso.`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao adicionar itens:', error);
-      setError(error.message || 'Ocorreu um erro ao adicionar os itens ao estoque.');
+      let mensagemErro = 'Ocorreu um erro ao adicionar os itens ao estoque.';
+      
+      if (error.message) {
+        mensagemErro = `Erro: ${error.message}`;
+      }
+      
+      // Verificar se o erro contém informações de resposta da API
+      if (error.response) {
+        try {
+          const errorData = await error.response.json();
+          if (errorData.message) {
+            mensagemErro = `Erro da API: ${errorData.message}`;
+          }
+        } catch (e) {
+          console.error('Erro ao analisar resposta de erro:', e);
+        }
+      }
+      
+      setError(mensagemErro);
     } finally {
       setActionInProgress(false);
     }
@@ -199,6 +223,12 @@ export default function ProductStockPage({ params }: { params: { id: string } })
     
     try {
       setActionInProgress(true);
+      console.log('Enviando arquivo para importação:', {
+        productId: id,
+        variantId: selectedVariant,
+        fileName: file.name,
+        fileSize: file.size
+      });
       
       const formData = new FormData();
       formData.append('productId', id);
@@ -208,12 +238,24 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       const response = await fetch('/api/stock/bulk', {
         method: 'POST',
         body: formData,
+        // Importante: assegurar que os cookies são enviados para manter a autenticação
+        credentials: 'include'
       });
       
       const data = await response.json();
+      console.log('Resposta da API de importação:', data);
       
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao importar itens');
+        let mensagemErro = data.message || 'Erro ao importar itens';
+        
+        // Mensagens específicas para códigos de erro comuns
+        if (response.status === 401) {
+          mensagemErro = 'Sua sessão expirou. Por favor, faça login novamente.';
+        } else if (response.status === 403) {
+          mensagemErro = 'Você não tem permissão para importar estoque. Acesso somente para administradores.';
+        }
+        
+        throw new Error(mensagemErro);
       }
       
       // Limpar o formulário e atualizar a lista
@@ -237,9 +279,28 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       fetchStockItems();
       
       alert(`Importação concluída: ${data.added} itens adicionados, ${data.duplicates} duplicados.`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao importar arquivo:', error);
-      setError(error.message || 'Ocorreu um erro ao importar os itens.');
+      
+      let mensagemErro = 'Ocorreu um erro ao importar os itens.';
+      
+      if (error.message) {
+        mensagemErro = `Erro: ${error.message}`;
+      }
+      
+      // Verificar se o erro contém informações de resposta da API
+      if (error.response) {
+        try {
+          const errorData = await error.response.json();
+          if (errorData.message) {
+            mensagemErro = `Erro da API: ${errorData.message}`;
+          }
+        } catch (e) {
+          console.error('Erro ao analisar resposta de erro:', e);
+        }
+      }
+      
+      setError(mensagemErro);
     } finally {
       setActionInProgress(false);
     }

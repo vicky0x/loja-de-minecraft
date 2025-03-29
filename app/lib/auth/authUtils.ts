@@ -29,9 +29,10 @@ export interface Session {
  */
 export async function auth(): Promise<Session> {
   try {
-    // Usar cookies() sem tentar acessá-lo de forma síncrona
-    // Esta forma evita o erro relacionado ao uso síncrono de cookies()
-    const token = cookies().get('auth_token')?.value;
+    // Obter os cookies de forma assíncrona
+    const cookieStore = cookies();
+    const authToken = cookieStore.get('auth_token');
+    const token = authToken?.value;
 
     if (!token) {
       return {};

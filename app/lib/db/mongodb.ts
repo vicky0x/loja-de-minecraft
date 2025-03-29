@@ -11,7 +11,11 @@ declare global {
   var mongoose: MongooseCache;
 }
 
+// Usar o URI de conexão do .env
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fantasy-cheats';
+
+// Assegurar que estamos usando o URI correto
+console.log("URI do MongoDB usado para conexão:", MONGODB_URI.replace(/:[^:]*@/, ':****@'));
 
 // Inicializar o cache
 if (!global.mongoose) {
@@ -36,59 +40,63 @@ export async function clearCollection(collectionName: string): Promise<void> {
 }
 
 // Função para conectar ao MongoDB
-async function connectDB(): Promise<typeof mongoose> {
-  // Se já temos uma conexão ativa, retorna ela
-  if (global.mongoose.conn) {
-    console.log('Utilizando conexão existente com MongoDB');
-    return global.mongoose.conn;
-  }
-
-  // Se não há uma promessa de conexão em andamento, cria uma
-  if (!global.mongoose.promise) {
-    console.log('Conectando ao MongoDB...', MONGODB_URI);
-    
-    // Configurações melhoradas para a conexão
-    const opts = {
-      bufferCommands: false,
-      serverSelectionTimeoutMS: 30000, // Aumenta o timeout para 30 segundos
-      connectTimeoutMS: 30000,
-      socketTimeoutMS: 60000,
-      family: 4, // Força IPv4
-    };
-
-    global.mongoose.promise = mongoose.connect(MONGODB_URI, opts)
-      .then((mongoose) => {
-        console.log('Conectado ao MongoDB com sucesso!');
-        return mongoose;
-      });
-  }
-
+export default async function connectDB() {
   try {
-    // Aguarda a promessa resolver e armazena a conexão
-    const mongooseInstance = await global.mongoose.promise;
-    global.mongoose.conn = mongooseInstance;
+    // Se já estiver conectado, retornar a conexão existente
+    if (mongoose.connection.readyState >= 1) {
+      console.log('Utilizando conexão existente com MongoDB');
+      return;
+    }
+
+    // Validar a URI de conexão
+    if (!process.env.MONGODB_URI) {
+      throw new Error('Por favor, defina a variável de ambiente MONGODB_URI');
+    }
+
+    // Iniciar a conexão
+    console.log('Iniciando nova conexão com MongoDB...');
     
-    return mongooseInstance;
-  } catch (error: any) {
-    // Em caso de erro, limpa a promessa para permitir nova tentativa
-    global.mongoose.promise = null;
+    // Conectar ao MongoDB
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log('Conectado ao MongoDB com sucesso');
     
-    // Mensagens de erro mais detalhadas
-    console.error('Erro ao conectar ao MongoDB:');
-    console.error(`Mensagem: ${error.message}`);
-    console.error(`Código: ${error.code || 'N/A'}`);
-    console.error(`Nome: ${error.name || 'N/A'}`);
+    // Configurações recomendadas para a conexão
+    mongoose.set('strictQuery', true);
     
-    if (error.name === 'MongoServerSelectionError') {
-      console.error('Erro de seleção de servidor MongoDB. Verifique se:');
-      console.error('1. A string de conexão está correta');
-      console.error('2. O servidor MongoDB está acessível');
-      console.error('3. O nome de usuário e senha estão corretos');
-      console.error('4. O firewall permite conexões');
+    // Pré-carregar todos os modelos importantes para evitar problemas de referência
+    try {
+      // Usando require para garantir que os modelos sejam carregados sincronamente
+      if (!mongoose.models.Product) require('../models/product');
+      if (!mongoose.models.User) require('../models/user');
+      if (!mongoose.models.Order) require('../models/order');
+      if (!mongoose.models.StockItem) require('../models/stock');
+      if (!mongoose.models.Category) try { require('../models/category'); } catch (e) {}
+      if (!mongoose.models.Coupon) try { require('../models/coupon'); } catch (e) {}
+      
+      console.log('Todos os modelos básicos foram pré-carregados');
+    } catch (modelError) {
+      console.warn('Erro ao pré-carregar modelos:', modelError);
+      // Continuar mesmo com erro no carregamento de modelos
     }
     
+    // Registrar eventos da conexão para facilitar a depuração
+    mongoose.connection.on('error', err => {
+      console.error('Erro na conexão MongoDB:', err);
+    });
+    
+    mongoose.connection.on('disconnected', () => {
+      console.warn('MongoDB desconectado');
+    });
+    
+    // Preparar para encerramento da aplicação
+    process.on('SIGINT', async () => {
+      await mongoose.connection.close();
+      console.log('Conexão MongoDB encerrada');
+      process.exit(0);
+    });
+    
+  } catch (error) {
+    console.error('Erro ao conectar ao MongoDB:', error);
     throw error;
   }
-}
-
-export default connectDB; 
+} 

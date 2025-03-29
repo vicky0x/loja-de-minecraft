@@ -9,24 +9,34 @@ import mongoose from 'mongoose';
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação e permissões
+    console.log('Iniciando verificação de autenticação para atribuição de estoque');
     const authResult = await checkAuth(request);
     
+    console.log('Resultado da autenticação:', JSON.stringify(authResult, null, 2));
+    
     if (!authResult.isAuthenticated || !authResult.user) {
+      console.log('Usuário não autenticado ou indefinido');
       return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
     }
     
     const user = authResult.user;
+    console.log('Usuário autenticado:', user._id, 'Role:', user.role);
     
     // Apenas admins podem executar atribuições manuais
     const isAdmin = user.role === 'admin';
+    console.log('É administrador:', isAdmin);
     
     await connectDB();
+    console.log('Conectado ao banco de dados');
     
     // Extrair dados da requisição
-    const { productId, variantId, userId, quantity, orderId } = await request.json();
+    const requestData = await request.json();
+    console.log('Dados recebidos para atribuição:', requestData);
+    const { productId, variantId, userId, quantity, orderId } = requestData;
     
     // Validar dados
     if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      console.log('ID de produto inválido:', productId);
       return NextResponse.json(
         { message: 'ID de produto inválido' },
         { status: 400 }
@@ -34,6 +44,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!variantId) {
+      console.log('ID de variante inválido:', variantId);
       return NextResponse.json(
         { message: 'ID de variante inválido' },
         { status: 400 }
@@ -41,6 +52,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      console.log('ID de usuário inválido:', userId);
       return NextResponse.json(
         { message: 'ID de usuário inválido' },
         { status: 400 }
@@ -48,6 +60,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!quantity || quantity <= 0) {
+      console.log('Quantidade inválida:', quantity);
       return NextResponse.json(
         { message: 'Quantidade deve ser maior que zero' },
         { status: 400 }
@@ -56,6 +69,7 @@ export async function POST(request: NextRequest) {
     
     // Se não for admin, apenas permitir atribuir ao próprio usuário
     if (!isAdmin && userId !== user.id) {
+      console.log('Usuário não admin tentando atribuir a outro usuário');
       return NextResponse.json(
         { message: 'Você só pode atribuir itens a si mesmo' },
         { status: 403 }
@@ -63,13 +77,44 @@ export async function POST(request: NextRequest) {
     }
     
     // Verificar disponibilidade de estoque
+    console.log('Verificando disponibilidade de estoque para:', {
+      productId,
+      variantId,
+      isUsed: false
+    });
+    
+    // Primeiro, verificar a contagem total de itens disponíveis
+    const totalAvailable = await StockItem.countDocuments({
+      product: productId,
+      variant: variantId,
+      isUsed: false,
+    });
+    
+    console.log(`Total de itens disponíveis (contagem): ${totalAvailable}`);
+    
+    if (totalAvailable < quantity) {
+      console.log(`Estoque insuficiente: solicitado ${quantity}, disponível ${totalAvailable}`);
+      return NextResponse.json(
+        { 
+          message: 'Estoque insuficiente',
+          available: totalAvailable,
+          requested: quantity
+        },
+        { status: 400 }
+      );
+    }
+    
+    // Buscar os itens disponíveis
     const availableItems = await StockItem.find({
       product: productId,
       variant: variantId,
-      isUsed: false
+      isUsed: false,
     }).limit(quantity);
     
+    console.log(`Encontrados ${availableItems.length} itens disponíveis em estoque para atribuir`);
+    
     if (availableItems.length < quantity) {
+      console.log(`Estoque insuficiente após busca: solicitado ${quantity}, disponível ${availableItems.length}`);
       return NextResponse.json(
         { 
           message: 'Estoque insuficiente',
@@ -80,12 +125,15 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Obter IDs dos itens a serem atribuídos
-    const itemIds = availableItems.map(item => item._id);
+    // Obter APENAS a quantidade solicitada de IDs dos itens a serem atribuídos
+    const itemIds = availableItems.slice(0, quantity).map(item => item._id);
+    
+    console.log(`Atribuindo ${itemIds.length} itens ao usuário ${userId}`);
+    console.log('IDs dos itens a serem atribuídos:', itemIds);
     
     // Marcar itens como usados e atribuídos ao usuário
     const now = new Date();
-    await StockItem.updateMany(
+    const updateResult = await StockItem.updateMany(
       { _id: { $in: itemIds } },
       { 
         $set: { 
@@ -94,11 +142,13 @@ export async function POST(request: NextRequest) {
           assignedAt: now,
           metadata: {
             ...(orderId ? { orderId } : {}),
-            assignedBy: isAdmin ? user._id : 'system'
+            assignedBy: isAdmin ? user._id.toString() : 'system'
           }
         } 
       }
     );
+    
+    console.log('Resultado da atualização:', updateResult);
     
     // Atualizar contagem de estoque na variante do produto
     const remainingStock = await StockItem.countDocuments({
@@ -107,15 +157,21 @@ export async function POST(request: NextRequest) {
       isUsed: false
     });
     
+    console.log(`Estoque restante após atribuição: ${remainingStock}`);
+    
     // Atualizar o estoque da variante
-    await Product.updateOne(
+    const productUpdateResult = await Product.updateOne(
       { _id: productId, 'variants._id': variantId },
       { $set: { 'variants.$.stock': remainingStock } }
     );
     
+    console.log('Resultado da atualização do produto:', productUpdateResult);
+    
     // Obter os itens com detalhes após a atribuição
     const assignedItems = await StockItem.find({ _id: { $in: itemIds } })
       .select('code product variant assignedAt');
+    
+    console.log(`Atribuição concluída: ${assignedItems.length} itens atribuídos`);
     
     return NextResponse.json({
       message: 'Itens atribuídos com sucesso',

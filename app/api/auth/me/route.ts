@@ -1,77 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { checkAuth } from '@/app/lib/auth';
 import connectDB from '@/app/lib/db/mongodb';
-import User from '@/app/lib/models/user';
 
-// Segredo usado para verificar os tokens JWT
-const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_jwt_aqui';
-
-export async function GET(req: NextRequest) {
+// Função para recuperar informações do usuário atual
+export async function GET(request: NextRequest) {
   try {
-    // Obter o token diretamente do cookie da request
-    const token = req.cookies.get('auth_token')?.value;
+    console.log('---- API /auth/me REQUEST ----');
     
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Não autenticado' },
-        { status: 401 }
-      );
-    }
-    
-    // Verificar e decodificar o token JWT
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string, role?: string };
-
-    if (!decoded || !decoded.id) {
-      return NextResponse.json(
-        { error: 'Token inválido' },
-        { status: 401 }
-      );
-    }
+    // Log dos cookies disponíveis
+    const cookieHeader = request.headers.get('cookie') || '';
+    console.log('Cookies na requisição:', cookieHeader.replace(/;/g, ', '));
     
     // Conectar ao banco de dados
     await connectDB();
     
-    // Buscar o usuário no banco de dados
-    const user = await User.findById(decoded.id).select('-password');
-
-    if (!user) {
+    // Verificar autenticação
+    const authResult = await checkAuth(request);
+    console.log('Resultado da verificação de autenticação:', 
+      authResult.isAuthenticated ? 'Autenticado' : 'Não autenticado',
+      authResult.user ? `(${authResult.user.username})` : '');
+    
+    if (!authResult.isAuthenticated || !authResult.user) {
+      console.log('Tentativa de acesso /api/auth/me sem autenticação');
       return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
+        { message: 'Não autenticado' },
+        { status: 401 }
       );
     }
     
-    console.log('Enviando dados do usuário:', {
+    const user = authResult.user;
+    
+    // Dados do usuário para retornar (removendo dados sensíveis)
+    const userData = {
       id: user._id.toString(),
       username: user.username,
       email: user.email,
       name: user.name || '',
       role: user.role,
-      createdAt: user.createdAt,
-      // Outros campos
-    });
+      profileImage: user.profileImage || '',
+      memberNumber: user.memberNumber,
+      cpf: user.cpf || '',
+      address: user.address || '',
+      phone: user.phone || '',
+      createdAt: user.createdAt
+    };
     
-    // Retornar dados do usuário
-    return NextResponse.json({
-      user: {
-        id: user._id.toString(),
-        username: user.username,
-        email: user.email,
-        name: user.name || '',
-        role: user.role,
-        profileImage: user.profileImage || '',
-        memberNumber: user.memberNumber,
-        createdAt: user.createdAt,
-        cpf: user.cpf || '',
-        address: user.address || '',
-        phone: user.phone || ''
+    console.log('Enviando dados do usuário:', userData);
+    
+    // Definir cabeçalhos para evitar cache
+    const response = NextResponse.json({ user: userData }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       }
     });
-  } catch (error: any) {
-    console.error('Erro ao obter dados do usuário:', error);
     
+    return response;
+  } catch (error) {
+    console.error('Erro ao obter dados do usuário:', error);
     return NextResponse.json(
-      { error: error.message || 'Erro ao obter dados do usuário' },
+      { message: 'Erro ao obter dados do usuário', error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

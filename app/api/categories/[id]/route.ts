@@ -51,7 +51,9 @@ export async function GET(
   try {
     await connectDB();
     
-    const { id } = params;
+    // Garantir que params seja await corretamente no Next.js 14
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     
     // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -107,7 +109,9 @@ export async function PUT(
     
     await connectDB();
     
-    const { id } = params;
+    // Garantir que params seja await corretamente no Next.js 14
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     
     // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -215,7 +219,9 @@ export async function DELETE(
     
     await connectDB();
     
-    const { id } = params;
+    // Garantir que params seja await corretamente no Next.js 14
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     
     // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {

@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiPlus, FiX, FiUpload, FiTrash, FiSave, FiArrowLeft } from 'react-icons/fi';
+import { FiPlus, FiX, FiUpload, FiTrash, FiSave, FiArrowLeft, FiShield, FiClock, FiAward, FiSlash } from 'react-icons/fi';
 import RichTextEditor from '@/app/components/RichTextEditor';
 
 interface Variant {
@@ -405,24 +405,73 @@ export default function NewProductPage() {
             </label>
           </div>
           
-          <div className="mt-4">
-            <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-1">
-              Status do Cheat <span className="text-red-500">*</span>
+          <div className="mb-4">
+            <label htmlFor="status" className="block text-white font-medium mb-2">
+              Status do Cheat (opcional)
             </label>
-            <select
-              id="status"
-              name="status"
-              value={productData.status}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="indetectavel">Indetectável</option>
-              <option value="detectavel">Detectável</option>
-              <option value="manutencao">Em Manutenção</option>
-              <option value="beta">Beta</option>
-            </select>
-            <p className="mt-1 text-xs text-gray-400">
-              Status atual do cheat que será exibido aos clientes
+            <div className="flex flex-wrap gap-3">
+              <div
+                onClick={() => setProductData({...productData, status: 'indetectavel'})}
+                className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                  productData.status === 'indetectavel' 
+                    ? 'border-green-500 bg-green-900/30' 
+                    : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                }`}
+              >
+                <FiShield className={`mr-2 ${productData.status === 'indetectavel' ? 'text-green-400' : 'text-gray-400'}`} />
+                <span className={productData.status === 'indetectavel' ? 'text-green-400' : 'text-gray-300'}>Indetectável</span>
+              </div>
+              
+              <div
+                onClick={() => setProductData({...productData, status: 'detectavel'})}
+                className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                  productData.status === 'detectavel' 
+                    ? 'border-yellow-500 bg-yellow-900/30' 
+                    : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                }`}
+              >
+                <FiClock className={`mr-2 ${productData.status === 'detectavel' ? 'text-yellow-400' : 'text-gray-400'}`} />
+                <span className={productData.status === 'detectavel' ? 'text-yellow-400' : 'text-gray-300'}>Detectável</span>
+              </div>
+              
+              <div
+                onClick={() => setProductData({...productData, status: 'manutencao'})}
+                className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                  productData.status === 'manutencao' 
+                    ? 'border-red-500 bg-red-900/30' 
+                    : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                }`}
+              >
+                <FiX className={`mr-2 ${productData.status === 'manutencao' ? 'text-red-400' : 'text-gray-400'}`} />
+                <span className={productData.status === 'manutencao' ? 'text-red-400' : 'text-gray-300'}>Em Manutenção</span>
+              </div>
+              
+              <div
+                onClick={() => setProductData({...productData, status: 'beta'})}
+                className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                  productData.status === 'beta' 
+                    ? 'border-blue-500 bg-blue-900/30' 
+                    : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                }`}
+              >
+                <FiAward className={`mr-2 ${productData.status === 'beta' ? 'text-blue-400' : 'text-gray-400'}`} />
+                <span className={productData.status === 'beta' ? 'text-blue-400' : 'text-gray-300'}>Beta</span>
+              </div>
+              
+              <div
+                onClick={() => setProductData({...productData, status: ''})}
+                className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                  productData.status === '' 
+                    ? 'border-primary bg-primary/10' 
+                    : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                }`}
+              >
+                <FiSlash className={`mr-2 ${productData.status === '' ? 'text-primary' : 'text-gray-400'}`} />
+                <span className={productData.status === '' ? 'text-primary' : 'text-gray-300'}>Sem Status</span>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              Status do cheat que será exibido aos clientes
             </p>
           </div>
         </div>

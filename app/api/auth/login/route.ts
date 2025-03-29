@@ -1,90 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/app/lib/db/mongodb';
 import User from '@/app/lib/models/user';
-import { createToken } from '@/app/lib/auth/authUtils';
+import { createToken } from '@/app/lib/auth';
 
+// Variáveis para cookies
+const AUTH_TOKEN_NAME = 'auth_token';
+const AUTH_EXPIRY = 60 * 60 * 24 * 7; // 7 dias em segundos
+
+// Função de login
 export async function POST(request: NextRequest) {
   try {
     console.log('---- LOGIN REQUEST ----');
-    const { email, password } = await request.json();
-    console.log('Login tentado para email:', email);
-
-    // Validar campos obrigatórios
+    
+    // Extrair dados do corpo da requisição
+    const body = await request.json();
+    const { email, password } = body;
+    
+    console.log(`Login tentado para email: ${email}`);
+    
     if (!email || !password) {
-      console.log('Email ou senha não fornecidos');
       return NextResponse.json(
-        { message: 'Email e senha são obrigatórios' },
+        { message: 'Email e senha são obrigatórios', code: 'MISSING_CREDENTIALS' },
         { status: 400 }
       );
     }
-
-    // Conectar ao banco de dados
+    
     console.log('Conectando ao banco de dados');
     await connectDB();
-
-    // Buscar usuário pelo email com senha incluída
-    console.log('Buscando usuário pelo email:', email);
+    
+    // Buscar usuário com o email fornecido
     const user = await User.findOne({ email }).select('+password');
-    console.log('Usuário encontrado:', user ? 'Sim' : 'Não');
-
-    // Verificar se o usuário existe
+    console.log(`Usuário encontrado: ${user ? 'Sim' : 'Não'}`);
+    
     if (!user) {
-      console.log('Usuário não encontrado');
       return NextResponse.json(
-        { message: 'Credenciais inválidas' },
+        { message: 'Credenciais inválidas', code: 'INVALID_CREDENTIALS' },
         { status: 401 }
       );
     }
-
-    // Verificar se a senha está correta
+    
+    // Verificar senha
     console.log('Verificando senha');
     const isPasswordValid = await user.comparePassword(password);
-    console.log('Senha válida:', isPasswordValid ? 'Sim' : 'Não');
-
+    console.log(`Senha válida: ${isPasswordValid ? 'Sim' : 'Não'}`);
+    
     if (!isPasswordValid) {
-      console.log('Senha inválida');
       return NextResponse.json(
-        { message: 'Credenciais inválidas' },
+        { message: 'Credenciais inválidas', code: 'INVALID_CREDENTIALS' },
         { status: 401 }
       );
     }
-
-    // Gerar token JWT - agora é assíncrono
-    console.log('Gerando token JWT para usuário ID:', user._id.toString());
-    console.log('Role do usuário:', user.role);
+    
+    // Gerar token JWT
+    console.log(`Gerando token JWT para usuário ID: ${user._id}`);
+    console.log(`Role do usuário: ${user.role}`);
     const token = await createToken(user._id.toString());
-    console.log('Token gerado:', token ? 'Sim (tamanho: ' + token.length + ')' : 'Não');
-
-    // Criar uma resposta com os dados do usuário
+    console.log(`Token gerado: ${token ? 'Sim (tamanho: ' + token.length + ')' : 'Não'}`);
+    
+    // Dados do usuário para retornar
     console.log('Criando resposta com dados do usuário');
-    const response = NextResponse.json({
-      message: 'Login realizado com sucesso',
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        profileImage: user.profileImage,
-        memberNumber: user.memberNumber,
+    const userData = {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      name: user.name || '',
+      role: user.role,
+      profileImage: user.profileImage || '',
+      memberNumber: user.memberNumber,
+      createdAt: user.createdAt
+    };
+    
+    // Criar resposta com cookie
+    console.log(`Definindo cookie ${AUTH_TOKEN_NAME} com maxAge: ${AUTH_EXPIRY}`);
+    
+    // Usar formato primitivo para melhor compatibilidade
+    const cookieValue = `${AUTH_TOKEN_NAME}=${token}; Path=/; HttpOnly; Max-Age=${AUTH_EXPIRY}; SameSite=Lax`;
+    
+    const response = NextResponse.json(
+      { 
+        success: true, 
+        user: userData 
       },
-    });
+      { 
+        status: 200,
+        headers: {
+          'Set-Cookie': cookieValue
+        }
+      }
+    );
     
-    // Definir o cookie diretamente nos cabeçalhos de resposta (evita o uso de cookies())
-    const maxAge = 7 * 24 * 60 * 60; // 7 dias em segundos
-    console.log('Definindo cookie auth_token com maxAge:', maxAge);
+    // Definir cookies adicionais
+    const clientCookies = [
+      `isAuthenticated=true; Path=/; Max-Age=${AUTH_EXPIRY}; SameSite=Lax`,
+      `userId=${user._id.toString()}; Path=/; Max-Age=${AUTH_EXPIRY}; SameSite=Lax`,
+      `username=${user.username}; Path=/; Max-Age=${AUTH_EXPIRY}; SameSite=Lax`,
+      `userEmail=${user.email}; Path=/; Max-Age=${AUTH_EXPIRY}; SameSite=Lax`,
+      `userRole=${user.role}; Path=/; Max-Age=${AUTH_EXPIRY}; SameSite=Lax`
+    ];
     
-    const cookieValue = `auth_token=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
-    console.log('Valor do cookie:', cookieValue.substring(0, 50) + '...');
+    // Adicionar cookies ao cabeçalho da resposta
+    const existingCookies = response.headers.getSetCookie();
+    response.headers.set('Set-Cookie', [...existingCookies, ...clientCookies]);
     
-    response.headers.set('Set-Cookie', cookieValue);
-    console.log('Headers definidos na resposta');
+    console.log('Headers na resposta:', response.headers.get('Set-Cookie'));
+    console.log('Login concluído com sucesso para:', user.username);
     
     return response;
-  } catch (error: any) {
-    console.error('Erro durante o login:', error);
-    
+  } catch (error) {
+    console.error('Erro durante login:', error);
     return NextResponse.json(
-      { message: error.message || 'Erro durante o login' },
+      { message: 'Erro ao processar login', code: 'SERVER_ERROR', error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

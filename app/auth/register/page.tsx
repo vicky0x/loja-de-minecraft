@@ -14,6 +14,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [success, setSuccess] = useState('');
   
   const router = useRouter();
 
@@ -44,23 +45,29 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    // Validação básica
+    
+    // Validar campos
+    if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
+      setError('Todos os campos são obrigatórios.');
+      return;
+    }
+    
     if (formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem');
+      setError('As senhas não coincidem.');
       return;
     }
-
+    
     if (formData.password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
+      setError('A senha deve ter pelo menos 6 caracteres.');
       return;
     }
-
-    setLoading(true);
-
+    
     try {
-      // Chamada de API real para registro
+      setLoading(true);
+      setError('');
+      
+      console.log('Enviando requisição de registro...');
+      
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -71,19 +78,55 @@ export default function Register() {
           email: formData.email,
           password: formData.password,
         }),
-        credentials: 'include'
       });
-
+      
       const data = await response.json();
-
+      console.log('Resposta do registro:', response.status);
+      
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao criar conta');
+        if (response.status === 409) {
+          setError('Este email ou nome de usuário já está em uso.');
+        } else {
+          setError(data.message || 'Erro ao criar conta. Tente novamente.');
+        }
+        return;
       }
-
-      // Redirecionar após registro bem-sucedido
-      router.push('/auth/login?registered=true');
-    } catch (err: any) {
-      setError(err.message || 'Erro ao criar conta. Tente novamente.');
+      
+      // Registro bem-sucedido, fazer login automático
+      console.log('Registro bem-sucedido, tentando login automático...');
+      
+      const loginResponse = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+      
+      const loginData = await loginResponse.json();
+      console.log('Resposta do login automático:', loginResponse.status);
+      
+      if (!loginResponse.ok) {
+        setSuccess('Conta criada com sucesso! Por favor, faça login com suas credenciais.');
+        setTimeout(() => {
+          router.push('/auth/login');
+        }, 2000);
+        return;
+      }
+      
+      // Login automático bem-sucedido
+      console.log('Login automático bem-sucedido. Dados do usuário:', loginData.user);
+      console.log('Cookies após login:', document.cookie);
+      
+      setSuccess('Conta criada com sucesso! Redirecionando...');
+      
+      // Timeout para garantir que os cookies foram definidos
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000);
+    } catch (err) {
+      console.error('Erro durante o registro:', err);
+      setError('Erro ao conectar ao servidor. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -139,6 +182,12 @@ export default function Register() {
         {error && (
           <div className="bg-red-500/20 border border-red-500 text-white p-4 rounded mb-6">
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-500/20 border border-green-500 text-white p-4 rounded mb-6">
+            {success}
           </div>
         )}
 

@@ -11,8 +11,9 @@ export async function GET(
   try {
     await connectDB();
     
-    // Aguardar os parâmetros antes de usá-los - importante para evitar o erro de params síncronos
-    const { slug } = await params;
+    // Garantir que params seja await corretamente no Next.js 14
+    const resolvedParams = await Promise.resolve(params);
+    const slug = resolvedParams.slug;
     
     if (!slug) {
       return NextResponse.json(

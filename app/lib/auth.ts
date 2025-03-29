@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { SignJWT } from 'jose';
+import { jwtVerify } from 'jose';
 import User from '@/app/lib/models/user';
 import connectDB from '@/app/lib/db/mongodb';
 
@@ -17,6 +18,7 @@ export interface AuthUser {
 
 // Nome do cookie de autenticação
 const AUTH_TOKEN_NAME = 'auth_token';
+const LEGACY_TOKEN_NAME = 'fantasy_cheats_auth';
 const AUTH_EXPIRY = 60 * 60 * 24 * 7; // 7 dias em segundos
 
 /**
@@ -28,8 +30,35 @@ export async function checkAuth(req: NextRequest) {
   try {
     console.log('Iniciando verificação de autenticação');
     
-    // Obter token da requisição
-    const token = req.cookies.get(AUTH_TOKEN_NAME)?.value;
+    // Obter token de várias fontes possíveis
+    let token = req.cookies.get(AUTH_TOKEN_NAME)?.value;
+    
+    // Verificar no cookie legado
+    if (!token) {
+      token = req.cookies.get(LEGACY_TOKEN_NAME)?.value;
+    }
+    
+    // Verificar nos headers
+    if (!token) {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+    
+    // Verificar em cookies extraídos manualmente
+    if (!token) {
+      const cookieHeader = req.headers.get('cookie') || '';
+      const authTokenMatch = cookieHeader.match(new RegExp(`${AUTH_TOKEN_NAME}=([^;]+)`));
+      if (authTokenMatch && authTokenMatch[1]) {
+        token = authTokenMatch[1];
+      } else {
+        const legacyTokenMatch = cookieHeader.match(new RegExp(`${LEGACY_TOKEN_NAME}=([^;]+)`));
+        if (legacyTokenMatch && legacyTokenMatch[1]) {
+          token = legacyTokenMatch[1];
+        }
+      }
+    }
     
     console.log('Token encontrado:', token ? 'Sim' : 'Não');
     
@@ -38,42 +67,32 @@ export async function checkAuth(req: NextRequest) {
       return { isAuthenticated: false, user: null };
     }
     
-    // Verificar e decodificar o token JWT
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string, role?: string };
+    // Verificar token
+    const decodedToken = await verifyToken(token);
     
-    if (!decoded || !decoded.id) {
-      console.log('Token inválido ou sem ID de usuário');
+    if (!decodedToken || !decodedToken.id) {
+      console.log('Token inválido ou expirado');
       return { isAuthenticated: false, user: null };
     }
     
-    // Conectar ao banco de dados
+    // Buscar usuário no banco de dados
     await connectDB();
-    
-    // Buscar o usuário no banco de dados
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(decodedToken.id).select('-password');
     
     if (!user) {
       console.log('Usuário não encontrado no banco de dados');
       return { isAuthenticated: false, user: null };
     }
     
-    console.log('Usuário autenticado:', {
-      id: user._id.toString(),
-      role: user.role
-    });
+    console.log('Usuário autenticado:', { id: user._id.toString(), role: user.role });
     
-    return { 
-      isAuthenticated: true, 
-      user: {
-        id: user._id.toString(),
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        name: user.name
-      }
+    return {
+      isAuthenticated: true,
+      user,
+      token: decodedToken
     };
   } catch (error) {
-    console.error('Erro na verificação de autenticação:', error);
+    console.error('Erro durante a verificação de autenticação:', error);
     return { isAuthenticated: false, user: null };
   }
 }
@@ -83,30 +102,31 @@ export async function checkAuth(req: NextRequest) {
  * @param userId ID do usuário
  * @returns Promise com o token gerado
  */
-export async function createToken(userId: string): Promise<string> {
+export async function createToken(userId: string) {
   try {
-    // Conectar ao banco de dados
-    await connectDB();
+    const secret = new TextEncoder().encode(JWT_SECRET);
     
-    // Buscar o usuário no banco de dados
-    const user = await User.findById(userId).select('role');
+    // Buscar informações do usuário para incluir no token
+    await connectDB();
+    const user = await User.findById(userId);
     
     if (!user) {
       throw new Error('Usuário não encontrado');
     }
     
-    // Criar payload do token
-    const payload = { 
-      id: userId,
-      role: user.role
-    };
-    
-    // Criar o token com o ID e o papel do usuário
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+    // Criar token JWT com jose (compatível com Edge Runtime)
+    const token = await new SignJWT({ 
+        id: userId,
+        role: user.role 
+      })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('7d') // Validade de 7 dias
+      .sign(secret);
     
     return token;
   } catch (error) {
-    console.error('Erro ao criar token JWT:', error);
+    console.error('Erro ao criar token:', error);
     throw error;
   }
 }
@@ -124,8 +144,8 @@ export function isAdmin(user: AuthUser | null): boolean {
  * Define cookies de autenticação
  * @param token Token JWT gerado
  */
-export function setAuthCookie(token: string) {
-  const cookieStore = cookies();
+export async function setAuthCookie(token: string) {
+  const cookieStore = await cookies();
   cookieStore.set(AUTH_TOKEN_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -138,7 +158,25 @@ export function setAuthCookie(token: string) {
 /**
  * Remove cookie de autenticação
  */
-export function removeAuthCookie() {
-  const cookieStore = cookies();
+export async function removeAuthCookie() {
+  const cookieStore = await cookies();
   cookieStore.delete(AUTH_TOKEN_NAME);
+}
+
+// Função para verificar JWT
+export async function verifyToken(token: string) {
+  try {
+    const secret = new TextEncoder().encode(JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    
+    return {
+      id: payload.id as string,
+      role: payload.role as string,
+      iat: payload.iat as number,
+      exp: payload.exp as number
+    };
+  } catch (error) {
+    console.error('Erro ao verificar token JWT:', error);
+    return null;
+  }
 } 

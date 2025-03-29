@@ -51,10 +51,10 @@ export async function GET(
   try {
     await connectDB();
     
-    // Aguardar os parâmetros antes de usá-los - correção do erro
-    const { id } = await params;
+    // Garantir que params seja await corretamente no Next.js 14
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     
-    // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { message: 'ID de produto inválido' },
@@ -96,7 +96,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verificar autenticação e permissões
+    // Garantir que params seja await corretamente no Next.js 14
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
+    
+    // Verificar autenticação
     const user = await checkAuth(request);
     
     if (!user) {
@@ -114,9 +118,6 @@ export async function PUT(
     }
     
     await connectDB();
-    
-    // Aguardar os parâmetros antes de usá-los - correção do erro
-    const { id } = await params;
     
     // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -145,14 +146,59 @@ export async function PUT(
     const shortDescription = formData.get('shortDescription') as string;
     const categoryId = formData.get('category') as string;
     const featured = formData.get('featured') === 'true';
-    const status = formData.get('status') as string;
+    let status = formData.get('status') as string | null;
     
-    // Verificar se o status é válido
-    if (status && !['indetectavel', 'detectavel', 'manutencao', 'beta'].includes(status)) {
-      return NextResponse.json(
-        { message: 'Status inválido' },
-        { status: 400 }
-      );
+    // Log de depuração para identificar o problema
+    console.log('Status recebido do formulário:', status);
+    console.log('Tipo do status:', typeof status);
+    console.log('FormData completo:', Object.fromEntries(formData.entries()));
+    
+    // Verificar se o status foi fornecido e não é uma string vazia
+    if (status && status.trim() !== '') {
+      const statusLower = status.toLowerCase();
+      // Log para depuração do status
+      console.log('Status antes da normalização:', status);
+      console.log('Status em lowercase:', statusLower);
+      
+      // Verificação mais flexível para o status
+      const isValidStatus = 
+        statusLower.includes('indetect') || 
+        statusLower.includes('detect') || 
+        statusLower.includes('manut') || 
+        statusLower.includes('beta');
+      
+      if (!isValidStatus) {
+        console.log('Status inválido detectado:', status);
+        status = null; // Definir como nulo se for inválido
+      } else {
+        // Normalizar o status para um dos valores aceitos
+        let normalizedStatus = 'indetectavel'; // valor padrão
+        
+        if (statusLower === 'indetectavel' || statusLower.includes('indetect')) {
+          normalizedStatus = 'indetectavel';
+          console.log('Status normalizado para: indetectavel');
+        }
+        else if (statusLower === 'detectavel' || (statusLower.includes('detect') && !statusLower.includes('indetect'))) {
+          normalizedStatus = 'detectavel';
+          console.log('Status normalizado para: detectavel');
+        } 
+        else if (statusLower === 'manutencao' || statusLower.includes('manut')) {
+          normalizedStatus = 'manutencao';
+          console.log('Status normalizado para: manutencao');
+        }
+        else if (statusLower === 'beta' || statusLower.includes('beta')) {
+          normalizedStatus = 'beta';
+          console.log('Status normalizado para: beta');
+        }
+        
+        // Substituir o status pela versão normalizada
+        console.log(`Status normalizado: "${status}" -> "${normalizedStatus}"`);
+        status = normalizedStatus;
+      }
+    } else {
+      // Se status for vazio ou não fornecido, defina como nulo
+      console.log('Status vazio ou não fornecido, definindo como nulo');
+      status = null;
     }
     
     // Extrair variantes
@@ -311,13 +357,20 @@ export async function PUT(
         variants,
         featured,
         requirements,
-        status,
+        // Definir status apenas se tiver um valor
+        ...(status ? { status } : { $unset: { status: 1 } }),
       },
       { new: true }
     );
     
-    return NextResponse.json({
-      message: 'Produto atualizado com sucesso',
+    // Log para depuração final
+    console.log('Produto atualizado:');
+    console.log('ID:', id);
+    console.log('Status final:', status);
+    console.log('Produto após atualização:', updatedProduct);
+    
+    return NextResponse.json({ 
+      message: 'Produto atualizado com sucesso', 
       product: updatedProduct,
     });
   } catch (error: any) {
@@ -336,7 +389,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verificar autenticação e permissões
+    // Garantir que params seja await corretamente no Next.js 14
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
+    
+    // Verificar autenticação
     const user = await checkAuth(request);
     
     if (!user) {
@@ -354,9 +411,6 @@ export async function DELETE(
     }
     
     await connectDB();
-    
-    // Aguardar os parâmetros antes de usá-los - correção do erro
-    const { id } = await params;
     
     // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {

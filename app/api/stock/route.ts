@@ -81,25 +81,35 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação e permissões
+    console.log('Iniciando processamento da requisição POST para adicionar estoque');
     const authResult = await checkAuth(request);
     
+    console.log('Resultado da autenticação:', JSON.stringify(authResult, null, 2));
+    
     if (!authResult.isAuthenticated || !authResult.user) {
+      console.log('Usuário não autenticado ou indefinido');
       return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
     }
     
     const user = authResult.user;
+    console.log('Usuário autenticado:', user._id, 'Role:', user.role);
     
     if (user.role !== 'admin') {
+      console.log('Usuário não é admin:', user.role);
       return NextResponse.json({ message: 'Acesso proibido' }, { status: 403 });
     }
     
     await connectDB();
+    console.log('Conectado ao banco de dados');
     
     // Extrair dados da requisição
-    const { productId, variantId, items } = await request.json();
+    const requestData = await request.json();
+    console.log('Dados da requisição:', JSON.stringify(requestData, null, 2));
+    const { productId, variantId, items } = requestData;
     
     // Validar dados
     if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      console.log('ID de produto inválido:', productId);
       return NextResponse.json(
         { message: 'ID de produto inválido' },
         { status: 400 }
@@ -107,6 +117,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!variantId) {
+      console.log('ID de variante inválido:', variantId);
       return NextResponse.json(
         { message: 'ID de variante inválido' },
         { status: 400 }
@@ -114,6 +125,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!items || !Array.isArray(items) || items.length === 0) {
+      console.log('Lista de itens inválida:', items);
       return NextResponse.json(
         { message: 'É necessário fornecer pelo menos um item de estoque' },
         { status: 400 }
@@ -124,21 +136,27 @@ export async function POST(request: NextRequest) {
     const product = await Product.findById(productId);
     
     if (!product) {
+      console.log('Produto não encontrado:', productId);
       return NextResponse.json(
         { message: 'Produto não encontrado' },
         { status: 404 }
       );
     }
     
+    console.log('Produto encontrado:', product.name);
+    
     // Verificar se a variante existe
     const variantExists = product.variants.some((v) => v._id.toString() === variantId);
     
     if (!variantExists) {
+      console.log('Variante não encontrada no produto:', variantId);
       return NextResponse.json(
         { message: 'Variante não encontrada' },
         { status: 404 }
       );
     }
+    
+    console.log('Variante encontrada, preparando itens para inserção');
     
     // Preparar itens para inserção
     const stockItems = items.map((code: string) => ({
@@ -148,15 +166,24 @@ export async function POST(request: NextRequest) {
       isUsed: false,
     }));
     
+    console.log(`Tentando inserir ${stockItems.length} itens no estoque`);
+    
     // Inserir itens no estoque
-    const result = await StockItem.insertMany(stockItems, { ordered: false })
-      .catch(error => {
-        // Verificar erros de duplicação e continuar inserindo itens não duplicados
-        if (error.code === 11000) {
-          return error.insertedDocs; // Retorna documentos que foram inseridos com sucesso
-        }
-        throw error; // Relança outros erros
-      });
+    let result;
+    try {
+      result = await StockItem.insertMany(stockItems, { ordered: false });
+      console.log(`Inseridos com sucesso: ${result.length} itens`);
+    } catch (insertError: any) {
+      // Verificar erros de duplicação e continuar inserindo itens não duplicados
+      if (insertError.code === 11000) {
+        console.log('Detectados itens duplicados durante a inserção');
+        result = insertError.insertedDocs || []; // Retorna documentos que foram inseridos com sucesso
+        console.log(`Inseridos parcialmente: ${result.length} itens`);
+      } else {
+        console.error('Erro não esperado durante a inserção:', insertError);
+        throw insertError; // Relança outros erros
+      }
+    }
     
     // Atualizar contagem de estoque na variante do produto
     const stockCount = await StockItem.countDocuments({
@@ -165,18 +192,22 @@ export async function POST(request: NextRequest) {
       isUsed: false
     });
     
+    console.log(`Contagem atual de estoque para a variante: ${stockCount}`);
+    
     // Atualizar o estoque da variante
     await Product.updateOne(
       { _id: productId, 'variants._id': variantId },
       { $set: { 'variants.$.stock': stockCount } }
     );
     
+    console.log('Estoque da variante atualizado com sucesso');
+    
     return NextResponse.json({
       message: 'Itens adicionados ao estoque com sucesso',
       added: result.length,
       current_stock: stockCount
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao adicionar itens ao estoque:', error);
     
     // Verificar erro de duplicidade

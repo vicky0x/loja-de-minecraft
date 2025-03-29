@@ -69,20 +69,20 @@ export default function AdminProfilePage() {
           console.log("Dados do usuário admin recebidos:", data.user);
           
           // Verificar se o usuário é administrador
-          if (data.user.role !== 'admin') {
+          if (data.user && data.user.role !== 'admin') {
             router.push('/dashboard/profile');
             return;
           }
           
           setUser(data.user);
           setFormData({
-            name: data.user.name || '',
-            email: data.user.email || '',
+            name: data.user?.name || '',
+            email: data.user?.email || '',
             password: '',
             confirmPassword: '',
-            cpf: data.user.cpf || '',
-            address: data.user.address || '',
-            phone: data.user.phone || '',
+            cpf: data.user?.cpf || '',
+            address: data.user?.address || '',
+            phone: data.user?.phone || '',
           });
         } else {
           setError('Erro ao carregar perfil');
@@ -451,7 +451,7 @@ export default function AdminProfilePage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-400">Total de Usuários</p>
-                      <p className="text-lg font-bold text-white">{adminStats.totalUsers}</p>
+                      <p className="text-lg font-bold text-white">{adminStats?.users?.total || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -463,7 +463,7 @@ export default function AdminProfilePage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-400">Produtos</p>
-                      <p className="text-lg font-bold text-white">{adminStats.totalProducts}</p>
+                      <p className="text-lg font-bold text-white">{adminStats?.products?.total || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -475,7 +475,7 @@ export default function AdminProfilePage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-400">Pedidos</p>
-                      <p className="text-lg font-bold text-white">{adminStats.totalOrders}</p>
+                      <p className="text-lg font-bold text-white">{adminStats?.orders?.pending || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -488,7 +488,9 @@ export default function AdminProfilePage() {
                     <div>
                       <p className="text-sm text-gray-400">Receita Total</p>
                       <p className="text-lg font-bold text-white">
-                        R$ {adminStats.totalRevenue.toFixed(2).replace('.', ',')}
+                        R$ {adminStats?.orders?.revenue?.allTime?.revenue !== undefined ? 
+                          adminStats.orders.revenue.allTime.revenue.toFixed(2).replace('.', ',') : 
+                          '0,00'}
                       </p>
                     </div>
                   </div>
@@ -714,7 +716,12 @@ export default function AdminProfilePage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">
-                      {activity.description}
+                      <span 
+                        className="cursor-help" 
+                        title={`ID completo: ${activity.id}`}
+                      >
+                        {activity.title || activity.description || `${activity.type} #${activity.id.toString().substr(-6)}`}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                       {new Date(activity.date).toLocaleString('pt-BR')}

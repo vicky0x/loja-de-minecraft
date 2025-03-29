@@ -133,46 +133,65 @@ export default function ProductCard({ product }: { product: Product }) {
   
   // Adicionar a função para configuração do status logo após a função getBasePrice
   const getStatusConfig = (status?: string) => {
-    // Verificar se o status é válido
-    const validStatus = status && ['indetectavel', 'detectavel', 'manutencao', 'beta'].includes(status) 
-      ? status 
-      : 'indetectavel'; // Fallback para 'indetectavel' se o status for inválido ou undefined
+    // Adicionar log para depuração
+    console.log('Status recebido no ProductCard:', status);
     
-    switch (validStatus) {
-      case 'indetectavel':
-        return {
-          label: 'Indetectável',
-          bgColor: 'bg-green-900/40',
-          borderColor: 'border-green-500',
-          textColor: 'text-green-400',
-          icon: <FiShield size={12} className="mr-1" />,
-        };
-      case 'detectavel':
-        return {
-          label: 'Detectável',
-          bgColor: 'bg-yellow-900/40',
-          borderColor: 'border-yellow-500',
-          textColor: 'text-yellow-400',
-          icon: <FiClock size={12} className="mr-1" />,
-        };
-      case 'manutencao':
-        return {
-          label: 'Em Manutenção',
-          bgColor: 'bg-red-900/40',
-          borderColor: 'border-red-500',
-          textColor: 'text-red-400',
-          icon: <FiX size={12} className="mr-1" />,
-        };
-      case 'beta':
-        return {
-          label: 'Beta',
-          bgColor: 'bg-blue-900/40',
-          borderColor: 'border-blue-500',
-          textColor: 'text-blue-400',
-          icon: <FiAward size={12} className="mr-1" />,
-        };
-      default:
-        return null;
+    // Se o status for null, undefined ou string vazia
+    if (!status) {
+      return null; // Retornar null para indicar que não há status
+    }
+    
+    // Convertendo para minúsculas e garantindo que é uma string
+    const validStatus = status.toLowerCase();
+    console.log('Status convertido para minúsculas:', validStatus);
+    
+    // Verificações mais específicas para cada status
+    if (validStatus === 'detectavel' || (validStatus.includes('detect') && !validStatus.includes('indetect'))) {
+      return {
+        label: 'Detectável',
+        bgColor: 'bg-yellow-900/40',
+        borderColor: 'border-yellow-500',
+        textColor: 'text-yellow-400',
+        icon: <FiClock size={12} className="flex-shrink-0" />,
+      };
+    }
+    else if (validStatus === 'manutencao' || validStatus.includes('manut')) {
+      return {
+        label: 'Em Manutenção',
+        bgColor: 'bg-red-900/40',
+        borderColor: 'border-red-500',
+        textColor: 'text-red-400',
+        icon: <FiX size={12} className="flex-shrink-0" />,
+      };
+    }
+    else if (validStatus === 'beta' || validStatus.includes('beta')) {
+      return {
+        label: 'Beta',
+        bgColor: 'bg-blue-900/40',
+        borderColor: 'border-blue-500',
+        textColor: 'text-blue-400',
+        icon: <FiAward size={12} className="flex-shrink-0" />,
+      };
+    }
+    else if (validStatus === 'indetectavel' || validStatus.includes('indetect')) {
+      return {
+        label: 'Indetectável',
+        bgColor: 'bg-green-900/40',
+        borderColor: 'border-green-500',
+        textColor: 'text-green-400',
+        icon: <FiShield size={12} className="flex-shrink-0" />,
+      };
+    }
+    else {
+      // Caso padrão para qualquer outro valor
+      console.log('Status não reconhecido, usando padrão Indetectável');
+      return {
+        label: 'Indetectável',
+        bgColor: 'bg-green-900/40',
+        borderColor: 'border-green-500',
+        textColor: 'text-green-400',
+        icon: <FiShield size={12} className="flex-shrink-0" />,
+      };
     }
   };
   
@@ -225,10 +244,12 @@ export default function ProductCard({ product }: { product: Product }) {
             </div>
           )}
           
-          {/* Badge de status do cheat */}
+          {/* Badge de status do cheat - exibir apenas se houver status */}
           {product.status && getStatusConfig(product.status) && (
             <div className={`absolute bottom-2 left-2 ${getStatusConfig(product.status)?.bgColor} ${getStatusConfig(product.status)?.textColor} text-xs font-medium px-2 py-1 rounded-md flex items-center border ${getStatusConfig(product.status)?.borderColor} animate-pulse-slow`}>
-              {getStatusConfig(product.status)?.icon}
+              <div className="flex items-center justify-center mr-1.5">
+                {getStatusConfig(product.status)?.icon}
+              </div>
               {getStatusConfig(product.status)?.label}
             </div>
           )}
@@ -243,7 +264,14 @@ export default function ProductCard({ product }: { product: Product }) {
           <h3 className="text-white font-semibold mb-2 line-clamp-1">{product.name}</h3>
           
           {product.shortDescription && (
-            <p className="text-gray-400 text-sm mb-4 line-clamp-2">{product.shortDescription}</p>
+            <div 
+              className="text-gray-400 text-sm mb-4 line-clamp-2 product-description"
+              dangerouslySetInnerHTML={{ 
+                __html: product.shortDescription
+                  // Remover tags HTML não permitidas para segurança
+                  .replace(/<(?!\/?(strong|em|span|b|i|p|br)\b)[^>]+>/gi, '') 
+              }}
+            />
           )}
           
           {/* Contador de vendas com animação */}

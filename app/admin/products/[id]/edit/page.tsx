@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiArrowLeft, FiPlus, FiTrash2, FiUpload, FiX, FiSave, FiLoader } from 'react-icons/fi';
+import { FiArrowLeft, FiPlus, FiTrash2, FiUpload, FiX, FiSave, FiLoader, FiShield, FiClock, FiAward, FiSlash } from 'react-icons/fi';
 import { use } from 'react';
 import RichTextEditor from '@/app/components/RichTextEditor';
 
@@ -189,11 +189,22 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
+    // Log de depuração para status
+    if (name === 'status') {
+      console.log('Status alterado para:', value);
+      console.log('Elemento selecionado:', e.target);
+    }
+    
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setProductData({ ...productData, [name]: checked });
     } else {
       setProductData({ ...productData, [name]: value });
+    }
+    
+    // Log após atualização
+    if (name === 'status') {
+      console.log('ProductData após atualização:', { ...productData, [name]: value });
     }
   };
   
@@ -333,23 +344,23 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-  
+    
     // Validações básicas
     if (!productData.name || !productData.description) {
       setError('Nome e descrição são obrigatórios.');
       return;
     }
-  
+    
     if (variants.length === 0) {
       setError('Ao menos uma variante é obrigatória.');
       return;
     }
-  
+    
     if (images.length === 0) {
       setError('Ao menos uma imagem é obrigatória.');
       return;
     }
-  
+    
     try {
       setLoading(true);
       
@@ -371,6 +382,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       formData.append('featured', productData.featured.toString());
       formData.append('status', productData.status);
       
+      // Log de depuração para o status
+      console.log('Status sendo enviado:', productData.status);
+      
       // Adicionar variantes
       formData.append('variants', JSON.stringify(variants));
       
@@ -383,6 +397,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       requirementsArray.forEach((req, index) => {
         formData.append(`requirements[${index}]`, req);
       });
+      
+      // Log do FormData completo
+      console.log('FormData a ser enviado:');
+      for (const [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+      }
       
       // Enviar para a API
       const response = await fetch(`/api/products/${id}`, {
@@ -521,21 +541,70 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-1">
               Status do Cheat <span className="text-red-500">*</span>
             </label>
-            <select
-              id="status"
-              name="status"
-              value={productData.status}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="indetectavel">Indetectável</option>
-              <option value="detectavel">Detectável</option>
-              <option value="manutencao">Em Manutenção</option>
-              <option value="beta">Beta</option>
-            </select>
-            <p className="mt-1 text-xs text-gray-400">
-              Status atual do cheat que será exibido aos clientes
-            </p>
+            <div className="grid grid-cols-1 gap-4 mt-2 mb-4">
+              <h3 className="text-white font-medium mb-2">Status do Cheat (opcional)</h3>
+              <div className="flex flex-wrap gap-3">
+                <div
+                  onClick={() => setProductData({...productData, status: 'indetectavel'})}
+                  className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                    productData.status === 'indetectavel' 
+                      ? 'border-green-500 bg-green-900/30' 
+                      : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                  }`}
+                >
+                  <FiShield className={`mr-2 ${productData.status === 'indetectavel' ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className={productData.status === 'indetectavel' ? 'text-green-400' : 'text-gray-300'}>Indetectável</span>
+                </div>
+                
+                <div
+                  onClick={() => setProductData({...productData, status: 'detectavel'})}
+                  className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                    productData.status === 'detectavel' 
+                      ? 'border-yellow-500 bg-yellow-900/30' 
+                      : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                  }`}
+                >
+                  <FiClock className={`mr-2 ${productData.status === 'detectavel' ? 'text-yellow-400' : 'text-gray-400'}`} />
+                  <span className={productData.status === 'detectavel' ? 'text-yellow-400' : 'text-gray-300'}>Detectável</span>
+                </div>
+                
+                <div
+                  onClick={() => setProductData({...productData, status: 'manutencao'})}
+                  className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                    productData.status === 'manutencao' 
+                      ? 'border-red-500 bg-red-900/30' 
+                      : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                  }`}
+                >
+                  <FiX className={`mr-2 ${productData.status === 'manutencao' ? 'text-red-400' : 'text-gray-400'}`} />
+                  <span className={productData.status === 'manutencao' ? 'text-red-400' : 'text-gray-300'}>Em Manutenção</span>
+                </div>
+                
+                <div
+                  onClick={() => setProductData({...productData, status: 'beta'})}
+                  className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                    productData.status === 'beta' 
+                      ? 'border-blue-500 bg-blue-900/30' 
+                      : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                  }`}
+                >
+                  <FiAward className={`mr-2 ${productData.status === 'beta' ? 'text-blue-400' : 'text-gray-400'}`} />
+                  <span className={productData.status === 'beta' ? 'text-blue-400' : 'text-gray-300'}>Beta</span>
+                </div>
+                
+                <div
+                  onClick={() => setProductData({...productData, status: ''})}
+                  className={`cursor-pointer rounded-md border p-3 flex items-center ${
+                    productData.status === '' 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-dark-300 bg-dark-300/50 hover:border-gray-400'
+                  }`}
+                >
+                  <FiSlash className={`mr-2 ${productData.status === '' ? 'text-primary' : 'text-gray-400'}`} />
+                  <span className={productData.status === '' ? 'text-primary' : 'text-gray-300'}>Sem Status</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
