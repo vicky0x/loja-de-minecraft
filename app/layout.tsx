@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Fantasy Cheats",
-  description: "Sistema de venda de produtos digitais",
+  description: "Loja de cheats para jogos",
 };
 
 export default function RootLayout({
@@ -25,29 +25,7 @@ export default function RootLayout({
           <main className="pt-20">
             {children}
           </main>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#2a2a2a',
-                color: '#fff',
-                border: '1px solid #444',
-              },
-              success: {
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#fff',
-                },
-              },
-              error: {
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
-                },
-              },
-            }}
-          />
+          <Toaster position="top-right" />
         </Providers>
       </body>
     </html>
