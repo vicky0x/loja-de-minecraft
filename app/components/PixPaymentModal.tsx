@@ -1,215 +1,166 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
-import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { FiCopy, FiCheck, FiClock, FiAlertCircle, FiX, FiRefreshCw } from 'react-icons/fi';
+import { FiCopy, FiCheck, FiClock, FiAlertCircle, FiX, FiRefreshCw, FiHelpCircle, FiAlertTriangle } from 'react-icons/fi';
+import { IconBaseProps } from 'react-icons';
+import toast from 'react-hot-toast';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-// Importações do date-fns com try-catch
-let formatDistanceToNow: any;
-let ptBR: any;
-
-try {
-  const dateFns = require('date-fns');
-  const dateFnsLocale = require('date-fns/locale');
-  formatDistanceToNow = dateFns.formatDistanceToNow;
-  ptBR = dateFnsLocale.ptBR;
-} catch (error) {
-  console.error('Erro ao importar date-fns:', error);
-  // Implementação simples para caso o pacote não esteja disponível
-  formatDistanceToNow = (date: Date) => {
-    const diffMs = date.getTime() - new Date().getTime();
-    const diffMins = Math.round(diffMs / 60000);
-    if (diffMins <= 0) return 'expirado';
-    return `em ${diffMins} minutos`;
-  };
-  ptBR = {};
+// Interface para ícones com tipagem correta
+interface IconProps extends IconBaseProps {
+  className?: string;
+  size?: number | string;
+  color?: string;
 }
 
+// Componentes de ícone com tipagem correta
+const IconFiCopy = (props: IconProps) => <FiCopy {...props} />;
+const IconFiCheck = (props: IconProps) => <FiCheck {...props} />;
+const IconFiClock = (props: IconProps) => <FiClock {...props} />;
+const IconFiAlertCircle = (props: IconProps) => <FiAlertCircle {...props} />;
+const IconFiX = (props: IconProps) => <FiX {...props} />;
+const IconFiRefreshCw = (props: IconProps) => <FiRefreshCw {...props} />;
+const IconFiHelpCircle = (props: IconProps) => <FiHelpCircle {...props} />;
+const IconFiAlertTriangle = (props: IconProps) => <FiAlertTriangle {...props} />;
+
+// Interface para os props do componente PixPaymentModal
 interface PixPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   paymentData: {
-    qrCode: string;
-    qrCodeBase64: string;
-    copyPaste: string;
-    expirationDate: string;
-    paymentId: string;
     orderId: string;
+    paymentId?: string;
+    pixCopiaECola?: string;
+    qrCodeBase64?: string;
+    qrCodeUrl?: string;
+    expiresAt?: string;
+    total?: number;
   };
   onPaymentConfirmed?: () => void;
+  clearCart?: () => void;
 }
 
-export default function PixPaymentModal({ 
-  isOpen, 
-  onClose, 
+// Componente PixPaymentModal
+function PixPaymentModal({
+  isOpen,
+  onClose,
   paymentData,
-  onPaymentConfirmed
+  onPaymentConfirmed,
+  clearCart
 }: PixPaymentModalProps) {
-  const [copied, setCopied] = useState(false);
-  const [timeLeft, setTimeLeft] = useState('');
-  const [checkingStatus, setCheckingStatus] = useState(false);
+  // Estados do componente
   const [isPaid, setIsPaid] = useState(false);
-  const [error, setError] = useState('');
-  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const [copied, setCopied] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [showInstructions, setShowInstructions] = useState(false);
+  
+  // Referência para o timer de verificação de status
   const statusCheckRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  // Referência para controlar o abort controller das requisições
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Efeito para limpar requisições na desmontagem ou quando o modal for fechado
-  useEffect(() => {
-    if (!isOpen && isPaid) {
-      // Limpar todos os recursos quando o modal for fechado após o pagamento
-      clearResources();
-    }
-    
-    return () => {
-      // Limpar todos os recursos na desmontagem
-      clearResources();
-    };
-    
-    // Função auxiliar para limpar todos os recursos
-    function clearResources() {
-      // Cancelar qualquer requisição pendente
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-      
-      // Limpar timers
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = undefined;
-      }
-      
-      if (statusCheckRef.current) {
-        clearInterval(statusCheckRef.current);
-        statusCheckRef.current = undefined;
-      }
-    }
-  }, [isOpen, isPaid]);
-
-  // Função para copiar o código PIX
+  
+  // Função para copiar o código PIX para a área de transferência
   const copyToClipboard = () => {
-    try {
-      navigator.clipboard.writeText(paymentData.copyPaste);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
-    } catch (err) {
-      console.error('Erro ao copiar para a área de transferência:', err);
-      // Alternativa para browsers que não suportam clipboard API
-      const textArea = document.createElement('textarea');
-      textArea.value = paymentData.copyPaste;
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      try {
-        document.execCommand('copy');
+    if (!paymentData?.pixCopiaECola) return;
+    
+    navigator.clipboard.writeText(paymentData.pixCopiaECola)
+      .then(() => {
         setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-      } catch (e) {
-        console.error('Falha ao copiar texto:', e);
-      }
-      document.body.removeChild(textArea);
-    }
-  };
-
-  // Atualizar o tempo restante
-  useEffect(() => {
-    // Limpar o timer anterior
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    // Função para atualizar o contador
-    const updateTimeLeft = () => {
-      try {
-        const now = new Date();
-        const expirationDate = new Date(paymentData.expirationDate);
+        toast.success('Código PIX copiado!');
         
-        // Se a data de expiração já passou
-        if (now > expirationDate) {
-          setTimeLeft('Expirado');
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-          }
+        // Resetar o estado após 3 segundos
+        setTimeout(() => {
+          setCopied(false);
+        }, 3000);
+      })
+      .catch(err => {
+        console.error('Erro ao copiar para a área de transferência:', err);
+        toast.error('Não foi possível copiar o código. Tente copiar manualmente.');
+      });
+  };
+  
+  // Efeito para calcular o tempo restante para expiração do pagamento
+  useEffect(() => {
+    if (!isOpen || !paymentData?.expiresAt) return;
+    
+    const calculateTimeLeft = () => {
+      try {
+        const expiresAt = new Date(paymentData.expiresAt || '');
+        const now = new Date();
+        
+        // Se já expirou, mostrar 00:00
+        if (expiresAt <= now) {
+          setTimeLeft('00:00');
           return;
         }
         
-        // Atualizar o tempo restante em formato legível
-        try {
-          setTimeLeft(
-            formatDistanceToNow(expirationDate, { 
-              addSuffix: true, 
-              locale: ptBR 
-            })
-          );
-        } catch (error) {
-          console.error('Erro ao formatar tempo restante:', error);
-          // Fallback simples se o formatDistanceToNow falhar
-          const diffMs = expirationDate.getTime() - now.getTime();
-          const diffMins = Math.round(diffMs / 60000);
-          setTimeLeft(`em aproximadamente ${diffMins} minutos`);
-        }
+        // Calcular a diferença em milissegundos
+        const diff = expiresAt.getTime() - now.getTime();
+        
+        // Converter para minutos e segundos
+        const minutes = Math.floor(diff / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        // Formatar como MM:SS
+        setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
       } catch (error) {
         console.error('Erro ao calcular tempo restante:', error);
-        setTimeLeft('tempo indeterminado');
+        setTimeLeft('--:--');
       }
     };
     
-    // Atualizar imediatamente e configurar intervalo
-    updateTimeLeft();
-    timerRef.current = setInterval(updateTimeLeft, 30000); // Atualizar a cada 30 segundos
+    // Calcular imediatamente
+    calculateTimeLeft();
     
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [paymentData.expirationDate]);
-
-  // Verificar periodicamente o status do pagamento
+    // Atualizar a cada segundo
+    const timer = setInterval(calculateTimeLeft, 1000);
+    
+    // Limpar o timer quando o componente for desmontado
+    return () => clearInterval(timer);
+  }, [isOpen, paymentData?.expiresAt]);
+  
+  // Efeito para configurar a verificação periódica do status do pagamento
   useEffect(() => {
-    if (!isOpen || isPaid) return;
-    
-    // Limpar o timer anterior
-    if (statusCheckRef.current) {
-      clearInterval(statusCheckRef.current);
-      statusCheckRef.current = undefined;
+    // Se o modal não estiver aberto ou o pagamento já foi confirmado, não configurar verificação
+    if (!isOpen || isPaid) {
+      return;
     }
     
-    // Flag global para evitar verificações simultâneas
-    let isCheckingPaymentGlobally = false;
+    // Referência para o último tempo de verificação
+    let lastCheckTime = Date.now();
+    // Intervalo padrão entre verificações (em ms)
+    let checkInterval = 20000; // 20 segundos
     
     // Função para verificar o status do pagamento
     const checkPaymentStatus = async () => {
-      // Prevenir verificações simultâneas tanto de chamadas automáticas quanto manuais
-      if (isCheckingPaymentGlobally || checkingStatus) {
-        console.log('Verificação em andamento, ignorando nova solicitação');
+      // Verificar se já passou tempo suficiente desde a última verificação
+      const currentTime = Date.now();
+      const timeSinceLastCheck = currentTime - lastCheckTime;
+      
+      if (timeSinceLastCheck < checkInterval) {
+        console.log(`Verificação muito frequente. Aguardando mais ${Math.ceil((checkInterval - timeSinceLastCheck) / 1000)}s...`);
         return;
       }
       
-      // Cancelar qualquer requisição pendente anterior
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      // Evitar múltiplas verificações simultâneas
+      if (checkingStatus) {
+        console.log('Verificação já em andamento, ignorando solicitação');
+        return;
       }
       
-      // Criar um novo controller para esta requisição
-      abortControllerRef.current = new AbortController();
-      const { signal } = abortControllerRef.current;
-      
       try {
-        isCheckingPaymentGlobally = true;
+        lastCheckTime = Date.now(); // Atualizar o tempo da última verificação
         setCheckingStatus(true);
         setError('');
         
-        console.log('Verificando status do pagamento:', paymentData.orderId);
+        console.log('Verificando status do pagamento:', paymentData?.orderId);
         
         // Verificar se os dados necessários estão disponíveis
-        if (!paymentData.orderId) {
+        if (!paymentData?.orderId) {
           console.error('ID do pedido não disponível para verificação');
-          throw new Error('Dados do pedido incompletos para verificação');
+          return;
         }
         
         const requestBody = {
@@ -217,177 +168,172 @@ export default function PixPaymentModal({
           paymentId: paymentData.paymentId || ''
         };
         
-        console.log('Enviando requisição para verificar status:', requestBody);
-        
         const response = await fetch('/api/payment/check-status', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(requestBody),
-          signal // Associar o sinal do AbortController
+          body: JSON.stringify(requestBody)
         });
         
-        // Se a resposta não for bem-sucedida
-        if (!response.ok) {
+        // Processar a resposta recebida
+        const data = await response.json();
+        console.log('Resposta da verificação de pagamento:', data);
+        
+        // Se a resposta indicar rate limiting, ajustar o intervalo
+        if (response.status === 429 && data.waitTime) {
+          const waitTimeMs = data.waitTime * 1000;
+          console.log(`Rate limiting detectado. Próxima verificação em ${data.waitTime} segundos`);
+          
+          // Aumentar o intervalo de verificação para evitar mais rate limiting
+          checkInterval = Math.max(checkInterval, waitTimeMs + 5000); // Adicionar 5 segundos extras
+          
+          // Mostrar mensagem ao usuário
+          toast.error(`Verificações muito frequentes. Por favor, aguarde ${data.waitTime} segundos.`);
+          
+          // Não mostrar erro no modal
+          setError('');
+        }
+        // Se a resposta não for bem-sucedida por outro motivo
+        else if (!response.ok) {
           let errorMessage = 'Erro ao verificar status do pagamento';
           
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || `Erro ${response.status}: ${response.statusText}`;
-            console.error('Detalhes do erro recebidos:', errorData);
-          } catch (parseError) {
-            console.error('Erro ao processar resposta de erro:', parseError);
-            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          if (data.error) {
+            errorMessage = data.error;
           }
           
           throw new Error(errorMessage);
         }
-        
-        // Processar a resposta recebida
-        let data;
-        try {
-          data = await response.json();
-          console.log('Resposta da verificação de pagamento:', data);
-        } catch (parseError) {
-          console.error('Erro ao processar resposta JSON:', parseError);
-          throw new Error('Erro ao processar resposta do servidor');
-        }
-        
-        // Verificar se estamos recebendo uma resposta de rate limiting
-        if (data.message && data.message.includes('Verificação muito frequente')) {
-          console.log('Rate limit atingido, próxima verificação será agendada adequadamente');
-          
-          // Se temos informação sobre o tempo de espera, vamos logar isso
-          if (data.waitSeconds) {
-            console.log(`Aguardando ${data.waitSeconds} segundos antes da próxima verificação permitida`);
-          }
-          
-          // Não fazer nada, apenas aguardar a próxima verificação programada
-          return;
-        }
-        
         // Se o pagamento foi confirmado
-        if (data.isPaid) {
+        else if (data.isPaid) {
           console.log('Pagamento confirmado! Atualizando estado...');
           setIsPaid(true);
-          
-          // Limpar timer quando pago
-          if (statusCheckRef.current) {
-            clearInterval(statusCheckRef.current);
-            statusCheckRef.current = undefined;
-          }
           
           // Notificar o componente pai que o pagamento foi confirmado
           if (onPaymentConfirmed) {
             onPaymentConfirmed();
           }
           
-          // Fechar o modal após 5 segundos
-          setTimeout(() => {
-            onClose();
-            // Redirecionar para a página de produtos do usuário
-            window.location.href = '/profile/orders';
-          }, 5000);
+          // Limpar o carrinho
+          if (clearCart) {
+            clearCart();
+          }
+          
+          // Mostrar notificação de sucesso
+          toast.success('Pagamento confirmado com sucesso!');
         } else {
           console.log('Pagamento ainda não confirmado, status:', data.paymentStatus || 'pendente');
         }
       } catch (error) {
-        // Verificar se o erro é devido ao cancelamento da requisição
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.log('Requisição de verificação cancelada');
-          return;
-        }
-        
-        // Tratar erros específicos
-        let errorMessage = 'Erro ao verificar pagamento';
-        
-        if (error instanceof Error) {
-          console.error('Erro detalhado da verificação:', error);
-          
-          // Se for o erro específico "order.items is not iterable", exibir mensagem amigável
-          if (error.message.includes('order.items is not iterable')) {
-            errorMessage = 'Erro ao processar os itens do pedido. Aguarde um momento e tente novamente.';
-            
-            // Agendar uma nova verificação após 10 segundos
-            setTimeout(() => {
-              console.log('Tentando verificar novamente após erro de itens...');
-              // Recarregar a página se o erro persistir
-              window.location.reload();
-            }, 10000);
-          } else {
-            errorMessage = error.message;
-          }
-        }
-        
-        setError(errorMessage);
         console.error('Erro ao verificar status do pagamento:', error);
+        setError('Erro ao verificar status do pagamento. Tente novamente.');
       } finally {
         setCheckingStatus(false);
-        isCheckingPaymentGlobally = false;
-        // Limpar a referência do controller se não foi abortado
-        if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
-          abortControllerRef.current = null;
-        }
       }
     };
     
-    // Iniciar a verificação após um delay inicial menor
-    const initialCheckDelay = setTimeout(() => {
-      checkPaymentStatus();
-      
-      // Configurar as verificações periódicas após a primeira, com intervalo menor
-      statusCheckRef.current = setInterval(() => {
-        // Verificar antes de chamar para garantir que não há uma verificação em andamento
-        if (!isCheckingPaymentGlobally && !checkingStatus) {
-          checkPaymentStatus();
-        } else {
-          console.log('Ignorando verificação programada, pois há uma verificação em andamento');
-        }
-      }, 15000); // Verificar a cada 15 segundos (reduzido de 45s)
-    }, 5000); // Delay inicial de 5 segundos (reduzido de 10s)
+    // Verificar o status imediatamente
+    checkPaymentStatus();
     
+    // Configurar verificação periódica com o intervalo definido
+    statusCheckRef.current = setInterval(checkPaymentStatus, checkInterval);
+    
+    // Limpar o timer quando o componente for desmontado
     return () => {
-      clearTimeout(initialCheckDelay);
       if (statusCheckRef.current) {
         clearInterval(statusCheckRef.current);
         statusCheckRef.current = undefined;
       }
     };
-  }, [isOpen, paymentData.orderId, paymentData.paymentId, isPaid, onClose, onPaymentConfirmed, checkingStatus]);
-
-  // Função para verificar manualmente o status do pagamento
+  }, [isOpen, isPaid, paymentData?.orderId, paymentData?.paymentId, onPaymentConfirmed, clearCart, checkingStatus, onClose]);
+  
+  // Efeito para redirecionar quando o pagamento for confirmado
+  useEffect(() => {
+    // Se o pagamento foi confirmado, mostrar a tela de sucesso e redirecionar
+    if (isPaid) {
+      console.log('Pagamento confirmado, configurando redirecionamento...');
+      
+      // Manter o modal aberto com a mensagem de sucesso por 5 segundos
+      // e depois redirecionar para a página de produtos
+      const timer = setTimeout(() => {
+        console.log('Tempo expirado, redirecionando...');
+        // Fechar o modal
+        onClose();
+        
+        // Redirecionar para a página "meus produtos"
+        window.location.href = '/profile/products';
+      }, 5000);
+      
+      // Limpar o timer quando o componente for desmontado
+      return () => {
+        console.log('Limpando timer de redirecionamento');
+        clearTimeout(timer);
+      };
+    }
+  }, [isPaid, onClose]);
+  
+  // Exibir o código PIX na interface
+  const renderPixCode = () => {
+    if (!paymentData?.pixCopiaECola) {
+      return (
+        <div className="bg-gray-800 p-4 rounded-md text-center">
+          <p className="text-yellow-400 mb-2">
+            <IconFiAlertTriangle className="inline-block mr-1" />
+            Código PIX não disponível
+          </p>
+          <p className="text-gray-300 text-sm">
+            Por favor, utilize o QR code para realizar o pagamento.
+          </p>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="bg-gray-800 p-4 rounded-md">
+        <div className="flex justify-between items-center mb-2">
+          <p className="text-gray-300 text-sm">Código PIX:</p>
+          <button
+            onClick={copyToClipboard}
+            className="flex items-center text-blue-400 hover:text-blue-300 text-sm"
+          >
+            {copied ? (
+              <>
+                <IconFiCheck className="mr-1" size={14} />
+                Copiado!
+              </>
+            ) : (
+              <>
+                <IconFiCopy className="mr-1" size={14} />
+                Copiar código
+              </>
+            )}
+          </button>
+        </div>
+        <div className="bg-gray-700 p-3 rounded-md mb-2 overflow-auto max-h-24">
+          <p className="text-gray-200 text-sm font-mono break-all">
+            {paymentData?.pixCopiaECola}
+          </p>
+        </div>
+      </div>
+    );
+  };
+  
+  // Função para verificar o status do pagamento manualmente
   const verifyPaymentManually = async () => {
-    // Evitar verificações simultâneas
+    // Evitar múltiplas verificações simultâneas
     if (checkingStatus) {
-      console.log('Verificação já em andamento, ignorando solicitação manual');
+      console.log('Verificação já em andamento, ignorando solicitação');
       return;
     }
-    
-    // Limpar o timer de verificação automática existente
-    if (statusCheckRef.current) {
-      clearInterval(statusCheckRef.current);
-      statusCheckRef.current = undefined;
-    }
-    
-    // Cancelar qualquer requisição pendente anterior
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Criar um novo controller para esta requisição
-    abortControllerRef.current = new AbortController();
-    const { signal } = abortControllerRef.current;
     
     try {
       setCheckingStatus(true);
       setError('');
       
-      // Adicionar um pequeno delay para evitar cliques múltiplos acidentais
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('Verificando status do pagamento manualmente:', paymentData?.orderId);
       
       // Verificar se os dados necessários estão disponíveis
-      if (!paymentData.orderId) {
+      if (!paymentData?.orderId) {
         console.error('ID do pedido não disponível para verificação manual');
         throw new Error('Dados do pedido incompletos para verificação');
       }
@@ -397,15 +343,14 @@ export default function PixPaymentModal({
         paymentId: paymentData.paymentId || ''
       };
       
-      console.log('Enviando requisição manual para verificar status:', requestBody);
+      console.log('Enviando requisição para verificação manual:', requestBody);
       
       const response = await fetch('/api/payment/check-status', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
-        signal // Associar o sinal do AbortController
+        body: JSON.stringify(requestBody)
       });
       
       // Se a resposta não for bem-sucedida
@@ -434,30 +379,6 @@ export default function PixPaymentModal({
         throw new Error('Erro ao processar resposta do servidor');
       }
       
-      // Verificar se estamos recebendo uma resposta de rate limiting
-      if (data.message && data.message.includes('Verificação muito frequente')) {
-        console.log('Rate limit atingido na verificação manual');
-        
-        // Mostrar ao usuário quanto tempo falta para poder verificar novamente
-        if (data.waitSeconds) {
-          setError(`Muitas verificações em um curto período. Aguarde mais ${data.waitSeconds} segundos antes de tentar novamente.`);
-        } else {
-          setError('Muitas verificações em um curto período. Aguarde pelo menos 30 segundos antes de tentar novamente.');
-        }
-        
-        // Não continuar com verificações automáticas por um período maior
-        setTimeout(() => {
-          // Após o tempo de espera, reiniciar as verificações automáticas
-          statusCheckRef.current = setInterval(() => {
-            if (!checkingStatus) {
-              verifyPaymentManually();
-            }
-          }, 60000); // Verificar a cada 1 minuto
-        }, 40000); // Esperar 40 segundos antes de reiniciar as verificações
-        
-        return;
-      }
-      
       // Se o pagamento foi confirmado
       if (data.isPaid) {
         console.log('Pagamento confirmado manualmente! Atualizando estado...');
@@ -468,224 +389,257 @@ export default function PixPaymentModal({
           onPaymentConfirmed();
         }
         
-        // Fechar o modal após 5 segundos
-        setTimeout(() => {
-          onClose();
-          // Redirecionar para a página de produtos do usuário
-          window.location.href = '/profile/orders';
-        }, 5000);
+        // Limpar o carrinho
+        if (clearCart) {
+          clearCart();
+        }
       } else {
         console.log('Pagamento ainda não confirmado, status:', data.paymentStatus || 'pendente');
       }
     } catch (error) {
-      // Verificar se o erro é devido ao cancelamento da requisição
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Requisição de verificação manual cancelada');
-        return;
-      }
-      
-      // Tratar erros específicos
-      let errorMessage = 'Erro ao verificar pagamento';
-      
-      if (error instanceof Error) {
-        console.error('Erro detalhado da verificação manual:', error);
-        
-        // Se for o erro específico "order.items is not iterable", exibir mensagem amigável
-        if (error.message.includes('order.items is not iterable')) {
-          errorMessage = 'Erro ao processar os itens do pedido. Aguarde um momento e tente novamente.';
-          
-          // Agendar uma nova verificação após 5 segundos
-          setTimeout(() => {
-            console.log('Tentando verificar novamente após erro de itens...');
-            verifyPaymentManually();
-          }, 5000);
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      setError(errorMessage);
-      console.error('Erro ao verificar status do pagamento manualmente:', error);
+      console.error('Erro ao verificar status do pagamento:', error);
+      setError(error instanceof Error ? error.message : 'Erro ao verificar status do pagamento');
     } finally {
       setCheckingStatus(false);
     }
   };
-
+  
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/75" />
-        </Transition.Child>
-
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-lg bg-dark-200 p-6 text-left align-middle shadow-xl transition-all">
-                <div className="absolute right-4 top-4">
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-300 focus:outline-none"
-                    onClick={onClose}
-                  >
-                    <FiX className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-white text-center mb-4"
-                >
-                  Pagamento via PIX
-                </Dialog.Title>
-
-                {isPaid ? (
-                  <div className="bg-green-900/30 border border-green-500 rounded-md p-4 mb-4 text-center">
-                    <FiCheck className="mx-auto h-12 w-12 text-green-500 mb-2" />
-                    <p className="text-green-300 font-medium text-lg">Pagamento confirmado!</p>
-                    <p className="text-gray-300 mt-2">
-                      Você será redirecionado para seus produtos em alguns segundos...
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="mb-4 text-center">
-                      <p className="text-gray-300 mb-2">
-                        Escaneie o QR code abaixo com o aplicativo do seu banco para realizar o pagamento
-                      </p>
-                      
-                      <div className="bg-white rounded-lg p-4 mx-auto w-48 h-48 flex items-center justify-center mb-2">
-                        {paymentData.qrCodeBase64 ? (
-                          <Image
-                            src={`data:image/png;base64,${paymentData.qrCodeBase64}`}
-                            alt="QR Code para pagamento PIX"
-                            width={160}
-                            height={160}
-                          />
-                        ) : (
-                          <div className="text-gray-500 text-sm">QR Code não disponível</div>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center justify-center text-xs text-gray-400">
-                        <FiClock className="mr-1" /> 
-                        <span>Expira {timeLeft}</span>
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <p className="text-sm text-gray-300 mb-2">
-                        Ou copie o código PIX abaixo e cole no seu aplicativo de banco:
-                      </p>
-                      <div className="flex bg-dark-300 rounded-md border border-gray-600 overflow-hidden">
-                        <div className="flex-1 p-2 text-sm text-gray-200 font-mono overflow-hidden overflow-ellipsis whitespace-nowrap">
-                          {paymentData.copyPaste || 'Código não disponível'}
-                        </div>
-                        <button
-                          onClick={copyToClipboard}
-                          className="bg-primary px-3 text-white flex items-center justify-center"
-                          disabled={copied}
-                        >
-                          {copied ? <FiCheck className="h-4 w-4" /> : <FiCopy className="h-4 w-4" />}
-                        </button>
-                      </div>
-                      {copied && (
-                        <p className="text-green-400 text-xs mt-1">Código copiado!</p>
-                      )}
-                    </div>
-
-                    <div className="py-3 border-t border-dark-300 flex justify-between items-center">
-                      <div className="text-sm text-gray-300">
-                        <span className="text-gray-400">Status:</span>{" "}
-                        {checkingStatus ? (
-                          <span className="text-yellow-400">Verificando...</span>
-                        ) : (
-                          <span className="text-yellow-400">Aguardando pagamento</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {error && (
-                      <div className="mt-2 p-2 bg-red-900/30 border-l-4 border-red-500 text-red-400 text-sm flex items-start">
-                        <FiAlertCircle className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
-                        <span>{error}</span>
-                      </div>
-                    )}
-
-                    <div className="mt-6">
-                      {isPaid ? (
-                        <div className="bg-green-900/30 border-l-4 border-green-500 p-4 text-green-400 flex items-start">
-                          <FiCheck className="mr-2 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium">Pagamento confirmado!</p>
-                            <p className="text-sm mt-1">Você será redirecionado em breve...</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={verifyPaymentManually}
-                          disabled={checkingStatus}
-                          className={`w-full py-3 px-4 rounded-md ${
-                            checkingStatus
-                              ? 'bg-dark-500 cursor-not-allowed'
-                              : 'bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary'
-                          } text-white font-medium flex items-center justify-center`}
-                        >
-                          {checkingStatus ? (
-                            <>
-                              <FiRefreshCw className="animate-spin mr-2" />
-                              Verificando pagamento...
-                            </>
-                          ) : (
-                            'Já paguei, verificar agora'
-                          )}
-                        </button>
-                      )}
-                      
-                      {error && (
-                        <div className="mt-4 bg-red-900/30 border-l-4 border-red-500 p-4 text-red-400 flex items-start">
-                          <FiAlertCircle className="mr-2 mt-0.5 flex-shrink-0" />
-                          <span>{error}</span>
-                        </div>
-                      )}
-                      
-                      {!isPaid && !error && (
-                        <p className="text-gray-400 text-center text-sm mt-4">
-                          {checkingStatus ? (
-                            <span className="flex items-center justify-center">
-                              <FiRefreshCw className="animate-spin mr-2" />
-                              Verificando pagamento...
-                            </span>
-                          ) : (
-                            <>Estamos verificando seu pagamento automaticamente<br />Não é necessário atualizar a página</>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/75" onClick={(e) => e.stopPropagation()}></div>
+      
+      <div className="relative z-10 w-full max-w-md transform overflow-hidden rounded-lg bg-dark-200 p-6 text-left align-middle shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="absolute right-4 top-4">
+          <button
+            type="button"
+            className="text-gray-400 hover:text-gray-300 focus:outline-none"
+            onClick={onClose}
+          >
+            <IconFiX className="h-5 w-5" />
+          </button>
         </div>
-      </Dialog>
-    </Transition>
+
+        <h3 className="text-lg font-medium leading-6 text-white text-center mb-4">
+          {isPaid ? "Pagamento Confirmado" : "Pagamento via PIX"}
+        </h3>
+
+        {isPaid ? (
+          <div className="bg-green-900/30 border border-green-500 rounded-md p-6 mb-4 text-center">
+            <IconFiCheck className="mx-auto h-16 w-16 text-green-500 mb-4" />
+            <h3 className="text-green-300 font-medium text-xl mb-2">Pagamento confirmado!</h3>
+            <div className="bg-green-800/30 p-3 rounded-md mb-4">
+              <p className="text-white font-medium">Seu pedido foi processado com sucesso!</p>
+              <p className="text-gray-300 mt-2">
+                Você será redirecionado para seus produtos em alguns segundos...
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-green-300 text-sm">
+                <IconFiCheck className="inline-block mr-1" size={14} />
+                Pagamento processado
+              </p>
+              <p className="text-green-300 text-sm">
+                <IconFiCheck className="inline-block mr-1" size={14} />
+                Pedido registrado
+              </p>
+              <p className="text-green-300 text-sm">
+                <IconFiCheck className="inline-block mr-1" size={14} />
+                Produtos liberados
+              </p>
+            </div>
+            <div className="mt-4 pt-4 border-t border-green-800">
+              <p className="text-gray-400 text-sm">
+                Você pode acessar seus produtos a qualquer momento na página "Meus Produtos"
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="mb-6">
+              <p className="text-gray-300 mb-2 text-center">
+                Escaneie o QR code com o aplicativo do seu banco para realizar o pagamento
+              </p>
+              
+              <div className="flex flex-col items-center gap-4">
+                <div className="bg-white p-4 rounded-lg flex items-center justify-center mb-2">
+                  {paymentData?.qrCodeBase64 ? (
+                    // Usar uma tag img direta para o QR code base64
+                    <img 
+                      src={`data:image/png;base64,${paymentData.qrCodeBase64}`}
+                      alt="QR Code para pagamento PIX"
+                      width={256}
+                      height={256}
+                      className="max-w-full h-auto"
+                    />
+                  ) : paymentData?.qrCodeUrl ? (
+                    // Usar uma tag img direta para a URL do QR code
+                    <img
+                      src={paymentData.qrCodeUrl}
+                      alt="QR Code para pagamento PIX"
+                      width={256}
+                      height={256}
+                      className="max-w-full h-auto"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-64 w-64 bg-gray-100 rounded-lg">
+                      <p className="text-gray-500 text-center px-4">
+                        QR Code não disponível. Por favor, use o código PIX abaixo.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="w-full">
+                  {/* Instruções passo a passo */}
+                  {showInstructions && (
+                    <div className="bg-dark-300 rounded-lg p-4 mb-4">
+                      <h4 className="text-white font-medium mb-3 flex items-center">
+                        <div className="mr-2"><IconFiAlertCircle size={18} color="#FF5722" /></div>
+                        Como realizar o pagamento:
+                      </h4>
+                      <ol className="text-gray-300 text-sm space-y-2 ml-6 list-decimal">
+                        <li>Abra o aplicativo do seu banco ou instituição financeira</li>
+                        <li>Acesse a área de <strong className="text-white">PIX</strong> no aplicativo</li>
+                        <li>Selecione a opção <strong className="text-white">Pagar com QR Code</strong></li>
+                        <li>Escaneie o QR code acima ou use o código PIX abaixo</li>
+                        <li>Confirme os dados do pagamento (valor e destinatário)</li>
+                        <li>Confirme o pagamento com sua senha ou biometria</li>
+                      </ol>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-sm text-gray-300">
+                      Ou copie o código PIX:
+                    </p>
+                    <div className="text-xs text-gray-400">
+                      Recebedor: <span className="text-white">Mercado Pago LTDA</span>
+                    </div>
+                  </div>
+                  <div className="flex bg-dark-300 rounded-md border border-gray-600 overflow-hidden">
+                    <div className="flex-1 p-2 text-sm text-gray-200 font-mono overflow-hidden overflow-ellipsis whitespace-nowrap">
+                      {paymentData?.pixCopiaECola || 'Código não disponível'}
+                    </div>
+                    <button
+                      onClick={copyToClipboard}
+                      className="bg-primary px-3 text-white flex items-center justify-center"
+                      disabled={copied || !paymentData?.pixCopiaECola}
+                    >
+                      {copied ? <IconFiCheck size={16} /> : <IconFiCopy size={16} />}
+                    </button>
+                  </div>
+                  {copied && (
+                    <p className="text-green-400 text-xs mt-1">Código copiado para a área de transferência!</p>
+                  )}
+                  {!paymentData?.pixCopiaECola && (
+                    <p className="text-red-400 text-xs mt-1">Código PIX não disponível. Tente escanear o QR Code.</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className={`flex items-center justify-center text-sm font-medium py-2 px-4 rounded-full mt-4 ${
+                timeLeft && timeLeft.includes(':') && timeLeft.startsWith('00:') && parseInt(timeLeft.split(':')[1]) < 30 
+                  ? 'text-red-400 bg-red-500/10 animate-pulse' 
+                  : 'text-yellow-400 bg-yellow-500/10'
+              }`}>
+                <div className="mr-2"><IconFiClock size={16} /></div>
+                <span>Expira em {timeLeft || '--:--'}</span>
+              </div>
+            </div>
+
+            {/* Mensagens de segurança e gatilhos mentais */}
+            <div className="mb-4 bg-green-900/20 border border-green-800 rounded-lg p-3">
+              <div className="flex items-start">
+                <div className="mr-2 mt-0.5"><IconFiCheck size={16} color="#10b981" /></div>
+                <div>
+                  <p className="text-green-400 text-sm font-medium">Compra 100% segura</p>
+                  <p className="text-gray-400 text-xs mt-1">
+                    Os dados do PIX estão corretos e seu produto será liberado imediatamente após a confirmação do pagamento.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="py-3 border-t border-dark-300 flex justify-between items-center">
+              <div className="text-sm text-gray-300">
+                <span className="text-gray-400">Status:</span>{" "}
+                {checkingStatus ? (
+                  <span className="text-yellow-400">Verificando...</span>
+                ) : (
+                  <span className="text-yellow-400">Aguardando pagamento</span>
+                )}
+              </div>
+            </div>
+
+            {error && (
+              <div className="mt-2 p-2 bg-red-900/30 border-l-4 border-red-500 text-red-400 text-sm flex items-start">
+                <div className="mr-1 mt-0.5 flex-shrink-0"><IconFiAlertCircle size={16} /></div>
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="mt-6">
+              {isPaid ? (
+                <div className="bg-green-900/30 border-l-4 border-green-500 p-4 text-green-400 flex items-start">
+                  <div className="mr-2 mt-0.5 flex-shrink-0"><IconFiCheck size={16} /></div>
+                  <div>
+                    <p className="font-medium">Pagamento confirmado!</p>
+                    <p className="text-sm mt-1">Você será redirecionado em breve...</p>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={verifyPaymentManually}
+                  disabled={checkingStatus}
+                  className={`w-full py-3 px-4 rounded-md ${
+                    checkingStatus
+                      ? 'bg-dark-500 cursor-not-allowed'
+                      : 'bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary'
+                  } text-white font-medium flex items-center justify-center`}
+                >
+                  {checkingStatus ? (
+                    <>
+                      <div className="mr-2">
+                        <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white inline-block"></span>
+                      </div>
+                      <span>Verificando pagamento...</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mr-2"><IconFiRefreshCw size={18} /></div>
+                      <span>Verificar pagamento agora</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowInstructions(!showInstructions)}
+              className={`mt-4 mb-4 py-2 px-4 rounded-md ${
+                showInstructions
+                  ? 'bg-dark-500 text-gray-300'
+                  : 'bg-dark-400 hover:bg-dark-500 text-gray-200'
+              } font-medium flex items-center justify-center transition-colors`}
+            >
+              {showInstructions ? (
+                <>
+                  <div className="mr-2"><IconFiX size={16} /></div>
+                  <span>Esconder instruções</span>
+                </>
+              ) : (
+                <>
+                  <div className="mr-2"><IconFiHelpCircle size={16} /></div>
+                  <span>Como realizar o pagamento?</span>
+                </>
+              )}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
-} 
+}
+
+export default PixPaymentModal;

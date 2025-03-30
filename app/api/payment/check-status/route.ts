@@ -10,17 +10,19 @@ const logger = {
   warn: (message: string, ...args: any[]) => console.warn(`[API:PAYMENT:CHECK WARN] ${message}`, ...args)
 };
 
-// Cache simples para controle de rate limiting
-const checkCache = new Map<string, number>();
-
-// Tempo mínimo entre verificações para um mesmo pedido (em ms)
-const MIN_CHECK_INTERVAL = 10000; // 10 segundos (reduzido de 30 segundos)
+// Armazenar o último tempo de verificação para cada pedido
+const lastCheckTimes = new Map<string, number>();
+// Tempo mínimo entre verificações (em milissegundos) - 10 segundos
+const MIN_CHECK_INTERVAL = 10000;
 
 /**
  * Verifica o status de um pagamento e atualiza o pedido se necessário
  */
 export async function POST(request: NextRequest) {
   try {
+    // Conectar ao banco de dados
+    await connectDB();
+    
     // Obter dados do corpo da requisição com tratamento de erro
     let data;
     try {
@@ -80,44 +82,35 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    // Verificar rate limiting
-    const lastCheckTime = checkCache.get(orderId);
+    // Verificar se a última verificação foi recente demais
     const now = Date.now();
+    const lastCheckTime = lastCheckTimes.get(orderId) || 0;
+    const timeSinceLastCheck = now - lastCheckTime;
     
-    if (lastCheckTime && (now - lastCheckTime) < MIN_CHECK_INTERVAL) {
-      const timeElapsed = now - lastCheckTime;
-      const waitTime = MIN_CHECK_INTERVAL - timeElapsed;
+    if (timeSinceLastCheck < MIN_CHECK_INTERVAL) {
+      const waitTime = Math.ceil((MIN_CHECK_INTERVAL - timeSinceLastCheck) / 1000);
       logger.warn(
         `Verificação muito frequente para o pedido ${orderId}. ` +
         `Última verificação: ${new Date(lastCheckTime).toISOString()} ` +
-        `(${Math.round(timeElapsed/1000)}s atrás). ` + 
-        `Aguarde mais ${Math.round(waitTime/1000)}s antes de verificar novamente.`
+        `(${Math.floor(timeSinceLastCheck/1000)}s atrás). ` + 
+        `Aguarde mais ${waitTime}s antes de verificar novamente.`
       );
       
+      // Retornar um status específico para indicar que a verificação está sendo feita com muita frequência
       return NextResponse.json({
         success: true,
         isPaid: false,
         orderId,
         message: 'Verificação muito frequente, aguarde alguns segundos',
-        paymentStatus: 'pending', // Retornar status pendente por padrão
+        paymentStatus: 'rate_limited', // Retornar status pendente por padrão
         lastCheck: lastCheckTime,
         nextCheckAllowed: lastCheckTime + MIN_CHECK_INTERVAL,
         waitSeconds: Math.ceil(waitTime/1000)
       });
     }
     
-    // Atualizar o timestamp da última verificação
-    checkCache.set(orderId, now);
-    
-    // Limitar o tamanho do cache para evitar crescimento descontrolado
-    if (checkCache.size > 1000) {
-      // Limpar entradas mais antigas se o cache ficar muito grande
-      const oldest = [...checkCache.entries()].sort(([, a], [, b]) => a - b)[0];
-      if (oldest) checkCache.delete(oldest[0]);
-    }
-    
-    // Conectar ao banco de dados
-    await connectDB();
+    // Atualizar o tempo da última verificação
+    lastCheckTimes.set(orderId, now);
     
     // Buscar o pedido no banco de dados
     const connection = mongoose.connection;

@@ -200,7 +200,15 @@ export default function ProductCard({ product }: { product: Product }) {
       <div ref={cardRef} className="bg-dark-200 rounded-lg overflow-hidden shadow-md transition-transform duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg">
         <div className="relative">
           {/* Imagem do produto com fallback */}
-          <div className="aspect-w-16 aspect-h-9 bg-dark-300">
+          <div className="aspect-w-16 aspect-h-9 bg-dark-300 relative">
+            {/* Background image for all product cards */}
+            <div className="absolute inset-0 z-0 opacity-20">
+              <img 
+                src="https://wallpapercave.com/wp/wp9493309.jpg"
+                alt="Background"
+                className="w-full h-full object-cover"
+              />
+            </div>
             {hasImage ? (
               product.images[0].startsWith('data:') ? (
                 // Imagem base64

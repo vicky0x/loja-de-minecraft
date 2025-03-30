@@ -64,9 +64,9 @@ const DashboardSidebar = () => {
 
   return (
     <aside
-      className={`bg-dark-300 fixed inset-y-0 left-0 z-50 transition-all duration-300 transform ${
-        isSidebarOpen || window.innerWidth >= 768 ? 'translate-x-0' : '-translate-x-full'
-      } md:relative md:translate-x-0 w-64 min-h-screen flex flex-col`}
+      className={`bg-dark-300 fixed md:sticky top-16 md:top-0 left-0 h-[calc(100vh-4rem)] z-10 w-64 transition-all duration-300 transform ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0`}
     >
       <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
         <div className="flex items-center justify-center h-16">
@@ -128,40 +128,38 @@ const DashboardHeader = () => {
   };
 
   return (
-    <header className="bg-dark-200 shadow-md">
-      <div className="px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            {/* Botão mobile menu */}
-            <button
-              onClick={toggleSidebar}
-              className="md:hidden text-white p-2 mr-3"
+    <header className="bg-dark-200 shadow-md fixed top-0 left-0 right-0 h-16 z-50">
+      <div className="h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        <div className="flex items-center">
+          {/* Botão mobile menu */}
+          <button
+            onClick={toggleSidebar}
+            className="md:hidden text-white p-2 mr-3"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={isSidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
-                />
-              </svg>
-            </button>
-            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          </div>
-          {user && (
-            <div className="flex items-center">
-              <span className="text-sm text-gray-300 mr-2">Olá, {user.username}</span>
-              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
-                {user.username.charAt(0).toUpperCase()}
-              </div>
-            </div>
-          )}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d={isSidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
+              />
+            </svg>
+          </button>
+          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
         </div>
+        {user && (
+          <div className="flex items-center">
+            <span className="text-sm text-gray-300 mr-2">Olá, {user.username}</span>
+            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+              {user.username.charAt(0).toUpperCase()}
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
@@ -219,14 +217,22 @@ export default function DashboardLayout({
 
   // Mostrar layout quando estiver autenticado (pelo hook ou localStorage)
   return (
-    <div className="flex h-screen bg-dark-100">
-      <DashboardSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <DashboardHeader />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-dark-100 p-4 md:p-6">
-          {children}
-        </main>
+    <div className="min-h-screen bg-dark-100">
+      {/* Header fixo no topo */}
+      <DashboardHeader />
+      
+      {/* Conteúdo principal com sidebar */}
+      <div className="flex pt-16">
+        {/* Sidebar */}
+        <DashboardSidebar />
+        
+        {/* Área de conteúdo principal */}
+        <div className="w-full md:w-[calc(100%-16rem)] md:ml-64">
+          <main className="p-4 md:p-6">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );
-} 
+}

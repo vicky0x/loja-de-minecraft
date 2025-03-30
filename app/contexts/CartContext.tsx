@@ -33,20 +33,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Carregar itens do localStorage ao iniciar
   useEffect(() => {
-    const storedItems = localStorage.getItem('cartItems');
-    if (storedItems) {
-      try {
-        setItems(JSON.parse(storedItems));
-      } catch (error) {
-        console.error('Erro ao carregar carrinho:', error);
-        localStorage.removeItem('cartItems');
+    try {
+      const storedItems = localStorage.getItem('cartItems');
+      if (storedItems) {
+        try {
+          const parsedItems = JSON.parse(storedItems);
+          // Verificar se os dados são válidos antes de atualizar o estado
+          if (Array.isArray(parsedItems)) {
+            setItems(parsedItems);
+          } else {
+            console.error('Formato de dados do carrinho inválido');
+            localStorage.removeItem('cartItems');
+          }
+        } catch (error) {
+          console.error('Erro ao carregar carrinho:', error);
+          localStorage.removeItem('cartItems');
+        }
       }
+    } catch (storageError) {
+      // Lidar com possíveis erros de acesso ao localStorage
+      console.error('Erro ao acessar localStorage:', storageError);
     }
   }, []);
 
   // Salvar itens no localStorage quando mudar
   useEffect(() => {
-    localStorage.setItem('cartItems', JSON.stringify(items));
+    try {
+      localStorage.setItem('cartItems', JSON.stringify(items));
+    } catch (error) {
+      console.error('Erro ao salvar carrinho no localStorage:', error);
+    }
   }, [items]);
 
   // Adicionar item ao carrinho (ou atualizar se já existir)

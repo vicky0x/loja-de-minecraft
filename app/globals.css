@@ -45,6 +45,46 @@ body {
   scroll-behavior: smooth;
   transition: var(--transition-default);
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Completely remove all outlines, borders, and focus rings */
+* {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+*:focus, *:active, *:hover {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  border-color: transparent !important;
+}
+
+/* Specifically target images and icons */
+img, svg, .icon, [class*="icon"], [class*="Icon"] {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+  border: none !important;
+}
+
+a img, button img, a svg, button svg {
+  outline: none !important;
+  border: none !important;
+}
+
+a, button, [role="button"], input, select, textarea, [tabindex] {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* For keyboard accessibility, we'll keep a subtle indicator that doesn't use outlines */
+*:focus-visible {
+  /* This will be invisible but still technically present for accessibility */
+  outline: 1px solid transparent !important;
 }
 
 /* Removendo referências a font-bold temporariamente */
@@ -607,4 +647,154 @@ body {
 
 .animate-border-glow {
   animation: borderGlow 2s ease-in-out infinite;
+}
+
+/* Custom Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(255, 96, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 96, 0, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 96, 0, 0.5);
+  }
+}
+
+/* Animation Utility Classes */
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.8s ease-out forwards;
+}
+
+.animate-fade-in-left {
+  animation: fadeInLeft 0.8s ease-out forwards;
+}
+
+.animate-fade-in-right {
+  animation: fadeInRight 0.8s ease-out forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+.animate-float {
+  animation: float 3s infinite ease-in-out;
+}
+
+.animate-glow {
+  animation: glow 2s infinite ease-in-out;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.glass-card {
+  background: rgba(30, 30, 35, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 96, 0, 0.3);
+  box-shadow: 0 0 20px rgba(255, 96, 0, 0.1);
 }

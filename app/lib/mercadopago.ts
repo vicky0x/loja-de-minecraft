@@ -150,15 +150,38 @@ export async function createPixPayment(paymentData: any): Promise<PixPaymentResp
       logger.info(`Pagamento criado com sucesso no Mercado Pago: ${response.id}`);
       logger.info(`Detalhes do QR Code PIX: ${response.point_of_interaction?.transaction_data?.qr_code || 'Não disponível'}`);
       
+      // Extrair dados do QR code e código copia e cola
+      const qrCode = response.point_of_interaction?.transaction_data?.qr_code || '';
+      const qrCodeBase64 = response.point_of_interaction?.transaction_data?.qr_code_base64 || '';
+      
+      // Verificar se temos o código PIX
+      let copyPasteCode = qrCode; // Por padrão, usar o mesmo valor do qrCode
+      
+      // Tentar extrair o código PIX de outras propriedades se disponíveis
+      const transactionData = response.point_of_interaction?.transaction_data || {};
+      if (transactionData && typeof transactionData === 'object') {
+        // Verificar se existe alguma propriedade que possa conter o código PIX
+        // @ts-ignore - Ignorar erro de tipagem, pois estamos verificando dinamicamente
+        if (transactionData.copy_paste) {
+          // @ts-ignore
+          copyPasteCode = transactionData.copy_paste;
+        }
+      }
+      
+      // Log para debug
+      logger.info(`QR Code: ${qrCode ? 'Disponível' : 'Indisponível'}`);
+      logger.info(`QR Code Base64: ${qrCodeBase64 ? 'Disponível' : 'Indisponível'}`);
+      logger.info(`Código Copia e Cola: ${copyPasteCode ? 'Disponível' : 'Indisponível'}`);
+      
       // Retornar dados relevantes com tipos seguros
       return {
         id: response.id?.toString() || 'unknown',
         status: response.status || 'pending',
-        qrCode: response.point_of_interaction?.transaction_data?.qr_code || '',
-        qrCodeBase64: response.point_of_interaction?.transaction_data?.qr_code_base64 || '',
+        qrCode: qrCode,
+        qrCodeBase64: qrCodeBase64,
         ticketUrl: response.point_of_interaction?.transaction_data?.ticket_url || '',
-        copyPaste: response.point_of_interaction?.transaction_data?.qr_code || '',
-        expirationDate: new Date(Date.now() + 30 * 60 * 1000), // 30 minutos
+        copyPaste: copyPasteCode,
+        expirationDate: new Date(Date.now() + 5 * 60 * 1000), // 5 minutos
       };
     } catch (paymentError: any) {
       // Se o erro for relacionado à identificação do usuário, tentar novamente com CPF de teste
@@ -181,14 +204,38 @@ export async function createPixPayment(paymentData: any): Promise<PixPaymentResp
         
         logger.info(`Pagamento criado com sucesso após retry: ${retryResponse.id}`);
         
+        // Extrair dados do QR code e código copia e cola
+        const qrCode = retryResponse.point_of_interaction?.transaction_data?.qr_code || '';
+        const qrCodeBase64 = retryResponse.point_of_interaction?.transaction_data?.qr_code_base64 || '';
+        
+        // Verificar se temos o código PIX
+        let copyPasteCode = qrCode; // Por padrão, usar o mesmo valor do qrCode
+        
+        // Tentar extrair o código PIX de outras propriedades se disponíveis
+        const transactionData = retryResponse.point_of_interaction?.transaction_data || {};
+        if (transactionData && typeof transactionData === 'object') {
+          // Verificar se existe alguma propriedade que possa conter o código PIX
+          // @ts-ignore - Ignorar erro de tipagem, pois estamos verificando dinamicamente
+          if (transactionData.copy_paste) {
+            // @ts-ignore
+            copyPasteCode = transactionData.copy_paste;
+          }
+        }
+        
+        // Log para debug
+        logger.info(`QR Code: ${qrCode ? 'Disponível' : 'Indisponível'}`);
+        logger.info(`QR Code Base64: ${qrCodeBase64 ? 'Disponível' : 'Indisponível'}`);
+        logger.info(`Código Copia e Cola: ${copyPasteCode ? 'Disponível' : 'Indisponível'}`);
+        
+        // Retornar dados relevantes com tipos seguros
         return {
           id: retryResponse.id?.toString() || 'unknown',
           status: retryResponse.status || 'pending',
-          qrCode: retryResponse.point_of_interaction?.transaction_data?.qr_code || '',
-          qrCodeBase64: retryResponse.point_of_interaction?.transaction_data?.qr_code_base64 || '',
+          qrCode: qrCode,
+          qrCodeBase64: qrCodeBase64,
           ticketUrl: retryResponse.point_of_interaction?.transaction_data?.ticket_url || '',
-          copyPaste: retryResponse.point_of_interaction?.transaction_data?.qr_code || '',
-          expirationDate: new Date(Date.now() + 30 * 60 * 1000), // 30 minutos
+          copyPaste: copyPasteCode,
+          expirationDate: new Date(Date.now() + 5 * 60 * 1000), // 5 minutos
         };
       }
       

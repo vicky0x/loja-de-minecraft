@@ -100,37 +100,45 @@ export async function POST(request: NextRequest) {
     logger.info('Enviando solicitação para o Mercado Pago');
     const paymentResponse = await createPixPayment(paymentData);
     
-    logger.info(`Pagamento criado com sucesso: ${paymentResponse.id}`);
+    // Verificar se temos o código PIX
+    let pixCopiaECola = paymentResponse.copyPaste;
     
-    // Atualizar o pedido com as informações do pagamento
+    // Se não temos o código PIX, usar o QR code como fallback
+    if (!pixCopiaECola && paymentResponse.qrCode) {
+      logger.warn('Código PIX copia e cola não disponível, usando QR code como fallback');
+      pixCopiaECola = paymentResponse.qrCode;
+    }
+    
+    // Atualizar o pedido com o ID do pagamento
     await ordersCollection.updateOne(
       { _id: new mongoose.Types.ObjectId(data.order_id) },
       { 
-        $set: {
-          'metadata.paymentId': paymentResponse.id,
-          'metadata.paymentCreatedAt': new Date(),
-          'metadata.paymentQrCode': paymentResponse.qrCode,
-          'metadata.paymentQrCodeBase64': paymentResponse.qrCodeBase64,
-          'metadata.paymentTicketUrl': paymentResponse.ticketUrl,
-          'metadata.paymentCopyPaste': paymentResponse.copyPaste,
-          'metadata.paymentExpirationDate': paymentResponse.expirationDate,
-          'updatedAt': new Date()
-        }
+        $set: { 
+          paymentId: paymentResponse.id,
+          paymentStatus: paymentResponse.status,
+          paymentMethod: 'pix',
+          paymentData: {
+            qrCodeUrl: paymentResponse.qrCode,
+            qrCodeBase64: paymentResponse.qrCodeBase64,
+            pixCopiaECola: pixCopiaECola,
+            expiresAt: paymentResponse.expirationDate
+          }
+        } 
       }
     );
     
-    // Retornar os dados para renderização do QR code
+    logger.info(`Pagamento PIX criado com sucesso: ${paymentResponse.id}`);
+    
+    // Retornar os dados do pagamento
     return NextResponse.json({
       success: true,
-      payment: {
-        id: paymentResponse.id,
-        status: paymentResponse.status,
-        qrCode: paymentResponse.qrCode,
-        qrCodeBase64: paymentResponse.qrCodeBase64,
-        ticketUrl: paymentResponse.ticketUrl,
-        copyPaste: paymentResponse.copyPaste,
-        expirationDate: paymentResponse.expirationDate
-      }
+      paymentId: paymentResponse.id,
+      orderId: data.order_id,
+      status: paymentResponse.status,
+      qrCodeUrl: paymentResponse.qrCode,
+      qrCodeBase64: paymentResponse.qrCodeBase64,
+      pixCopiaECola: pixCopiaECola,
+      expiresAt: paymentResponse.expirationDate
     });
     
   } catch (error) {
