@@ -271,6 +271,7 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
     const stockItemsCollection = db.collection('stockitems');
     const usersCollection = db.collection('users');
     const ordersCollection = db.collection('orders');
+    const productsCollection = db.collection('products');
     
     let allItemsAssigned = true;
     
@@ -282,7 +283,7 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
       try {
         // Verificar se o item possui os campos necessários
         let productId = null;
-        let variantId = 'default';
+        let variantId = null; // Inicialmente null para produtos sem variantes
         
         // Extrair productId de diferentes formatos
         if (item.productId) {
@@ -297,13 +298,13 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
           }
         }
         
-        // Extrair variantId de diferentes formatos
-        if (item.variantId) {
+        // Extrair variantId de diferentes formatos - só deve ser definido se existir
+        if (item.variantId && item.variantId !== 'single' && item.variantId !== 'undefined' && item.variantId !== 'null') {
           variantId = item.variantId;
-        } else if (item.variant) {
-          if (typeof item.variant === 'string') {
+        } else if (item.variant && item.variant !== 'single' && item.variant !== 'undefined' && item.variant !== 'null') {
+          if (typeof item.variant === 'string' && item.variant !== 'null' && item.variant !== 'undefined') {
             variantId = item.variant;
-          } else if (item.variant._id) {
+          } else if (item.variant && item.variant._id) {
             variantId = typeof item.variant._id === 'string' ? 
                         item.variant._id : 
                         item.variant._id.toString();
@@ -317,23 +318,52 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
         }
         
         const itemName = item.name || (item.productName ? `${item.productName} - ${item.variantName || ''}` : 'Produto não identificado');
-        logger.info(`Processando item: ${itemName} (${productId}/${variantId})`);
+        logger.info(`Processando item: ${itemName} (${productId}/${variantId || 'sem variante'})`);
         
         // Convertendo IDs para ObjectId de forma segura
         const productObjectId = typeof productId === 'string' 
           ? new mongoose.Types.ObjectId(productId)
           : productId;
-          
+        
+        // Verificar se o produto tem variantes
+        const product = await productsCollection.findOne({ _id: productObjectId });
+        if (!product) {
+          logger.error(`Produto ${productId} não encontrado no banco de dados`);
+          allItemsAssigned = false;
+          continue;
+        }
+        
+        const hasVariants = product.variants && product.variants.length > 0;
+        logger.info(`Produto ${productId} ${hasVariants ? 'tem variantes' : 'não tem variantes'}`);
+        
         // Encontrar itens disponíveis no estoque
         const quantity = item.quantity || 1;
-        logger.info(`Buscando ${quantity} itens em estoque para o produto ${productId}, variante ${variantId}`);
+        logger.info(`Buscando ${quantity} itens em estoque para o produto ${productId}, ${hasVariants ? `variante ${variantId}` : 'sem variante'}`);
         
-        const stockItems = await stockItemsCollection.find({
+        // Construir filtro baseado no tipo de produto (com ou sem variantes)
+        let stockFilter: any = {
           product: productObjectId,
-          variant: variantId,
           isUsed: false,
           assignedTo: null
-        }).limit(quantity).toArray();
+        };
+        
+        if (hasVariants && variantId) {
+          // Para produtos com variantes, incluir o ID da variante
+          stockFilter.variant = variantId;
+          logger.info(`Filtro para produto COM variante: ${JSON.stringify(stockFilter)}`);
+        } else if (!hasVariants) {
+          // Para produtos sem variantes, procurar por variant: null
+          stockFilter.variant = null;
+          logger.info(`Filtro para produto SEM variante: ${JSON.stringify(stockFilter)}`);
+        } else {
+          // Se for produto com variantes mas sem variantId, há um erro
+          logger.error(`Produto ${productId} tem variantes, mas nenhum variantId válido foi fornecido.`);
+          allItemsAssigned = false;
+          continue;
+        }
+        
+        logger.info(`Filtro de estoque: ${JSON.stringify(stockFilter)}`);
+        const stockItems = await stockItemsCollection.find(stockFilter).limit(quantity).toArray();
         
         logger.info(`Encontrados ${stockItems.length} itens disponíveis para atribuição (necessários: ${quantity})`);
         
@@ -344,9 +374,33 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
           continue;
         }
         
-        // Atribuir cada item ao usuário
+        // Processar o estoque do produto após a atribuição e garantir a extração correta dos produtos atribuídos
         for (const stockItem of stockItems) {
           try {
+            // Extrair ID do produto de forma segura antes da atualização
+            let productIdToAssign = null;
+            
+            if (stockItem.product) {
+              if (typeof stockItem.product === 'string') {
+                productIdToAssign = stockItem.product;
+              } else if (stockItem.product._id) {
+                productIdToAssign = stockItem.product._id.toString();
+              } else {
+                productIdToAssign = stockItem.product.toString();
+              }
+              
+              // Só adiciona ao array se tiver um ID válido
+              if (productIdToAssign && mongoose.Types.ObjectId.isValid(productIdToAssign)) {
+                if (!assignedProductIds.includes(productIdToAssign)) {
+                  assignedProductIds.push(productIdToAssign);
+                  logger.info(`Produto ${productIdToAssign} será adicionado à lista do usuário`);
+                }
+              } else {
+                logger.warn(`ID de produto inválido extraído de stockItem: ${productIdToAssign}`);
+              }
+            }
+            
+            // Atualizar o item de estoque para atribuí-lo ao usuário
             await stockItemsCollection.updateOne(
               { _id: stockItem._id },
               {
@@ -361,17 +415,48 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
               }
             );
             
-            // Adicionar o productId ao array de produtos atribuídos
-            if (stockItem.product) {
-              assignedProductIds.push(stockItem.product);
-              logger.info(`Item ${stockItem._id} atribuído ao usuário ${userId} (produto: ${stockItem.product})`);
-            } else {
-              logger.warn(`Item ${stockItem._id} não possui referência ao produto`);
-            }
+            logger.info(`Item ${stockItem._id} atribuído ao usuário ${userId} (produto: ${productIdToAssign || 'desconhecido'})`);
           } catch (updateError) {
             logger.error(`Erro ao atualizar item ${stockItem._id}: ${updateError}`);
             allItemsAssigned = false;
           }
+        }
+        
+        // Atualizar o estoque do produto após a atribuição
+        try {
+          // Contar estoque restante
+          const remainingStockFilter = {
+            product: productObjectId,
+            isUsed: false
+          };
+          
+          // Adicionar condição de variante adequada ao filtro
+          if (hasVariants && variantId) {
+            remainingStockFilter['variant'] = variantId;
+          } else if (!hasVariants) {
+            remainingStockFilter['variant'] = null;
+          }
+          
+          const remainingStock = await stockItemsCollection.countDocuments(remainingStockFilter);
+          
+          // Atualizar o produto
+          if (hasVariants && variantId) {
+            // Para produtos com variantes, atualizar o estoque da variante
+            await productsCollection.updateOne(
+              { _id: productObjectId, 'variants._id': new mongoose.Types.ObjectId(variantId) },
+              { $set: { 'variants.$.stock': remainingStock } }
+            );
+            logger.info(`Estoque da variante ${variantId} atualizado para ${remainingStock}`);
+          } else if (!hasVariants) {
+            // Para produtos sem variantes, atualizar o estoque diretamente
+            await productsCollection.updateOne(
+              { _id: productObjectId },
+              { $set: { stock: remainingStock } }
+            );
+            logger.info(`Estoque do produto ${productId} (sem variante) atualizado para ${remainingStock}`);
+          }
+        } catch (stockUpdateError) {
+          logger.error(`Erro ao atualizar o estoque do produto: ${stockUpdateError}`);
         }
         
         logger.info(`${stockItems.length} itens atribuídos com sucesso para o produto ${productId}`);
@@ -395,12 +480,17 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
           logger.error(`Usuário ${userId} não encontrado no banco de dados`);
           allItemsAssigned = false;
         } else {
-          // Atualizar a lista de produtos do usuário ($addToSet para evitar duplicatas)
-          logger.info(`Atualizando lista de produtos do usuário ${userId} com: ${JSON.stringify(assignedProductIds)}`);
+          // Converter todos os IDs para ObjectId se necessário
+          const productObjectIds = assignedProductIds.map(id => 
+            typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id
+          );
           
+          logger.info(`Atualizando lista de produtos do usuário ${userId} com: ${JSON.stringify(productObjectIds)}`);
+          
+          // Atualizar a lista de produtos do usuário ($addToSet para evitar duplicatas)
           const updateResult = await usersCollection.updateOne(
             { _id: userObjectId },
-            { $addToSet: { products: { $each: assignedProductIds } } }
+            { $addToSet: { products: { $each: productObjectIds } } }
           );
           
           logger.info(`Lista de produtos do usuário ${userId} atualizada com sucesso: ${JSON.stringify(updateResult)}`);

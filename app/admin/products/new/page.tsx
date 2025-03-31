@@ -35,6 +35,9 @@ export default function NewProductPage() {
     category: '',
     is_featured: false,
     status: 'indetectavel',
+    useVariants: true,
+    price: 0,
+    stock: 0,
   });
 
   const [variants, setVariants] = useState<Variant[]>([{
@@ -250,6 +253,12 @@ export default function NewProductPage() {
       return;
     }
 
+    // Verificar se está usando variantes ou preço único
+    if (!productData.useVariants && productData.price <= 0) {
+      setError('Para produtos sem variantes, o preço é obrigatório e deve ser maior que zero.');
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -261,7 +270,9 @@ export default function NewProductPage() {
       // Preparar dados para envio
       const formData: any = {
         ...productData,
-        variants,
+        variants: productData.useVariants ? variants : [],
+        stock: productData.useVariants ? undefined : productData.stock,
+        price: productData.useVariants ? undefined : productData.price,
         images,
         requirements: requirementsArray,
       };
@@ -270,6 +281,9 @@ export default function NewProductPage() {
       if (!formData.category) {
         delete formData.category;
       }
+
+      // Excluir a propriedade useVariants pois é apenas para controle na UI
+      delete formData.useVariants;
 
       // Enviar para a API
       const response = await fetch('/api/products', {
@@ -568,128 +582,197 @@ export default function NewProductPage() {
 
         {/* Variantes */}
         <div className="bg-dark-200 p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-semibold text-white mb-4">Variantes/Planos</h3>
-          
-          {variants.map((variant, variantIndex) => (
-            <div key={variantIndex} className="mb-8 border border-dark-400 rounded-lg p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="font-bold text-white">Plano #{variantIndex + 1}</h4>
-                <button
-                  type="button"
-                  onClick={() => removeVariant(variantIndex)}
-                  className="p-1 text-red-400 hover:text-red-300"
-                  title="Remover plano"
-                  disabled={variants.length <= 1}
-                >
-                  <FiTrash size={18} />
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Nome do Plano *
-                  </label>
-                  <input
-                    type="text"
-                    value={variant.name}
-                    onChange={(e) => handleVariantChange(variantIndex, 'name', e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Ex: Básico, Premium, etc."
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Preço (R$) *
-                  </label>
-                  <input
-                    type="number"
-                    value={variant.price}
-                    onChange={(e) => handleVariantChange(variantIndex, 'price', e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Estoque Disponível
-                  </label>
-                  <input
-                    type="number"
-                    value={variant.stock}
-                    onChange={(e) => handleVariantChange(variantIndex, 'stock', e.target.value)}
-                    className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="0"
-                    min="0"
-                  />
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Descrição do Plano <span className="text-xs text-gray-400">(opcional)</span>
-                  </label>
-                  <textarea
-                    value={variant.description}
-                    onChange={(e) => handleVariantChange(variantIndex, 'description', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Descreva os benefícios deste plano (opcional)"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Características do Plano
-                </label>
-                
-                {variant.features.map((feature, featureIndex) => (
-                  <div key={featureIndex} className="flex items-center space-x-2 mb-2">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-semibold text-white">Informação de Preço e Estoque</h3>
+          </div>
+
+          <div className="mb-6">
+            <div className="flex items-center space-x-4 mb-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio text-primary"
+                  name="useVariants"
+                  checked={productData.useVariants}
+                  onChange={() => setProductData({...productData, useVariants: true})}
+                />
+                <span className="ml-2 text-white">Usar variantes/planos</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio text-primary"
+                  name="useVariants"
+                  checked={!productData.useVariants}
+                  onChange={() => setProductData({...productData, useVariants: false})}
+                />
+                <span className="ml-2 text-white">Preço único (sem variantes/planos)</span>
+              </label>
+            </div>
+
+            {!productData.useVariants && (
+              <div className="border border-dark-400 rounded-lg p-4">
+                <h4 className="font-bold text-white mb-4">Preço e Estoque</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Preço (R$) *
+                    </label>
                     <input
-                      type="text"
-                      value={feature}
-                      onChange={(e) => handleVariantFeatureChange(variantIndex, featureIndex, e.target.value)}
-                      className="flex-1 px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Ex: Acesso por 30 dias"
+                      type="number"
+                      value={productData.price}
+                      onChange={(e) => setProductData({...productData, price: Number(e.target.value)})}
+                      className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      required
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Estoque Disponível
+                    </label>
+                    <input
+                      type="number"
+                      value={productData.stock}
+                      onChange={(e) => setProductData({...productData, stock: Number(e.target.value)})}
+                      className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {productData.useVariants && (
+            <>
+              <h3 className="text-xl font-semibold text-white mb-4">Variantes/Planos</h3>
+              
+              {variants.map((variant, variantIndex) => (
+                <div key={variantIndex} className="mb-8 border border-dark-400 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-bold text-white">Plano #{variantIndex + 1}</h4>
                     <button
                       type="button"
-                      onClick={() => removeVariantFeature(variantIndex, featureIndex)}
-                      className="p-2 text-red-400 hover:text-red-300"
-                      title="Remover característica"
-                      disabled={variant.features.length <= 1}
+                      onClick={() => removeVariant(variantIndex)}
+                      className="p-1 text-red-400 hover:text-red-300"
+                      title="Remover plano"
+                      disabled={variants.length <= 1}
                     >
-                      <FiX size={20} />
+                      <FiTrash size={18} />
                     </button>
                   </div>
-                ))}
-                
-                <button
-                  type="button"
-                  onClick={() => addVariantFeature(variantIndex)}
-                  className="mt-2 flex items-center text-primary hover:text-primary/80"
-                >
-                  <FiPlus size={16} className="mr-1" />
-                  <span>Adicionar característica</span>
-                </button>
-              </div>
-            </div>
-          ))}
-          
-          <button
-            type="button"
-            onClick={addVariant}
-            className="mt-2 flex items-center text-primary hover:text-primary/80"
-          >
-            <FiPlus size={16} className="mr-1" />
-            <span>Adicionar Plano</span>
-          </button>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Nome do Plano *
+                      </label>
+                      <input
+                        type="text"
+                        value={variant.name}
+                        onChange={(e) => handleVariantChange(variantIndex, 'name', e.target.value)}
+                        className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Ex: Básico, Premium, etc."
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Preço (R$) *
+                      </label>
+                      <input
+                        type="number"
+                        value={variant.price}
+                        onChange={(e) => handleVariantChange(variantIndex, 'price', e.target.value)}
+                        className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Estoque Disponível
+                      </label>
+                      <input
+                        type="number"
+                        value={variant.stock}
+                        onChange={(e) => handleVariantChange(variantIndex, 'stock', e.target.value)}
+                        className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Descrição do Plano <span className="text-xs text-gray-400">(opcional)</span>
+                      </label>
+                      <textarea
+                        value={variant.description}
+                        onChange={(e) => handleVariantChange(variantIndex, 'description', e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Descreva os benefícios deste plano (opcional)"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Características do Plano
+                    </label>
+                    
+                    {variant.features.map((feature, featureIndex) => (
+                      <div key={featureIndex} className="flex items-center space-x-2 mb-2">
+                        <input
+                          type="text"
+                          value={feature}
+                          onChange={(e) => handleVariantFeatureChange(variantIndex, featureIndex, e.target.value)}
+                          className="flex-1 px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Ex: Acesso por 30 dias"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeVariantFeature(variantIndex, featureIndex)}
+                          className="p-2 text-red-400 hover:text-red-300"
+                          title="Remover característica"
+                          disabled={variant.features.length <= 1}
+                        >
+                          <FiX size={20} />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    <button
+                      type="button"
+                      onClick={() => addVariantFeature(variantIndex)}
+                      className="mt-2 flex items-center text-primary hover:text-primary/80"
+                    >
+                      <FiPlus size={16} className="mr-1" />
+                      <span>Adicionar característica</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+              
+              <button
+                type="button"
+                onClick={addVariant}
+                className="mt-2 flex items-center text-primary hover:text-primary/80"
+              >
+                <FiPlus size={16} className="mr-1" />
+                <span>Adicionar Plano</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Requisitos do Sistema */}

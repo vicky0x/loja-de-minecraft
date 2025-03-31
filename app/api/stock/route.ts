@@ -41,12 +41,22 @@ export async function GET(request: NextRequest) {
     }
     
     if (variantId) {
+      // Se uma variante específica for solicitada
       filter.variant = variantId;
+    } else if (productId) {
+      // Se apenas o produto for especificado (sem variante), verificar se é um produto sem variantes
+      const product = await Product.findById(productId);
+      if (product && (!product.variants || product.variants.length === 0)) {
+        // Para produtos sem variantes, buscar onde variant é null
+        filter.variant = null;
+      }
     }
     
     if (isUsed !== null) {
       filter.isUsed = isUsed === 'true';
     }
+    
+    console.log('Filtro de consulta:', filter);
     
     // Consultar itens de estoque com paginação
     const items = await StockItem.find(filter)
@@ -55,6 +65,8 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .populate('product', 'name slug')
       .populate('assignedTo', 'username email');
+    
+    console.log(`Encontrados ${items.length} itens de estoque`);
     
     // Obter contagem total para paginação
     const total = await StockItem.countDocuments(filter);
@@ -116,14 +128,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (!variantId) {
-      console.log('ID de variante inválido:', variantId);
-      return NextResponse.json(
-        { message: 'ID de variante inválido' },
-        { status: 400 }
-      );
-    }
-    
     if (!items || !Array.isArray(items) || items.length === 0) {
       console.log('Lista de itens inválida:', items);
       return NextResponse.json(
@@ -145,23 +149,39 @@ export async function POST(request: NextRequest) {
     
     console.log('Produto encontrado:', product.name);
     
-    // Verificar se a variante existe
-    const variantExists = product.variants.some((v) => v._id.toString() === variantId);
+    // Verificar se o produto tem variantes
+    const hasVariants = product.variants && product.variants.length > 0;
     
-    if (!variantExists) {
-      console.log('Variante não encontrada no produto:', variantId);
-      return NextResponse.json(
-        { message: 'Variante não encontrada' },
-        { status: 404 }
-      );
+    // Se o produto tiver variantes, a variante deve ser especificada
+    if (hasVariants) {
+      if (!variantId) {
+        console.log('ID de variante não fornecido para produto com variantes');
+        return NextResponse.json(
+          { message: 'ID de variante é obrigatório para produtos com variantes' },
+          { status: 400 }
+        );
+      }
+      
+      // Verificar se a variante existe
+      const variantExists = product.variants.some((v) => v._id.toString() === variantId);
+      
+      if (!variantExists) {
+        console.log('Variante não encontrada no produto:', variantId);
+        return NextResponse.json(
+          { message: 'Variante não encontrada' },
+          { status: 404 }
+        );
+      }
+      
+      console.log('Variante encontrada, preparando itens para inserção');
+    } else {
+      console.log('Produto sem variantes, processando estoque direto');
     }
-    
-    console.log('Variante encontrada, preparando itens para inserção');
     
     // Preparar itens para inserção
     const stockItems = items.map((code: string) => ({
       product: productId,
-      variant: variantId,
+      variant: hasVariants ? variantId : null, // Variante pode ser null para produtos sem variantes
       code: code.trim(),
       isUsed: false,
     }));
@@ -185,28 +205,53 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Atualizar contagem de estoque na variante do produto
-    const stockCount = await StockItem.countDocuments({
-      product: productId,
-      variant: variantId,
-      isUsed: false
-    });
-    
-    console.log(`Contagem atual de estoque para a variante: ${stockCount}`);
-    
-    // Atualizar o estoque da variante
-    await Product.updateOne(
-      { _id: productId, 'variants._id': variantId },
-      { $set: { 'variants.$.stock': stockCount } }
-    );
-    
-    console.log('Estoque da variante atualizado com sucesso');
-    
-    return NextResponse.json({
-      message: 'Itens adicionados ao estoque com sucesso',
-      added: result.length,
-      current_stock: stockCount
-    });
+    if (hasVariants) {
+      // Atualizar contagem de estoque na variante do produto
+      const stockCount = await StockItem.countDocuments({
+        product: productId,
+        variant: variantId,
+        isUsed: false
+      });
+      
+      console.log(`Contagem atual de estoque para a variante: ${stockCount}`);
+      
+      // Atualizar o estoque da variante
+      await Product.updateOne(
+        { _id: productId, 'variants._id': variantId },
+        { $set: { 'variants.$.stock': stockCount } }
+      );
+      
+      console.log('Estoque da variante atualizado com sucesso');
+      
+      return NextResponse.json({
+        message: 'Itens adicionados ao estoque com sucesso',
+        added: result.length,
+        current_stock: stockCount
+      });
+    } else {
+      // Atualizar contagem de estoque diretamente no produto
+      const stockCount = await StockItem.countDocuments({
+        product: productId,
+        variant: null,
+        isUsed: false
+      });
+      
+      console.log(`Contagem atual de estoque para o produto: ${stockCount}`);
+      
+      // Atualizar o estoque do produto
+      await Product.updateOne(
+        { _id: productId },
+        { $set: { stock: stockCount } }
+      );
+      
+      console.log('Estoque do produto atualizado com sucesso');
+      
+      return NextResponse.json({
+        message: 'Itens adicionados ao estoque com sucesso',
+        added: result.length,
+        current_stock: stockCount
+      });
+    }
   } catch (error: any) {
     console.error('Erro ao adicionar itens ao estoque:', error);
     
@@ -259,18 +304,34 @@ export async function DELETE(request: NextRequest) {
     
     // Agrupar itens por produto e variante para atualizar o estoque depois
     const stockUpdates = new Map();
+    const directProductUpdates = new Map();
     
     items.forEach(item => {
-      const key = `${item.product.toString()}-${item.variant}`;
-      if (!stockUpdates.has(key)) {
-        stockUpdates.set(key, {
-          productId: item.product,
-          variantId: item.variant,
-          count: 0
-        });
-      }
-      if (!item.isUsed) {
-        stockUpdates.get(key).count += 1;
+      if (item.variant) {
+        // Para produtos com variantes
+        const key = `${item.product.toString()}-${item.variant}`;
+        if (!stockUpdates.has(key)) {
+          stockUpdates.set(key, {
+            productId: item.product,
+            variantId: item.variant,
+            count: 0
+          });
+        }
+        if (!item.isUsed) {
+          stockUpdates.get(key).count += 1;
+        }
+      } else {
+        // Para produtos sem variantes
+        const productId = item.product.toString();
+        if (!directProductUpdates.has(productId)) {
+          directProductUpdates.set(productId, {
+            productId: item.product,
+            count: 0
+          });
+        }
+        if (!item.isUsed) {
+          directProductUpdates.get(productId).count += 1;
+        }
       }
     });
     
@@ -292,6 +353,24 @@ export async function DELETE(request: NextRequest) {
       await Product.updateOne(
         { _id: productId, 'variants._id': variantId },
         { $set: { 'variants.$.stock': stockCount } }
+      );
+    }
+    
+    // Atualizar contagem de estoque diretamente nos produtos sem variantes
+    for (const [, update] of directProductUpdates) {
+      const { productId } = update;
+      
+      // Contar itens não usados restantes
+      const stockCount = await StockItem.countDocuments({
+        product: productId,
+        variant: null,
+        isUsed: false
+      });
+      
+      // Atualizar o estoque do produto
+      await Product.updateOne(
+        { _id: productId },
+        { $set: { stock: stockCount } }
       );
     }
     

@@ -43,14 +43,17 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [categoryLoading, setCategoryLoading] = useState(true);
   const [productLoading, setProductLoading] = useState(true);
 
-  // Estados para o produto
+  // Estado para dados do produto
   const [productData, setProductData] = useState({
     name: '',
-    description: '',
-    shortDescription: '',
     category: '',
-    featured: false,
-    status: 'indetectavel',
+    short_description: '',
+    description: '',
+    is_featured: false,
+    status: '',
+    useVariants: true, // Controla se o produto usa variantes ou não
+    price: 0, // Preço quando não usa variantes
+    stock: 0, // Estoque quando não usa variantes
   });
 
   const [variants, setVariants] = useState<Variant[]>([{
@@ -109,75 +112,85 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       }
       
       const data = await response.json();
-      const product = data.product;
       
-      // Preencher os dados do formulário
-      setProductData({
-        name: product.name || '',
-        description: product.description || '',
-        shortDescription: product.shortDescription || '',
-        category: product.category?._id || '',
-        featured: product.featured || false,
-        status: product.status || 'indetectavel',
-      });
-      
-      // Configurar variantes
-      if (product.variants && product.variants.length > 0) {
-        setVariants(product.variants);
-      }
-      
-      // Configurar imagens
-      if (product.images && product.images.length > 0) {
-        setImages(product.images);
+      if (data.product) {
+        const product = data.product;
         
-        // Criar previews para imagens existentes
-        const previews = product.images.map((img: string) => {
-          if (img.startsWith('data:')) {
-            return img;
-          } else if (img.startsWith('/uploads/') || img.startsWith('http')) {
-            return img;
-          } else {
-            return '/placeholder-image.jpg';
-          }
+        setProductData({
+          name: product.name || '',
+          category: product.category?._id || '',
+          short_description: product.shortDescription || '',
+          description: product.description || '',
+          is_featured: product.featured || false,
+          status: product.status || '',
+          useVariants: Array.isArray(product.variants) && product.variants.length > 0, // Verifica se usa variantes
+          price: product.price || 0, // Preço do produto quando não usa variantes
+          stock: product.stock || 0, // Estoque do produto quando não usa variantes
         });
         
-        setPreviewImages(previews);
+        if (product.variants && product.variants.length > 0) {
+          setVariants(product.variants.map((v: any) => ({
+            _id: v._id,
+            name: v.name || '',
+            description: v.description || '',
+            price: v.price || 0,
+            stock: v.stock || 0,
+            features: v.features || [''],
+          })));
+        }
+        
+        // Configurar imagens
+        if (product.images && product.images.length > 0) {
+          setImages(product.images);
+          
+          // Criar previews para imagens existentes
+          const previews = product.images.map((img: string) => {
+            if (img.startsWith('data:')) {
+              return img;
+            } else if (img.startsWith('/uploads/') || img.startsWith('http')) {
+              return img;
+            } else {
+              return '/placeholder-image.jpg';
+            }
+          });
+          
+          setPreviewImages(previews);
+        }
+        
+        // Configurar requisitos
+        if (product.requirements && product.requirements.length > 0) {
+          const reqObj: any = {};
+          
+          // Mapeamento de rótulos em português para nomes de campos
+          const labelMapping: Record<string, string> = {
+            'Sistema Operacional': 'sistema_operacional',
+            'Processador': 'processador',
+            'Memória': 'memoria',
+            'Placa de Vídeo': 'placa_grafica',
+            'Armazenamento': 'armazenamento',
+            'Notas Adicionais': 'notas_adicionais',
+            // Compatibilidade com formatos antigos
+            'operating_system': 'sistema_operacional',
+            'processor': 'processador',
+            'memory': 'memoria',
+            'graphics': 'placa_grafica',
+            'storage': 'armazenamento',
+            'additional_notes': 'notas_adicionais'
+          };
+          
+          product.requirements.forEach((req: string) => {
+            const parts = req.split(':');
+            if (parts.length > 1) {
+              const label = parts[0].trim();
+              const value = parts[1].trim();
+              const fieldName = labelMapping[label] || label.toLowerCase().replace(/ /g, '_');
+              reqObj[fieldName] = value;
+            }
+          });
+          
+          setRequirements({...requirements, ...reqObj});
+        }
       }
-      
-      // Configurar requisitos
-      if (product.requirements && product.requirements.length > 0) {
-        const reqObj: any = {};
-        
-        // Mapeamento de rótulos em português para nomes de campos
-        const labelMapping: Record<string, string> = {
-          'Sistema Operacional': 'sistema_operacional',
-          'Processador': 'processador',
-          'Memória': 'memoria',
-          'Placa de Vídeo': 'placa_grafica',
-          'Armazenamento': 'armazenamento',
-          'Notas Adicionais': 'notas_adicionais',
-          // Compatibilidade com formatos antigos
-          'operating_system': 'sistema_operacional',
-          'processor': 'processador',
-          'memory': 'memoria',
-          'graphics': 'placa_grafica',
-          'storage': 'armazenamento',
-          'additional_notes': 'notas_adicionais'
-        };
-        
-        product.requirements.forEach((req: string) => {
-          const parts = req.split(':');
-          if (parts.length > 1) {
-            const label = parts[0].trim();
-            const value = parts[1].trim();
-            const fieldName = labelMapping[label] || label.toLowerCase().replace(/ /g, '_');
-            reqObj[fieldName] = value;
-          }
-        });
-        
-        setRequirements({...requirements, ...reqObj});
-      }
-      
     } catch (error) {
       console.error('Erro ao carregar produto:', error);
       setError('Não foi possível carregar os dados do produto. Tente novamente mais tarde.');
@@ -345,82 +358,65 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     e.preventDefault();
     setError('');
     
-    // Validações básicas
-    if (!productData.name || !productData.description) {
-      setError('Nome e descrição são obrigatórios.');
+    // Validação básica
+    if (!productData.name || productData.name.trim() === '') {
+      setError('Nome do produto é obrigatório');
       return;
     }
-    
-    if (variants.length === 0) {
-      setError('Ao menos uma variante é obrigatória.');
-      return;
-    }
-    
-    if (images.length === 0) {
-      setError('Ao menos uma imagem é obrigatória.');
+
+    // Verificar se está usando variantes ou preço único
+    if (!productData.useVariants && productData.price <= 0) {
+      setError('Para produtos sem variantes, o preço é obrigatório e deve ser maior que zero.');
       return;
     }
     
     try {
       setLoading(true);
       
-      // Preparar requisitos como array de strings
+      // Converter requisitos para array
       const requirementsArray = Object.entries(requirements)
         .filter(([_, value]) => value.trim() !== '')
         .map(([key, value]) => `${key}: ${value}`);
       
-      // Preparar FormData para envio
-      const formData = new FormData();
+      // Preparar dados para envio
+      const formData: any = {
+        name: productData.name,
+        shortDescription: productData.short_description,
+        description: productData.description,
+        featured: productData.is_featured,
+        status: productData.status,
+        variants: productData.useVariants ? variants : [], // Só envia variantes se estiver usando
+        stock: productData.useVariants ? undefined : productData.stock, // Envia estoque direto se não usar variantes
+        price: productData.useVariants ? undefined : productData.price, // Envia preço direto se não usar variantes
+        requirements: requirementsArray,
+        images: images, // Adicionando as imagens
+      };
       
-      // Adicionar dados básicos
-      formData.append('name', productData.name);
-      formData.append('description', productData.description);
-      formData.append('shortDescription', productData.shortDescription);
+      // Adicionar categoria apenas se estiver definida
       if (productData.category) {
-        formData.append('category', productData.category);
-      }
-      formData.append('featured', productData.featured.toString());
-      formData.append('status', productData.status);
-      
-      // Log de depuração para o status
-      console.log('Status sendo enviado:', productData.status);
-      
-      // Adicionar variantes
-      formData.append('variants', JSON.stringify(variants));
-      
-      // Adicionar imagens existentes
-      images.forEach(image => {
-        formData.append('keepImages[]', image);
-      });
-      
-      // Adicionar requisitos
-      requirementsArray.forEach((req, index) => {
-        formData.append(`requirements[${index}]`, req);
-      });
-      
-      // Log do FormData completo
-      console.log('FormData a ser enviado:');
-      for (const [key, value] of formData.entries()) {
-        console.log(`${key}: ${value}`);
+        formData.category = productData.category;
       }
       
-      // Enviar para a API
+      // Enviar requisição de atualização
       const response = await fetch(`/api/products/${id}`, {
         method: 'PUT',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
-  
-      const data = await response.json();
-  
-      if (response.ok) {
-        // Redirecionar para a página de detalhes do produto
-        router.push(`/admin/products/${id}`);
-      } else {
-        setError(data.message || 'Erro ao atualizar produto');
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao atualizar o produto');
       }
-    } catch (error) {
+      
+      // Redirecionar para a página do produto
+      router.push(`/admin/products/${id}`);
+      
+    } catch (error: any) {
       console.error('Erro ao atualizar produto:', error);
-      setError('Ocorreu um erro ao atualizar o produto. Tente novamente.');
+      setError(error.message || 'Ocorreu um erro ao atualizar o produto');
     } finally {
       setLoading(false);
     }
@@ -501,7 +497,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               type="text"
               id="shortDescription"
               name="shortDescription"
-              value={productData.shortDescription}
+              value={productData.short_description}
               onChange={handleInputChange}
               className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Breve descrição do produto (opcional)"
@@ -528,7 +524,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               type="checkbox"
               id="featured"
               name="featured"
-              checked={productData.featured}
+              checked={productData.is_featured}
               onChange={handleInputChange}
               className="w-4 h-4 bg-dark-300 border-dark-400 rounded focus:ring-primary"
             />
@@ -698,119 +694,188 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           </div>
         </div>
 
-        {/* Variantes */}
+        {/* Variantes/Planos */}
         <div className="bg-dark-200 p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-white">Variantes/Planos</h3>
-            <button
-              type="button"
-              onClick={addVariant}
-              className="bg-dark-300 hover:bg-dark-400 text-white py-1 px-3 rounded-md flex items-center text-sm"
-            >
-              <FiPlus className="mr-1" size={14} />
-              Adicionar Variante
-            </button>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-semibold text-white">Informação de Preço e Estoque</h3>
           </div>
-          
-          <div className="space-y-8">
-            {variants.map((variant, index) => (
-              <div key={index} className="pt-4 border-t border-dark-400 first:border-0 first:pt-0">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="font-medium text-white">Variante {index + 1}</h4>
-                  {variants.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeVariant(index)}
-                      className="text-red-400 hover:text-red-300 flex items-center text-sm"
-                    >
-                      <FiTrash2 className="mr-1" size={14} />
-                      Remover
-                    </button>
-                  )}
-                </div>
-                
+
+          <div className="mb-6">
+            <div className="flex items-center space-x-4 mb-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio text-primary"
+                  name="useVariants"
+                  checked={productData.useVariants}
+                  onChange={() => setProductData({...productData, useVariants: true})}
+                />
+                <span className="ml-2 text-white">Usar variantes/planos</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio text-primary"
+                  name="useVariants"
+                  checked={!productData.useVariants}
+                  onChange={() => setProductData({...productData, useVariants: false})}
+                />
+                <span className="ml-2 text-white">Preço único (sem variantes/planos)</span>
+              </label>
+            </div>
+
+            {!productData.useVariants && (
+              <div className="border border-dark-400 rounded-lg p-4">
+                <h4 className="font-bold text-white mb-4">Preço e Estoque</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Nome <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={variant.name}
-                      onChange={(e) => handleVariantChange(index, 'name', e.target.value)}
-                      className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Preço (R$) <span className="text-red-500">*</span>
+                      Preço (R$) *
                     </label>
                     <input
                       type="number"
+                      value={productData.price}
+                      onChange={(e) => setProductData({...productData, price: Number(e.target.value)})}
+                      className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="0.00"
                       min="0"
                       step="0.01"
-                      value={variant.price}
-                      onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
-                      className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       required
                     />
                   </div>
-                </div>
-                
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Descrição <span className="text-xs text-gray-400">(opcional)</span>
-                  </label>
-                  <textarea
-                    value={variant.description}
-                    onChange={(e) => handleVariantChange(index, 'description', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                  />
-                </div>
-                
-                <div className="mt-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="block text-sm font-medium text-gray-300">
-                      Características/Features
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Estoque Disponível
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => addFeature(index)}
-                      className="text-primary hover:text-primary/80 flex items-center text-xs"
-                    >
-                      <FiPlus className="mr-1" size={12} />
-                      Adicionar
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    {variant.features.map((feature, featureIndex) => (
-                      <div key={featureIndex} className="flex items-center">
-                        <input
-                          type="text"
-                          value={feature}
-                          onChange={(e) => handleFeatureChange(index, featureIndex, e.target.value)}
-                          className="flex-1 px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="Ex: Acesso por 30 dias"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeFeature(index, featureIndex)}
-                          className="ml-2 text-red-400 hover:text-red-300"
-                          disabled={variant.features.length <= 1}
-                        >
-                          <FiX size={18} />
-                        </button>
-                      </div>
-                    ))}
+                    <input
+                      type="number"
+                      value={productData.stock}
+                      onChange={(e) => setProductData({...productData, stock: Number(e.target.value)})}
+                      className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="0"
+                      min="0"
+                    />
                   </div>
                 </div>
               </div>
-            ))}
+            )}
           </div>
+
+          {productData.useVariants && (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-white">Variantes/Planos</h3>
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="bg-dark-300 hover:bg-dark-400 text-white py-1 px-3 rounded-md flex items-center text-sm"
+                >
+                  <FiPlus className="mr-1" size={14} />
+                  Adicionar Variante
+                </button>
+              </div>
+              
+              <div className="space-y-8">
+                {variants.map((variant, index) => (
+                  <div key={index} className="pt-4 border-t border-dark-400 first:border-0 first:pt-0">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-medium text-white">Variante {index + 1}</h4>
+                      {variants.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeVariant(index)}
+                          className="text-red-400 hover:text-red-300 flex items-center text-sm"
+                        >
+                          <FiTrash2 className="mr-1" size={14} />
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Nome <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={variant.name}
+                          onChange={(e) => handleVariantChange(index, 'name', e.target.value)}
+                          className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Preço (R$) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={variant.price}
+                          onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
+                          className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Descrição <span className="text-xs text-gray-400">(opcional)</span>
+                      </label>
+                      <textarea
+                        value={variant.description}
+                        onChange={(e) => handleVariantChange(index, 'description', e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                      />
+                    </div>
+                    
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-medium text-gray-300">
+                          Características/Features
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => addFeature(index)}
+                          className="text-primary hover:text-primary/80 flex items-center text-xs"
+                        >
+                          <FiPlus className="mr-1" size={12} />
+                          Adicionar
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {variant.features.map((feature, featureIndex) => (
+                          <div key={featureIndex} className="flex items-center">
+                            <input
+                              type="text"
+                              value={feature}
+                              onChange={(e) => handleFeatureChange(index, featureIndex, e.target.value)}
+                              className="flex-1 px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              placeholder="Ex: Acesso por 30 dias"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeFeature(index, featureIndex)}
+                              className="ml-2 text-red-400 hover:text-red-300"
+                              disabled={variant.features.length <= 1}
+                            >
+                              <FiX size={18} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         
         {/* Requisitos do Sistema */}

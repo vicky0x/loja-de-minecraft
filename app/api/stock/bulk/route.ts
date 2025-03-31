@@ -47,14 +47,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (!variantId) {
-      console.log('ID de variante inválido:', variantId);
-      return NextResponse.json(
-        { message: 'ID de variante inválido' },
-        { status: 400 }
-      );
-    }
-    
     if (!file) {
       console.log('Arquivo não fornecido');
       return NextResponse.json(
@@ -76,18 +68,34 @@ export async function POST(request: NextRequest) {
     
     console.log('Produto encontrado:', product.name);
     
-    // Verificar se a variante existe
-    const variantExists = product.variants.some((v) => v._id.toString() === variantId);
+    // Verificar se o produto tem variantes
+    const hasVariants = product.variants && product.variants.length > 0;
     
-    if (!variantExists) {
-      console.log('Variante não encontrada no produto:', variantId);
-      return NextResponse.json(
-        { message: 'Variante não encontrada' },
-        { status: 404 }
-      );
+    // Se o produto tiver variantes, a variante deve ser especificada
+    if (hasVariants) {
+      if (!variantId) {
+        console.log('ID de variante não fornecido para produto com variantes');
+        return NextResponse.json(
+          { message: 'ID de variante é obrigatório para produtos com variantes' },
+          { status: 400 }
+        );
+      }
+      
+      // Verificar se a variante existe
+      const variantExists = product.variants.some((v) => v._id.toString() === variantId);
+      
+      if (!variantExists) {
+        console.log('Variante não encontrada no produto:', variantId);
+        return NextResponse.json(
+          { message: 'Variante não encontrada' },
+          { status: 404 }
+        );
+      }
+      
+      console.log('Variante encontrada, lendo conteúdo do arquivo');
+    } else {
+      console.log('Produto sem variantes, processando estoque direto');
     }
-    
-    console.log('Variante encontrada, lendo conteúdo do arquivo');
     
     // Ler o conteúdo do arquivo
     const text = await file.text();
@@ -108,7 +116,7 @@ export async function POST(request: NextRequest) {
     // Preparar itens para inserção
     const stockItems = lines.map(line => ({
       product: productId,
-      variant: variantId,
+      variant: hasVariants ? variantId : null, // Variante pode ser null para produtos sem variantes
       code: line.trim(),
       isUsed: false,
     }));
@@ -148,30 +156,57 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Atualizar contagem de estoque na variante do produto
-    const stockCount = await StockItem.countDocuments({
-      product: productId,
-      variant: variantId,
-      isUsed: false
-    });
-    
-    console.log(`Contagem final de estoque para a variante: ${stockCount}`);
-    
-    // Atualizar o estoque da variante
-    await Product.updateOne(
-      { _id: productId, 'variants._id': variantId },
-      { $set: { 'variants.$.stock': stockCount } }
-    );
-    
-    console.log('Estoque da variante atualizado com sucesso');
-    
-    return NextResponse.json({
-      message: 'Importação concluída com sucesso',
-      total: lines.length,
-      added: addedCount,
-      duplicates: duplicateCount,
-      current_stock: stockCount
-    });
+    if (hasVariants) {
+      // Atualizar contagem de estoque na variante do produto
+      const stockCount = await StockItem.countDocuments({
+        product: productId,
+        variant: variantId,
+        isUsed: false
+      });
+      
+      console.log(`Contagem final de estoque para a variante: ${stockCount}`);
+      
+      // Atualizar o estoque da variante
+      await Product.updateOne(
+        { _id: productId, 'variants._id': variantId },
+        { $set: { 'variants.$.stock': stockCount } }
+      );
+      
+      console.log('Estoque da variante atualizado com sucesso');
+      
+      return NextResponse.json({
+        message: 'Importação concluída com sucesso',
+        total: lines.length,
+        added: addedCount,
+        duplicates: duplicateCount,
+        current_stock: stockCount
+      });
+    } else {
+      // Atualizar contagem de estoque diretamente no produto
+      const stockCount = await StockItem.countDocuments({
+        product: productId,
+        variant: null,
+        isUsed: false
+      });
+      
+      console.log(`Contagem final de estoque para o produto: ${stockCount}`);
+      
+      // Atualizar o estoque do produto
+      await Product.updateOne(
+        { _id: productId },
+        { $set: { stock: stockCount } }
+      );
+      
+      console.log('Estoque do produto atualizado com sucesso');
+      
+      return NextResponse.json({
+        message: 'Importação concluída com sucesso',
+        total: lines.length,
+        added: addedCount,
+        duplicates: duplicateCount,
+        current_stock: stockCount
+      });
+    }
   } catch (error) {
     console.error('Erro ao importar estoque:', error);
     return NextResponse.json(

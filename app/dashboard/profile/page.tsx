@@ -75,8 +75,14 @@ export default function ProfilePage() {
     }
 
     fetchUserProfile();
-    fetchUserStats();
   }, []);
+  
+  // Novo useEffect para carregar estatísticas após o usuário ser carregado
+  useEffect(() => {
+    if (user) {
+      fetchUserStats();
+    }
+  }, [user?.id]); // Dependência do ID do usuário para evitar loops infinitos
 
   const fetchUserStats = async () => {
     try {
@@ -84,12 +90,17 @@ export default function ProfilePage() {
       
       if (response.ok) {
         const data = await response.json();
-        if (user) {
-          setUser({
-            ...user,
-            orders: data.stats
-          });
-        }
+        console.log('Estatísticas recebidas:', data.stats);
+        
+        setUser(prevUser => {
+          if (prevUser) {
+            return {
+              ...prevUser,
+              orders: data.stats
+            };
+          }
+          return prevUser;
+        });
       }
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -447,7 +458,7 @@ export default function ProfilePage() {
                     <FiPackage className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400">Produtos Adquiridos</p>
+                    <p className="text-sm text-gray-400">Produtos Aprovados</p>
                     <p className="text-lg font-bold text-white">{user?.orders?.products || 0}</p>
                   </div>
                 </div>
@@ -461,9 +472,9 @@ export default function ProfilePage() {
                   <div>
                     <p className="text-sm text-gray-400">Valor Total</p>
                     <p className="text-lg font-bold text-white">
-                      {user?.orders?.total 
-                        ? `R$ ${user.orders.total.toFixed(2).replace('.', ',')}` 
-                        : 'R$ 0,00'}
+                      R$ {user?.orders?.total
+                        ? Number(user.orders.total).toFixed(2).replace('.', ',')
+                        : '0,00'}
                     </p>
                   </div>
                 </div>

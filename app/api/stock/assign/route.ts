@@ -43,14 +43,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (!variantId) {
-      console.log('ID de variante inválido:', variantId);
-      return NextResponse.json(
-        { message: 'ID de variante inválido' },
-        { status: 400 }
-      );
-    }
-    
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       console.log('ID de usuário inválido:', userId);
       return NextResponse.json(
@@ -76,19 +68,49 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Verificar se o produto existe e se tem variantes
+    const product = await Product.findById(productId);
+    if (!product) {
+      console.log('Produto não encontrado:', productId);
+      return NextResponse.json(
+        { message: 'Produto não encontrado' },
+        { status: 404 }
+      );
+    }
+    
+    // Verificar se o produto tem variantes
+    const hasVariants = product.variants && product.variants.length > 0;
+    
+    // Se o produto tem variantes, o variantId é obrigatório
+    if (hasVariants && !variantId) {
+      console.log('ID de variante não fornecido para produto com variantes');
+      return NextResponse.json(
+        { message: 'ID de variante é obrigatório para produtos com variantes' },
+        { status: 400 }
+      );
+    }
+    
     // Verificar disponibilidade de estoque
     console.log('Verificando disponibilidade de estoque para:', {
       productId,
-      variantId,
+      variantId: hasVariants ? variantId : null,
       isUsed: false
     });
     
-    // Primeiro, verificar a contagem total de itens disponíveis
-    const totalAvailable = await StockItem.countDocuments({
+    // Construir filtro baseado no tipo de produto (com ou sem variantes)
+    const stockFilter = {
       product: productId,
-      variant: variantId,
       isUsed: false,
-    });
+    };
+    
+    if (hasVariants) {
+      stockFilter['variant'] = variantId;
+    } else {
+      stockFilter['variant'] = null;
+    }
+    
+    // Primeiro, verificar a contagem total de itens disponíveis
+    const totalAvailable = await StockItem.countDocuments(stockFilter);
     
     console.log(`Total de itens disponíveis (contagem): ${totalAvailable}`);
     
@@ -105,11 +127,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Buscar os itens disponíveis
-    const availableItems = await StockItem.find({
-      product: productId,
-      variant: variantId,
-      isUsed: false,
-    }).limit(quantity);
+    const availableItems = await StockItem.find(stockFilter).limit(quantity);
     
     console.log(`Encontrados ${availableItems.length} itens disponíveis em estoque para atribuir`);
     
@@ -150,20 +168,27 @@ export async function POST(request: NextRequest) {
     
     console.log('Resultado da atualização:', updateResult);
     
-    // Atualizar contagem de estoque na variante do produto
-    const remainingStock = await StockItem.countDocuments({
-      product: productId,
-      variant: variantId,
-      isUsed: false
-    });
+    // Atualizar contagem de estoque no produto
+    const remainingStock = await StockItem.countDocuments(stockFilter);
     
     console.log(`Estoque restante após atribuição: ${remainingStock}`);
     
-    // Atualizar o estoque da variante
-    const productUpdateResult = await Product.updateOne(
-      { _id: productId, 'variants._id': variantId },
-      { $set: { 'variants.$.stock': remainingStock } }
-    );
+    // Atualizar o estoque com base no tipo de produto
+    let productUpdateResult;
+    
+    if (hasVariants) {
+      // Para produtos com variantes, atualizar o estoque da variante específica
+      productUpdateResult = await Product.updateOne(
+        { _id: productId, 'variants._id': variantId },
+        { $set: { 'variants.$.stock': remainingStock } }
+      );
+    } else {
+      // Para produtos sem variantes, atualizar o estoque diretamente no produto
+      productUpdateResult = await Product.updateOne(
+        { _id: productId },
+        { $set: { stock: remainingStock } }
+      );
+    }
     
     console.log('Resultado da atualização do produto:', productUpdateResult);
     

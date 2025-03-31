@@ -1,0 +1,126 @@
+[1mdiff --git a/app/api/stock/assign/route.ts b/app/api/stock/assign/route.ts[m
+[1mindex 6718317..664039a 100644[m
+[1m--- a/app/api/stock/assign/route.ts[m
+[1m+++ b/app/api/stock/assign/route.ts[m
+[36m@@ -43,14 +43,6 @@[m [mexport async function POST(request: NextRequest) {[m
+       );[m
+     }[m
+     [m
+[31m-    if (!variantId) {[m
+[31m-      console.log('ID de variante inválido:', variantId);[m
+[31m-      return NextResponse.json([m
+[31m-        { message: 'ID de variante inválido' },[m
+[31m-        { status: 400 }[m
+[31m-      );[m
+[31m-    }[m
+[31m-    [m
+     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {[m
+       console.log('ID de usuário inválido:', userId);[m
+       return NextResponse.json([m
+[36m@@ -76,19 +68,49 @@[m [mexport async function POST(request: NextRequest) {[m
+       );[m
+     }[m
+     [m
+[32m+[m[32m    // Verificar se o produto existe e se tem variantes[m
+[32m+[m[32m    const product = await Product.findById(productId);[m
+[32m+[m[32m    if (!product) {[m
+[32m+[m[32m      console.log('Produto não encontrado:', productId);[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { message: 'Produto não encontrado' },[m
+[32m+[m[32m        { status: 404 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m[41m    [m
+[32m+[m[32m    // Verificar se o produto tem variantes[m
+[32m+[m[32m    const hasVariants = product.variants && product.variants.length > 0;[m
+[32m+[m[41m    [m
+[32m+[m[32m    // Se o produto tem variantes, o variantId é obrigatório[m
+[32m+[m[32m    if (hasVariants && !variantId) {[m
+[32m+[m[32m      console.log('ID de variante não fornecido para produto com variantes');[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { message: 'ID de variante é obrigatório para produtos com variantes' },[m
+[32m+[m[32m        { status: 400 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m[41m    [m
+     // Verificar disponibilidade de estoque[m
+     console.log('Verificando disponibilidade de estoque para:', {[m
+       productId,[m
+[31m-      variantId,[m
+[32m+[m[32m      variantId: hasVariants ? variantId : null,[m
+       isUsed: false[m
+     });[m
+     [m
+[31m-    // Primeiro, verificar a contagem total de itens disponíveis[m
+[31m-    const totalAvailable = await StockItem.countDocuments({[m
+[32m+[m[32m    // Construir filtro baseado no tipo de produto (com ou sem variantes)[m
+[32m+[m[32m    const stockFilter = {[m
+       product: productId,[m
+[31m-      variant: variantId,[m
+       isUsed: false,[m
+[31m-    });[m
+[32m+[m[32m    };[m
+[32m+[m[41m    [m
+[32m+[m[32m    if (hasVariants) {[m
+[32m+[m[32m      stockFilter['variant'] = variantId;[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m      stockFilter['variant'] = null;[m
+[32m+[m[32m    }[m
+[32m+[m[41m    [m
+[32m+[m[32m    // Primeiro, verificar a contagem total de itens disponíveis[m
+[32m+[m[32m    const totalAvailable = await StockItem.countDocuments(stockFilter);[m
+     [m
+     console.log(`Total de itens disponíveis (contagem): ${totalAvailable}`);[m
+     [m
+[36m@@ -105,11 +127,7 @@[m [mexport async function POST(request: NextRequest) {[m
+     }[m
+     [m
+     // Buscar os itens disponíveis[m
+[31m-    const availableItems = await StockItem.find({[m
+[31m-      product: productId,[m
+[31m-      variant: variantId,[m
+[31m-      isUsed: false,[m
+[31m-    }).limit(quantity);[m
+[32m+[m[32m    const availableItems = await StockItem.find(stockFilter).limit(quantity);[m
+     [m
+     console.log(`Encontrados ${availableItems.length} itens disponíveis em estoque para atribuir`);[m
+     [m
+[36m@@ -150,20 +168,27 @@[m [mexport async function POST(request: NextRequest) {[m
+     [m
+     console.log('Resultado da atualização:', updateResult);[m
+     [m
+[31m-    // Atualizar contagem de estoque na variante do produto[m
+[31m-    const remainingStock = await StockItem.countDocuments({[m
+[31m-      product: productId,[m
+[31m-      variant: variantId,[m
+[31m-      isUsed: false[m
+[31m-    });[m
+[32m+[m[32m    // Atualizar contagem de estoque no produto[m
+[32m+[m[32m    const remainingStock = await StockItem.countDocuments(stockFilter);[m
+     [m
+     console.log(`Estoque restante após atribuição: ${remainingStock}`);[m
+     [m
+[31m-    // Atualizar o estoque da variante[m
+[31m-    const productUpdateResult = await Product.updateOne([m
+[31m-      { _id: productId, 'variants._id': variantId },[m
+[31m-      { $set: { 'variants.$.stock': remainingStock } }[m
+[31m-    );[m
+[32m+[m[32m    // Atualizar o estoque com base no tipo de produto[m
+[32m+[m[32m    let productUpdateResult;[m
+[32m+[m[41m    [m
+[32m+[m[32m    if (hasVariants) {[m
+[32m+[m[32m      // Para produtos com variantes, atualizar o estoque da variante específica[m
+[32m+[m[32m      productUpdateResult = await Product.updateOne([m
+[32m+[m[32m        { _id: productId, 'variants._id': variantId },[m
+[32m+[m[32m        { $set: { 'variants.$.stock': remainingStock } }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m      // Para produtos sem variantes, atualizar o estoque diretamente no produto[m
+[32m+[m[32m      productUpdateResult = await Product.updateOne([m
+[32m+[m[32m        { _id: productId },[m
+[32m+[m[32m        { $set: { stock: remainingStock } }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+     [m
+     console.log('Resultado da atualização do produto:', productUpdateResult);[m
+     [m

@@ -137,130 +137,35 @@ export async function PUT(
       );
     }
     
-    // Parse do FormData
-    const formData = await request.formData();
+    // Parse do JSON da requisição
+    const data = await request.json();
     
     // Extrair dados do produto
-    const name = formData.get('name') as string;
-    const description = formData.get('description') as string;
-    const shortDescription = formData.get('shortDescription') as string;
-    const categoryId = formData.get('category') as string;
-    const featured = formData.get('featured') === 'true';
-    let status = formData.get('status') as string | null;
+    const { 
+      name, 
+      description,
+      shortDescription, 
+      category: categoryId,
+      featured, 
+      status,
+      variants,
+      requirements,
+      price,
+      stock,
+      images
+    } = data;
     
-    // Log de depuração para identificar o problema
-    console.log('Status recebido do formulário:', status);
+    // Log de depuração
+    console.log('Status recebido:', status);
     console.log('Tipo do status:', typeof status);
-    console.log('FormData completo:', Object.fromEntries(formData.entries()));
+    console.log('Dados recebidos:', data);
     
-    // Verificar se o status foi fornecido e não é uma string vazia
-    if (status && status.trim() !== '') {
-      const statusLower = status.toLowerCase();
-      // Log para depuração do status
-      console.log('Status antes da normalização:', status);
-      console.log('Status em lowercase:', statusLower);
-      
-      // Verificação mais flexível para o status
-      const isValidStatus = 
-        statusLower.includes('indetect') || 
-        statusLower.includes('detect') || 
-        statusLower.includes('manut') || 
-        statusLower.includes('beta');
-      
-      if (!isValidStatus) {
-        console.log('Status inválido detectado:', status);
-        status = null; // Definir como nulo se for inválido
-      } else {
-        // Normalizar o status para um dos valores aceitos
-        let normalizedStatus = 'indetectavel'; // valor padrão
-        
-        if (statusLower === 'indetectavel' || statusLower.includes('indetect')) {
-          normalizedStatus = 'indetectavel';
-          console.log('Status normalizado para: indetectavel');
-        }
-        else if (statusLower === 'detectavel' || (statusLower.includes('detect') && !statusLower.includes('indetect'))) {
-          normalizedStatus = 'detectavel';
-          console.log('Status normalizado para: detectavel');
-        } 
-        else if (statusLower === 'manutencao' || statusLower.includes('manut')) {
-          normalizedStatus = 'manutencao';
-          console.log('Status normalizado para: manutencao');
-        }
-        else if (statusLower === 'beta' || statusLower.includes('beta')) {
-          normalizedStatus = 'beta';
-          console.log('Status normalizado para: beta');
-        }
-        
-        // Substituir o status pela versão normalizada
-        console.log(`Status normalizado: "${status}" -> "${normalizedStatus}"`);
-        status = normalizedStatus;
-      }
-    } else {
-      // Se status for vazio ou não fornecido, defina como nulo
-      console.log('Status vazio ou não fornecido, definindo como nulo');
-      status = null;
-    }
-    
-    // Extrair variantes
-    const variantsJson = formData.get('variants') as string;
-    let variants = [];
-    
-    try {
-      variants = JSON.parse(variantsJson || '[]');
-    } catch (e) {
-      console.error('Erro ao analisar variantes:', e);
-      return NextResponse.json(
-        { message: 'Formato de variantes inválido' },
-        { status: 400 }
-      );
-    }
-    
-    // Validações
+    // Validações básicas
     if (!name || !description) {
       return NextResponse.json(
         { message: 'Campos obrigatórios não preenchidos' },
         { status: 400 }
       );
-    }
-    
-    if (!variants || variants.length === 0) {
-      return NextResponse.json(
-        { message: 'Pelo menos uma variante é obrigatória' },
-        { status: 400 }
-      );
-    }
-    
-    // Extrair requisitos
-    const requirements: string[] = [];
-    
-    // Mapeamento de chaves em inglês para português
-    const keyMapping: Record<string, string> = {
-      'operating_system': 'Sistema Operacional',
-      'processor': 'Processador',
-      'memory': 'Memória',
-      'graphics': 'Placa de Vídeo',
-      'storage': 'Armazenamento',
-      'additional_notes': 'Notas Adicionais',
-      'sistema_operacional': 'Sistema Operacional',
-      'processador': 'Processador',
-      'memoria': 'Memória',
-      'placa_grafica': 'Placa de Vídeo',
-      'armazenamento': 'Armazenamento',
-      'notas_adicionais': 'Notas Adicionais'
-    };
-    
-    for (const [key, value] of formData.entries()) {
-      if (key.startsWith('requirements[') && value) {
-        // Extrair o nome do campo original do formato requirements[campo]
-        const matches = key.match(/requirements\[(.*?)\]/);
-        if (matches && matches[1]) {
-          const fieldName = matches[1];
-          const label = keyMapping[fieldName] || fieldName;
-          requirements.push(`${label}: ${value}`);
-        } else {
-          requirements.push(value as string);
-        }
-      }
     }
     
     // Se o nome foi alterado, gerar novo slug e verificar duplicação
@@ -289,7 +194,7 @@ export async function PUT(
     }
     
     // Verificar se a categoria é válida
-    let category;
+    let categoryField;
     if (categoryId) {
       // Verificar se é um ID válido
       if (!mongoose.Types.ObjectId.isValid(categoryId)) {
@@ -299,74 +204,74 @@ export async function PUT(
           { status: 400 }
         );
       }
-      category = new mongoose.Types.ObjectId(categoryId);
+      categoryField = new mongoose.Types.ObjectId(categoryId);
     } else {
       // Se não tiver categoria, usar null ou manter a atual
-      category = product.category;
+      categoryField = product.category;
     }
     
-    // Processar imagens mantidas e novas
-    const keepImages = formData.getAll('keepImages[]').map(img => img.toString());
-    const newImages: string[] = [...keepImages];
-    
-    // Adicionar novas imagens enviadas via upload
-    let imageIndex = 0;
-    
-    while (formData.get(`image-${imageIndex}`) !== null) {
-      const file = formData.get(`image-${imageIndex}`) as File;
-      
-      if (file && file.type.startsWith('image/')) {
-        // Em uma aplicação real, você faria upload para um serviço de armazenamento
-        // como AWS S3, Cloudinary, etc. Aqui, estamos simulando um caminho de imagem.
-        
-        // Criar um nome de arquivo único baseado no timestamp + nome original
-        const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-        const imagePath = `/uploads/products/${fileName}`;
-        
-        // Em um servidor real, salvaríamos o arquivo aqui.
-        // Para este exemplo, apenas adicionamos o caminho ao array
-        newImages.push(imagePath);
-      }
-      
-      imageIndex++;
-    }
-    
-    // Adicionar URLs de imagem
-    const imageUrls = formData.getAll('imageUrls') as string[];
-    if (imageUrls && imageUrls.length > 0) {
-      newImages.push(...imageUrls.filter(url => url.trim() !== ''));
-    }
-    
-    if (newImages.length === 0) {
+    // Verificar se temos imagens
+    if (!images || images.length === 0) {
       return NextResponse.json(
         { message: 'Pelo menos uma imagem é obrigatória' },
         { status: 400 }
       );
     }
     
+    // Normalizar o status
+    let normalizedStatus = status;
+    if (status) {
+      const statusLower = status.toLowerCase();
+      
+      if (statusLower === 'indetectavel' || statusLower.includes('indetect')) {
+        normalizedStatus = 'indetectavel';
+      }
+      else if (statusLower === 'detectavel' || (statusLower.includes('detect') && !statusLower.includes('indetect'))) {
+        normalizedStatus = 'detectavel';
+      } 
+      else if (statusLower === 'manutencao' || statusLower.includes('manut')) {
+        normalizedStatus = 'manutencao';
+      }
+      else if (statusLower === 'beta' || statusLower.includes('beta')) {
+        normalizedStatus = 'beta';
+      }
+    }
+    
+    // Criar objeto de atualização
+    const updateObject: any = {
+      name,
+      slug,
+      description,
+      shortDescription,
+      images,
+      category: categoryField,
+      variants: variants || [],
+      featured: featured || false,
+      requirements: requirements || [],
+      // Definir status apenas se tiver um valor
+      ...(normalizedStatus ? { status: normalizedStatus } : { $unset: { status: 1 } }),
+    };
+    
+    // Adicionar price e stock se forem fornecidos (para produtos sem variantes)
+    if (price !== undefined) {
+      updateObject.price = price;
+    }
+    
+    if (stock !== undefined) {
+      updateObject.stock = stock;
+    }
+    
     // Atualizar o produto
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
-      {
-        name,
-        slug,
-        description,
-        shortDescription,
-        images: newImages,
-        category,
-        variants,
-        featured,
-        requirements,
-        // Definir status apenas se tiver um valor
-        ...(status ? { status } : { $unset: { status: 1 } }),
-      },
+      updateObject,
       { new: true }
     );
     
     // Log para depuração final
     console.log('Produto atualizado:');
     console.log('ID:', id);
-    console.log('Status final:', status);
+    console.log('Status final:', normalizedStatus);
     console.log('Produto após atualização:', updatedProduct);
     
     return NextResponse.json({ 

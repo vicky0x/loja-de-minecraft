@@ -230,7 +230,7 @@ export default function Navbar() {
                   <div className="relative">
                     <FiShoppingCart size={22} className="group-hover:scale-110 transition-transform duration-300" />
                     <span className="absolute -top-2 -right-2 bg-gradient-to-r from-primary to-primary-dark text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-glow group-hover:shadow-lg transition-all duration-300">
-                      {String(cart.getItemsCount())}
+                      {String(cart.getCartItemCount())}
                     </span>
                   </div>
                   <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
@@ -352,7 +352,7 @@ export default function Navbar() {
                 <div className="relative">
                   <FiShoppingCart size={22} />
                   <span className="absolute -top-2 -right-2 bg-gradient-to-r from-primary to-primary-dark text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-glow">
-                    {String(cart.getItemsCount())}
+                    {String(cart.getCartItemCount())}
                   </span>
                 </div>
               </Link>

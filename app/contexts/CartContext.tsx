@@ -2,145 +2,176 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-// Definição de tipos
-export interface CartItem {
+// Interface para o item no carrinho
+interface CartItem {
   productId: string;
   productName: string;
-  productImage: string;
+  productImage?: string;
   variantId: string;
   variantName: string;
   price: number;
   quantity: number;
-  stock: number;
+  stock?: number;
+  hasStockIssue?: boolean;
+  hasVariants?: boolean; // Indica se o produto tem variantes
 }
 
+// Interface para o contexto do carrinho
 interface CartContextType {
   items: CartItem[];
   addItem: (item: CartItem) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
-  getTotal: () => number;
-  getItemsCount: () => number;
+  getCartItemCount: () => number;
+  getCartTotal: () => number;
 }
 
-// Criação do contexto
+// Criar o contexto
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Provider do carrinho
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+// Hook personalizado para usar o contexto do carrinho
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (context === undefined) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
+};
 
-  // Carregar itens do localStorage ao iniciar
+// Componente provedor do contexto do carrinho
+export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Estado para armazenar os itens do carrinho
+  const [items, setItems] = useState<CartItem[]>([]);
+  
+  // Carregar itens do localStorage quando o componente é montado
   useEffect(() => {
     try {
-      const storedItems = localStorage.getItem('cartItems');
-      if (storedItems) {
-        try {
-          const parsedItems = JSON.parse(storedItems);
-          // Verificar se os dados são válidos antes de atualizar o estado
-          if (Array.isArray(parsedItems)) {
-            setItems(parsedItems);
-          } else {
-            console.error('Formato de dados do carrinho inválido');
-            localStorage.removeItem('cartItems');
-          }
-        } catch (error) {
-          console.error('Erro ao carregar carrinho:', error);
-          localStorage.removeItem('cartItems');
-        }
+      const savedItems = localStorage.getItem('cart');
+      if (savedItems) {
+        setItems(JSON.parse(savedItems));
       }
-    } catch (storageError) {
-      // Lidar com possíveis erros de acesso ao localStorage
-      console.error('Erro ao acessar localStorage:', storageError);
+    } catch (error) {
+      console.error('Erro ao carregar carrinho do localStorage:', error);
     }
   }, []);
-
-  // Salvar itens no localStorage quando mudar
+  
+  // Salvar itens no localStorage quando os itens mudam
   useEffect(() => {
     try {
-      localStorage.setItem('cartItems', JSON.stringify(items));
+      localStorage.setItem('cart', JSON.stringify(items));
     } catch (error) {
       console.error('Erro ao salvar carrinho no localStorage:', error);
     }
   }, [items]);
-
-  // Adicionar item ao carrinho (ou atualizar se já existir)
+  
+  // Função para adicionar um item ao carrinho
   const addItem = (item: CartItem) => {
-    setItems(currentItems => {
-      const existingItemIndex = currentItems.findIndex(i => i.variantId === item.variantId);
+    setItems(prevItems => {
+      // Verificar se o item já existe no carrinho (baseado no variantId)
+      const existingItemIndex = prevItems.findIndex(i => i.variantId === item.variantId);
       
-      if (existingItemIndex >= 0) {
-        // Item já existe, atualizar quantidade
-        const newItems = [...currentItems];
-        const newQuantity = newItems[existingItemIndex].quantity + item.quantity;
+      // Se o item existir, atualizar a quantidade
+      if (existingItemIndex !== -1) {
+        // Criar uma cópia do array para não mutar o estado diretamente
+        const updatedItems = [...prevItems];
+        const existingItem = updatedItems[existingItemIndex];
         
-        // Garantir que não exceda o estoque disponível
-        newItems[existingItemIndex].quantity = Math.min(newQuantity, item.stock);
-        return newItems;
+        // Verificar se tem estoque suficiente
+        const newQuantity = existingItem.quantity + item.quantity;
+        
+        // Se o estoque for definido, não permitir quantidade maior que o estoque
+        if (existingItem.stock !== undefined && newQuantity > existingItem.stock) {
+          // Atualizar para o estoque máximo disponível
+          updatedItems[existingItemIndex] = {
+            ...existingItem,
+            quantity: existingItem.stock
+          };
+          
+          // Notificar o usuário (poderia ser feito com um toast)
+          console.warn(`Quantidade ajustada para o estoque máximo: ${existingItem.stock}`);
+        } else {
+          // Atualizar a quantidade normalmente
+          updatedItems[existingItemIndex] = {
+            ...existingItem,
+            quantity: newQuantity
+          };
+        }
+        
+        return updatedItems;
       } else {
-        // Item novo, adicionar ao carrinho
-        return [...currentItems, item];
+        // Se o item não existir, adicionar ao carrinho
+        return [...prevItems, item];
       }
     });
   };
-
-  // Remover item do carrinho
+  
+  // Função para remover um item do carrinho
   const removeItem = (variantId: string) => {
-    setItems(currentItems => currentItems.filter(item => item.variantId !== variantId));
+    setItems(prevItems => prevItems.filter(item => item.variantId !== variantId));
   };
-
-  // Atualizar quantidade de um item
-  const updateQuantity = (variantId: string, quantity: number) => {
-    setItems(currentItems => {
-      return currentItems.map(item => {
-        if (item.variantId === variantId) {
-          // Garantir que a quantidade não seja menor que 1 ou maior que o estoque
-          const newQuantity = Math.max(1, Math.min(quantity, item.stock));
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      });
+  
+  // Função para atualizar a quantidade de um item
+  const updateQuantity = (variantId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      // Se a quantidade for menor que 1, remover o item
+      removeItem(variantId);
+      return;
+    }
+    
+    setItems(prevItems => {
+      // Encontrar o item no carrinho
+      const existingItemIndex = prevItems.findIndex(item => item.variantId === variantId);
+      
+      if (existingItemIndex === -1) {
+        // Se o item não existir, não fazer nada
+        return prevItems;
+      }
+      
+      // Verificar limitações de estoque
+      const item = prevItems[existingItemIndex];
+      const safeQuantity = item.stock !== undefined ? Math.min(newQuantity, item.stock) : newQuantity;
+      
+      // Criar uma cópia do array para não mutar o estado diretamente
+      const updatedItems = [...prevItems];
+      updatedItems[existingItemIndex] = {
+        ...item,
+        quantity: safeQuantity
+      };
+      
+      return updatedItems;
     });
   };
-
-  // Limpar o carrinho
+  
+  // Função para limpar o carrinho
   const clearCart = () => {
     setItems([]);
   };
-
-  // Calcular o total do carrinho
-  const getTotal = () => {
+  
+  // Função para obter o número total de itens no carrinho
+  const getCartItemCount = () => {
+    return items.reduce((total, item) => total + item.quantity, 0);
+  };
+  
+  // Função para obter o valor total do carrinho
+  const getCartTotal = () => {
     return items.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
-
-  // Obter o número total de itens no carrinho
-  const getItemsCount = () => {
-    return items.reduce((count, item) => count + item.quantity, 0);
+  
+  // Valor a ser fornecido pelo contexto
+  const contextValue: CartContextType = {
+    items,
+    addItem,
+    removeItem,
+    updateQuantity,
+    clearCart,
+    getCartItemCount,
+    getCartTotal
   };
-
+  
   return (
-    <CartContext.Provider value={{
-      items,
-      addItem,
-      removeItem,
-      updateQuantity,
-      clearCart,
-      getTotal,
-      getItemsCount
-    }}>
+    <CartContext.Provider value={contextValue}>
       {children}
     </CartContext.Provider>
   );
-}
-
-// Hook para usar o carrinho
-export function useCart() {
-  const context = useContext(CartContext);
-  
-  if (context === undefined) {
-    throw new Error('useCart deve ser usado dentro de um CartProvider');
-  }
-  
-  return context;
-} 
+}; 

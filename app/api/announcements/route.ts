@@ -13,7 +13,33 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 })
       .lean();
     
-    return NextResponse.json({ announcements }, { status: 200 });
+    // Buscar as imagens atualizadas dos autores
+    const authorIds = [...new Set(announcements.map(a => a.authorId))];
+    const authors = await User.find({ _id: { $in: authorIds } })
+      .select('_id profileImage')
+      .lean();
+    
+    // Criar um mapa de ID do autor para a imagem de perfil
+    const authorImagesMap = {};
+    authors.forEach(author => {
+      if (author._id && author.profileImage) {
+        authorImagesMap[author._id.toString()] = author.profileImage;
+      }
+    });
+    
+    // Atualizar as imagens dos autores nos anúncios
+    const updatedAnnouncements = announcements.map(announcement => {
+      const authorId = announcement.authorId?.toString();
+      if (authorId && authorImagesMap[authorId]) {
+        return {
+          ...announcement,
+          authorImage: authorImagesMap[authorId]
+        };
+      }
+      return announcement;
+    });
+    
+    return NextResponse.json({ announcements: updatedAnnouncements }, { status: 200 });
   } catch (error) {
     console.error('Erro ao buscar anúncios:', error);
     return NextResponse.json(
@@ -51,6 +77,14 @@ export async function POST(req: NextRequest) {
     
     const data = await req.json();
     
+    // Debug: Verificar os dados recebidos
+    console.log('Dados recebidos na API POST:', {
+      title: data.title,
+      imageUrl: data.imageUrl,
+      imageUrl2: data.imageUrl2,
+      videoUrl: data.videoUrl
+    });
+    
     // Validar dados
     if (!data.title || !data.content) {
       return NextResponse.json(
@@ -73,12 +107,13 @@ export async function POST(req: NextRequest) {
     // Criar o anúncio
     const announcement = await Announcement.create({
       title: data.title,
-      content: data.content,
+      content: data.content.replace(/\n\n+/g, '\n\n'), // Normalizar quebras de linha múltiplas
       authorId: userData.id,
       authorName: userData.name || userData.username,
       authorRole: userData.role,
       authorImage: userImage,
       imageUrl: data.imageUrl,
+      imageUrl2: data.imageUrl2,
       videoUrl: data.videoUrl,
     });
     

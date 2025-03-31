@@ -14,7 +14,7 @@ try {
 // Interface para cada item de estoque
 export interface IStockItem extends Document {
   product: mongoose.Types.ObjectId;
-  variant: string; // ID da variante no array de variantes do produto
+  variant?: string; // ID da variante no array de variantes do produto (opcional para produtos sem variantes)
   code: string; // Código/chave única do produto digital
   isUsed: boolean; // Se já foi vendido/usado
   metadata?: Record<string, any>; // Metadados adicionais específicos do produto
@@ -34,7 +34,8 @@ const stockItemSchema = new Schema<IStockItem>(
     },
     variant: {
       type: String,
-      required: [true, 'Variante é obrigatória'],
+      required: false, // Não é mais obrigatório para permitir produtos sem variantes
+      default: null,
     },
     code: {
       type: String,

@@ -80,32 +80,46 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Encontrar a variante
-      const variant = product.variants.find((v: any) => 
-        v._id.toString() === item.variantId || v.name === item.variantName
-      );
+      // Verificar se o produto tem variantes
+      const hasVariants = product.variants && product.variants.length > 0;
       
-      if (!variant) {
-        return NextResponse.json(
-          { error: `Variante não encontrada para o produto: ${product.name}` },
-          { status: 404 }
+      if (hasVariants) {
+        // Encontrar a variante para produtos com variantes
+        const variant = product.variants.find((v: any) => 
+          v._id.toString() === item.variantId || v.name === item.variantName
         );
+        
+        if (!variant) {
+          return NextResponse.json(
+            { error: `Variante não encontrada para o produto: ${product.name}` },
+            { status: 404 }
+          );
+        }
+        
+        // Adicionar item ao pedido com variante
+        const orderItem = {
+          product: new mongoose.Types.ObjectId(product._id),
+          variant: variant._id.toString(),
+          price: item.price || variant.price,
+          name: `${product.name} - ${variant.name}`,
+          quantity: item.quantity || 1
+        };
+        
+        orderItems.push(orderItem);
+        totalAmount += orderItem.price * orderItem.quantity;
+      } else {
+        // Para produtos sem variantes, usar o preço e nome diretamente do produto
+        const orderItem = {
+          product: new mongoose.Types.ObjectId(product._id),
+          variant: null, // Variante nula para produtos sem variantes
+          price: item.price || product.price,
+          name: product.name,
+          quantity: item.quantity || 1
+        };
+        
+        orderItems.push(orderItem);
+        totalAmount += orderItem.price * orderItem.quantity;
       }
-      
-      // Verificar disponibilidade de estoque
-      // Implementar conforme necessidade da aplicação
-      
-      // Adicionar item ao pedido
-      const orderItem = {
-        product: new mongoose.Types.ObjectId(product._id),
-        variant: variant._id.toString(),
-        price: item.price || variant.price,
-        name: `${product.name} - ${variant.name}`,
-        quantity: item.quantity || 1
-      };
-      
-      orderItems.push(orderItem);
-      totalAmount += orderItem.price * orderItem.quantity;
     }
     
     // Criar o pedido usando o modelo Order

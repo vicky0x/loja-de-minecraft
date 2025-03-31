@@ -144,9 +144,13 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               </div>
             </div>
             
-            {/* Variantes/Planos */}
+            {/* Planos/Variantes */}
             <div className="mt-4">
-              <h4 className="text-lg font-medium text-white mb-2">Planos ({product.variants?.length || 0})</h4>
+              <h4 className="text-lg font-medium text-white mb-2">
+                {product.variants && product.variants.length > 0 
+                  ? `Planos (${product.variants.length})` 
+                  : 'Preço e Estoque'}
+              </h4>
               {product.variants && product.variants.length > 0 ? (
                 <div className="space-y-3">
                   {product.variants.map((variant: any, index: number) => (
@@ -156,15 +160,52 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                         <span className="text-primary">R$ {variant.price.toFixed(2).replace('.', ',')}</span>
                       </div>
                       <p className="text-gray-400 text-sm">{variant.description}</p>
-                      {variant.features && variant.features.length > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {variant.features.map((feature: string, idx: number) => (
-                            <li key={idx} className="text-gray-300 text-sm">• {feature}</li>
-                          ))}
-                        </ul>
-                      )}
+                      <div className="flex justify-between items-center mt-2">
+                        <div>
+                          {variant.features && variant.features.length > 0 && (
+                            <ul className="space-y-1">
+                              {variant.features.map((feature: string, idx: number) => (
+                                <li key={idx} className="text-gray-300 text-sm">• {feature}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-400">Estoque: </span>
+                          <span className={
+                            variant.stock > 10 
+                              ? 'text-green-400' 
+                              : variant.stock > 0 
+                                ? 'text-yellow-400' 
+                                : 'text-red-400'
+                          }>
+                            {variant.stock}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   ))}
+                </div>
+              ) : product.price !== undefined ? (
+                <div className="bg-dark-300 p-3 rounded-md">
+                  <div className="flex justify-between">
+                    <h5 className="font-medium text-white">Preço único</h5>
+                    <span className="text-primary">R$ {product.price.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  <div className="flex justify-end mt-2">
+                    <div className="text-sm">
+                      <span className="text-gray-400">Estoque: </span>
+                      <span className={
+                        product.stock > 10 
+                          ? 'text-green-400' 
+                          : product.stock > 0 
+                            ? 'text-yellow-400' 
+                            : 'text-red-400'
+                      }>
+                        {product.stock}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-dark-300 p-3 rounded-md text-gray-400">

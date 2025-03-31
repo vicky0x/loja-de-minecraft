@@ -79,16 +79,26 @@ const AnnouncementList = () => {
 
   if (announcements.length === 0) {
     return (
-      <div className="bg-dark-200 rounded-lg p-6 text-center">
+      <div className="bg-dark-200 rounded-lg p-6 text-center shadow-md transition-all duration-500 ease-in-out">
         <p className="text-gray-400">Nenhum anúncio disponível no momento.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {announcements.map((announcement: Announcement) => (
-        <AnnouncementCard key={announcement._id} announcement={announcement} />
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {announcements.map((announcement: Announcement, index: number) => (
+        <div 
+          key={announcement._id} 
+          className="mb-2 opacity-0 animate-fadeInUp"
+          style={{ 
+            animationDelay: `${index * 100}ms`, 
+            animationDuration: '500ms',
+            animationFillMode: 'forwards' 
+          }}
+        >
+          <AnnouncementCard announcement={announcement} />
+        </div>
       ))}
     </div>
   );

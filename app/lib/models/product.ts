@@ -17,7 +17,9 @@ export interface IProduct extends Document {
   shortDescription: string;
   images: string[];
   category?: mongoose.Types.ObjectId;
-  variants: IVariant[];
+  variants?: IVariant[];
+  stock?: number; // Estoque do produto (quando não usa variantes)
+  price?: number; // Preço do produto (quando não usa variantes)
   featured: boolean;
   requirements: string[];
   status: 'indetectavel' | 'detectavel' | 'manutencao' | 'beta';
@@ -89,12 +91,17 @@ const productSchema = new Schema<IProduct>(
     },
     variants: {
       type: [variantSchema],
-      validate: {
-        validator: function(variants: IVariant[]) {
-          return variants && variants.length > 0;
-        },
-        message: 'Pelo menos uma variante é obrigatória',
-      }
+      required: false,
+      default: [],
+    },
+    stock: {
+      type: Number,
+      default: 0,
+      min: [0, 'Estoque não pode ser negativo'],
+    },
+    price: {
+      type: Number,
+      min: [0, 'Preço não pode ser negativo'],
     },
     featured: {
       type: Boolean,

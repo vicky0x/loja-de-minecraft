@@ -23,6 +23,8 @@ interface Product {
   featured: boolean;
   variants: Variant[];
   status?: 'indetectavel' | 'detectavel' | 'manutencao' | 'beta';
+  price?: number;  // Preço direto para produtos sem variantes
+  stock?: number;  // Estoque direto para produtos sem variantes
 }
 
 export default function ProductCard({ product }: { product: Product }) {
@@ -31,6 +33,9 @@ export default function ProductCard({ product }: { product: Product }) {
   const [displayedCount, setDisplayedCount] = useState(0);
   const countAnimationTriggered = useRef(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  
+  // Verificar se o produto tem variantes
+  const hasVariants = product.variants && product.variants.length > 0;
   
   // Gerar um número de vendas baseado no ID do produto para consistência
   useEffect(() => {
@@ -103,7 +108,11 @@ export default function ProductCard({ product }: { product: Product }) {
   
   // Verificar o status do estoque
   const getTotalStock = () => {
-    return product.variants.reduce((total, variant) => total + variant.stock, 0);
+    if (hasVariants) {
+      return product.variants.reduce((total, variant) => total + variant.stock, 0);
+    }
+    // Para produtos sem variantes, retornar o estoque diretamente
+    return product.stock || 0;
   };
   
   const getStockStatus = () => {
@@ -121,10 +130,13 @@ export default function ProductCard({ product }: { product: Product }) {
     return 'bg-green-900/30 text-green-400';
   };
   
-  // Obter o preço base (menor preço entre as variantes)
+  // Obter o preço base (menor preço entre as variantes ou preço direto)
   const getBasePrice = () => {
-    if (!product.variants || product.variants.length === 0) return 0;
-    return Math.min(...product.variants.map(v => v.price));
+    if (hasVariants) {
+      return Math.min(...product.variants.map(v => v.price));
+    }
+    // Para produtos sem variantes, retornar o preço diretamente
+    return product.price || 0;
   };
   
   // Verificar se o produto tem imagem
@@ -309,14 +321,16 @@ export default function ProductCard({ product }: { product: Product }) {
             </div>
             
             <div className="flex space-x-1">
-              {/* Botão para ver estoque */}
-              <button
-                onClick={() => setIsStockModalOpen(true)}
-                className="p-2 text-white hover:text-primary transition-colors"
-                title="Ver estoque"
-              >
-                <FiPackage size={18} />
-              </button>
+              {/* Botão para ver estoque ou variantes (mostrado apenas se tiver variantes) */}
+              {hasVariants && (
+                <button
+                  onClick={() => setIsStockModalOpen(true)}
+                  className="p-2 text-white hover:text-primary transition-colors"
+                  title="Ver planos"
+                >
+                  <FiPackage size={18} />
+                </button>
+              )}
               
               {/* Link para visualizar produto */}
               <Link
@@ -331,11 +345,13 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
       </div>
       
-      <VariantStockModal 
-        productId={product._id}
-        isOpen={isStockModalOpen}
-        onClose={() => setIsStockModalOpen(false)}
-      />
+      {hasVariants && (
+        <VariantStockModal 
+          productId={product._id}
+          isOpen={isStockModalOpen}
+          onClose={() => setIsStockModalOpen(false)}
+        />
+      )}
     </>
   );
 } 

@@ -20,6 +20,17 @@ export async function GET(
       );
     }
     
+    // Buscar a imagem atualizada do autor
+    if (announcement.authorId) {
+      const author = await User.findById(announcement.authorId)
+        .select('profileImage')
+        .lean();
+      
+      if (author && author.profileImage) {
+        announcement.authorImage = author.profileImage;
+      }
+    }
+    
     return NextResponse.json({ announcement }, { status: 200 });
   } catch (error) {
     console.error('Erro ao buscar anúncio:', error);
@@ -95,9 +106,10 @@ export async function PUT(
       params.id,
       {
         title: data.title,
-        content: data.content,
+        content: data.content.replace(/\n\n+/g, '\n\n'),
         authorImage: userImage || existingAnnouncement.authorImage,
         imageUrl: data.imageUrl,
+        imageUrl2: data.imageUrl2,
         videoUrl: data.videoUrl,
         updatedAt: new Date(),
       },

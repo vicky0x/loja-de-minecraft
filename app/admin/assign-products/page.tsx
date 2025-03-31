@@ -211,6 +211,21 @@ export default function AssignProductsPage() {
     setUserSearchResults([]);
   };
   
+  // Atualização da função para selecionar produto
+  useEffect(() => {
+    // Se o produto selecionado não tiver variantes, definir automaticamente a variante como "no-variant"
+    if (selectedProduct) {
+      const product = products.find(p => p._id === selectedProduct);
+      const hasVariants = product?.variants && product.variants.length > 0;
+      
+      if (!hasVariants) {
+        setSelectedVariant('no-variant');
+      } else {
+        setSelectedVariant(''); // Resetar a variante se o produto tiver variantes
+      }
+    }
+  }, [selectedProduct, products]);
+  
   // Função para atribuir o produto ao usuário
   const assignProductToUser = async () => {
     if (!selectedUser) {
@@ -223,7 +238,12 @@ export default function AssignProductsPage() {
       return;
     }
     
-    if (!selectedVariant) {
+    // Verificar se o produto tem variantes
+    const productData = products.find(p => p._id === selectedProduct);
+    const hasVariants = productData?.variants && productData.variants.length > 0;
+    
+    // Verificar o campo de variante apenas se o produto tiver variantes
+    if (hasVariants && !selectedVariant) {
       setError('Selecione uma variante do produto');
       return;
     }
@@ -240,7 +260,7 @@ export default function AssignProductsPage() {
       
       const requestData = {
         productId: selectedProduct,
-        variantId: selectedVariant,
+        variantId: hasVariants ? selectedVariant : null, // Enviar null para produtos sem variantes
         userId: selectedUser._id,
         quantity: quantity
       };
@@ -277,8 +297,8 @@ export default function AssignProductsPage() {
           mensagemErro = `Estoque insuficiente. Solicitado: ${data.requested}, Disponível: ${data.available}`;
           
           // Verificar se o estoque exibido está correto
-          if (selectedProductData && selectedVariantData) {
-            const estoqueExibido = selectedVariantData.stock;
+          if (productData && productData.variants.length > 0) {
+            const estoqueExibido = productData.variants[0].stock;
             console.log(`Estoque exibido: ${estoqueExibido}, Estoque real disponível: ${data.available}`);
             
             if (estoqueExibido !== data.available) {
@@ -303,6 +323,7 @@ export default function AssignProductsPage() {
   
   // Obter o produto selecionado
   const selectedProductData = products.find(p => p._id === selectedProduct);
+  const hasVariants = selectedProductData?.variants && selectedProductData.variants.length > 0;
   const selectedVariantData = selectedProductData?.variants.find(v => v._id === selectedVariant);
   
   return (
@@ -441,7 +462,7 @@ export default function AssignProductsPage() {
               </select>
             </div>
             
-            {selectedProduct && (
+            {selectedProduct && hasVariants && (
               <div>
                 <label htmlFor="variant" className="block text-sm font-medium text-gray-300 mb-1">
                   Variante <span className="text-red-500">*</span>
@@ -466,7 +487,17 @@ export default function AssignProductsPage() {
               </div>
             )}
             
-            {selectedVariant && (
+            {selectedProduct && !hasVariants && (
+              <div>
+                <div className="block text-sm font-medium text-gray-300 mb-1">Variante</div>
+                <div className="p-2 bg-dark-400 text-gray-400 rounded-md">
+                  Este produto não possui variantes
+                </div>
+                <input type="hidden" name="variant" value="no-variant" />
+              </div>
+            )}
+            
+            {(selectedVariant || (!hasVariants && selectedProduct)) && (
               <div>
                 <label htmlFor="quantity" className="block text-sm font-medium text-gray-300 mb-1">
                   Quantidade <span className="text-red-500">*</span>
@@ -487,9 +518,9 @@ export default function AssignProductsPage() {
         <div className="mt-6 flex justify-end">
           <button
             onClick={assignProductToUser}
-            disabled={loading || !selectedUser || !selectedProduct || !selectedVariant || quantity <= 0}
+            disabled={loading || !selectedUser || !selectedProduct || (hasVariants && !selectedVariant) || quantity <= 0}
             className={`bg-primary hover:bg-primary/90 text-white py-2 px-6 rounded-md flex items-center ${
-              loading || !selectedUser || !selectedProduct || !selectedVariant || quantity <= 0 ? 'opacity-70 cursor-not-allowed' : ''
+              loading || !selectedUser || !selectedProduct || (hasVariants && !selectedVariant) || quantity <= 0 ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
             {loading ? (

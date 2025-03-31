@@ -32,13 +32,16 @@ export function createMercadoPagoClient() {
     throw new Error('Token do Mercado Pago não encontrado nas variáveis de ambiente.');
   }
   
-  return new MercadoPagoConfig({ 
+  // Criar configuração
+  const config = new MercadoPagoConfig({ 
     accessToken: token,
     options: { 
       timeout: 5000,
       idempotencyKey: randomUUID() 
     } 
   });
+  
+  return config;
 }
 
 // Verificar se estamos em ambiente de desenvolvimento - apenas para logs
@@ -73,177 +76,159 @@ interface PixPaymentResponse {
   expirationDate: Date;
 }
 
+// Função para limpar propriedade incorreta do objeto de pagamento
+function ensureCorrectPaymentProperties(paymentData: any): any {
+  if (!paymentData) return paymentData;
+  
+  // Clonar o objeto para não modificar o original
+  const cleanedData = JSON.parse(JSON.stringify(paymentData));
+  
+  // Verificação explícita para campos com erro de ortografia
+  if ('notificaction_url' in cleanedData) {
+    console.warn('[MERCADOPAGO WARN] Detectado campo com ortografia incorreta "notificaction_url" - removendo do objeto');
+    delete cleanedData.notificaction_url;
+  }
+  
+  // Verificar se existe o campo notification_url
+  if (!cleanedData.notification_url) {
+    console.warn('[MERCADOPAGO WARN] Campo notification_url não presente - adicionando URL padrão');
+    cleanedData.notification_url = 'http://localhost:3000/api/payment/webhook';
+  }
+  
+  // Verificação adicional: converter para string e verificar se existe a string incorreta
+  const stringifiedData = JSON.stringify(cleanedData);
+  if (stringifiedData.includes('notificaction_url')) {
+    console.warn('[MERCADOPAGO WARN] String "notificaction_url" encontrada no JSON - removendo manualmente');
+    // Convertendo novamente para objeto após substituição para garantir que o JSON é válido
+    try {
+      return JSON.parse(stringifiedData.replace(/"notificaction_url":/g, '"notification_url":'));
+    } catch (e) {
+      console.error('[MERCADOPAGO ERROR] Erro ao tentar corrigir JSON com substituição manual:', e);
+      // Em caso de erro na substituição, manter o objeto original limpo
+    }
+  }
+  
+  return cleanedData;
+}
+
+// Função wrapper para criar pagamento com limpeza de propriedades
+async function safeCreatePayment(payment: Payment, data: any): Promise<any> {
+  // Garantir que não há campos com nomes incorretos
+  const cleanedBody = ensureCorrectPaymentProperties(data.body);
+  
+  // Verificação adicional para garantir que não estamos enviando o campo incorreto
+  console.log('[MERCADOPAGO DEBUG] Campos que serão enviados para a API:', Object.keys(cleanedBody));
+  console.log('[MERCADOPAGO DEBUG] notification_url:', cleanedBody.notification_url);
+  
+  // Verificação final antes de enviar
+  // Converter para string, verificar e converter de volta para objeto
+  const jsonString = JSON.stringify(cleanedBody);
+  if (jsonString.includes('notificaction_url')) {
+    console.warn('[MERCADOPAGO WARN] ÚLTIMA VERIFICAÇÃO: String incorreta ainda presente após limpeza!');
+    // Remover manualmente
+    const correctedJson = jsonString.replace(/"notificaction_url":/g, '"notification_url":');
+    const correctedBody = JSON.parse(correctedJson);
+    
+    // Chamar a função original com dados corrigidos
+    return payment.create({
+      ...data,
+      body: correctedBody
+    });
+  }
+  
+  // Chamar a função original
+  return payment.create({
+    ...data,
+    body: cleanedBody
+  });
+}
+
 // Cria um pagamento PIX com dados reais
 export async function createPixPayment(paymentData: any): Promise<PixPaymentResponse> {
   try {
-    const { 
+    // SOLUÇÃO RADICAL: Ignorar completamente a biblioteca do Mercado Pago e usar fetch diretamente
+    
+    // 1. Extrair dados essenciais
+    const transaction_amount = Number(paymentData.transaction_amount || 0);
+    const description = String(paymentData.description || '');
+    const external_reference = String(paymentData.external_reference || '');
+    
+    // 2. Extrair dados do pagador
+    const payer = {
+      email: String(paymentData.payer?.email || ''),
+      first_name: String(paymentData.payer?.first_name || ''),
+      last_name: String(paymentData.payer?.last_name || ''),
+      identification: {
+        type: 'CPF',
+        number: String(paymentData.payer?.identification?.number || '')
+      }
+    };
+    
+    // 3. Validar o CPF
+    const validTestCPFs = ['19119119100', '12345678909', '01234567890'];
+    if (!payer.identification.number || payer.identification.number.length !== 11) {
+      logger.warn(`CPF inválido ou não fornecido, usando CPF de teste`);
+      payer.identification.number = validTestCPFs[0];
+    }
+    
+    logger.info(`Criando pagamento PIX (direto com fetch): ${description} - R$ ${transaction_amount}`);
+    
+    // 4. Obter o token de acesso
+    const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
+    if (!mpToken) {
+      throw new Error('Token do Mercado Pago não encontrado nas variáveis de ambiente.');
+    }
+    
+    // 5. Preparar os dados para envio - APENAS com os campos necessários
+    const paymentRequest = {
       transaction_amount,
       description,
+      payment_method_id: 'pix',
+      external_reference,
       payer
-    } = paymentData;
-
-    logger.info(`Criando pagamento PIX real: ${description} - R$ ${transaction_amount}`);
+    };
     
-    // Criar uma nova instância para cada pagamento, com uma chave de idempotência única
-    const client = createMercadoPagoClient();
-    const payment = new Payment(client);
+    // 6. Log para debug antes de enviar
+    logger.info('Enviando requisição direta para API do Mercado Pago:', JSON.stringify(paymentRequest));
+    logger.info('Campos enviados:', Object.keys(paymentRequest).join(', '));
     
-    // Processar dados do pagador
-    const processedPaymentData = { ...paymentData };
+    // 7. Chamar a API diretamente via fetch
+    const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${mpToken}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': randomUUID()
+      },
+      body: JSON.stringify(paymentRequest)
+    });
     
-    // CPFs válidos para teste do Mercado Pago
-    const validTestCPFs = ['19119119100', '12345678909', '01234567890'];
-    
-    // Verificar se temos os dados necessários do pagador (CPF é obrigatório para PIX)
-    if (!payer.identification) {
-      // Adicionar CPF padrão se não tiver sido fornecido
-      processedPaymentData.payer = {
-        ...payer,
-        identification: {
-          type: 'CPF',
-          number: validTestCPFs[0] // CPF de teste padrão do MP
-        }
-      };
-    } else {
-      // Limpar CPF (remover pontos, traços e espaços)
-      if (payer.identification.number) {
-        const cleanCPF = cleanCpf(payer.identification.number);
-        
-        // Validar se o CPF tem 11 dígitos
-        if (cleanCPF.length !== 11) {
-          logger.warn(`CPF inválido fornecido (${cleanCPF}), usando CPF de teste`);
-          processedPaymentData.payer = {
-            ...payer,
-            identification: {
-              type: 'CPF',
-              number: validTestCPFs[0] // Usar CPF de teste válido
-            }
-          };
-        } else {
-          processedPaymentData.payer = {
-            ...payer,
-            identification: {
-              ...payer.identification,
-              number: cleanCPF
-            }
-          };
-        }
-      }
+    // 8. Processar a resposta
+    if (!mpResponse.ok) {
+      const errorData = await mpResponse.json();
+      logger.error('Erro na chamada à API do MP:', errorData);
+      throw new Error(`Erro ao processar pagamento: ${JSON.stringify(errorData)}`);
     }
     
-    // Garantir que o método de pagamento é PIX
-    if (processedPaymentData.payment_method_id !== 'pix') {
-      processedPaymentData.payment_method_id = 'pix';
-    }
+    // 9. Extrair dados da resposta
+    const responseData = await mpResponse.json();
+    logger.info(`Pagamento criado com sucesso: ${responseData.id}`);
     
-    logger.info('Enviando requisição para API do Mercado Pago:', JSON.stringify(processedPaymentData));
+    const pointOfInteraction = responseData.point_of_interaction || {};
+    const transactionData = pointOfInteraction.transaction_data || {};
     
-    try {
-      // Usar requestOptions para garantir a idempotência
-      const response = await payment.create({
-        body: processedPaymentData,
-        requestOptions: { 
-          idempotencyKey: randomUUID() 
-        }
-      });
-      
-      logger.info(`Pagamento criado com sucesso no Mercado Pago: ${response.id}`);
-      logger.info(`Detalhes do QR Code PIX: ${response.point_of_interaction?.transaction_data?.qr_code || 'Não disponível'}`);
-      
-      // Extrair dados do QR code e código copia e cola
-      const qrCode = response.point_of_interaction?.transaction_data?.qr_code || '';
-      const qrCodeBase64 = response.point_of_interaction?.transaction_data?.qr_code_base64 || '';
-      
-      // Verificar se temos o código PIX
-      let copyPasteCode = qrCode; // Por padrão, usar o mesmo valor do qrCode
-      
-      // Tentar extrair o código PIX de outras propriedades se disponíveis
-      const transactionData = response.point_of_interaction?.transaction_data || {};
-      if (transactionData && typeof transactionData === 'object') {
-        // Verificar se existe alguma propriedade que possa conter o código PIX
-        // @ts-ignore - Ignorar erro de tipagem, pois estamos verificando dinamicamente
-        if (transactionData.copy_paste) {
-          // @ts-ignore
-          copyPasteCode = transactionData.copy_paste;
-        }
-      }
-      
-      // Log para debug
-      logger.info(`QR Code: ${qrCode ? 'Disponível' : 'Indisponível'}`);
-      logger.info(`QR Code Base64: ${qrCodeBase64 ? 'Disponível' : 'Indisponível'}`);
-      logger.info(`Código Copia e Cola: ${copyPasteCode ? 'Disponível' : 'Indisponível'}`);
-      
-      // Retornar dados relevantes com tipos seguros
-      return {
-        id: response.id?.toString() || 'unknown',
-        status: response.status || 'pending',
-        qrCode: qrCode,
-        qrCodeBase64: qrCodeBase64,
-        ticketUrl: response.point_of_interaction?.transaction_data?.ticket_url || '',
-        copyPaste: copyPasteCode,
-        expirationDate: new Date(Date.now() + 5 * 60 * 1000), // 5 minutos
-      };
-    } catch (paymentError: any) {
-      // Se o erro for relacionado à identificação do usuário, tentar novamente com CPF de teste
-      if (
-        paymentError.message?.includes('Invalid user identification') || 
-        paymentError.cause?.some((c: any) => c.code === 2067)
-      ) {
-        logger.warn(`Erro de CPF inválido, tentando novamente com CPF de teste`);
-        
-        // Atualizar para um CPF de teste válido
-        processedPaymentData.payer.identification.number = validTestCPFs[0];
-        
-        // Tentar criar o pagamento novamente
-        const retryResponse = await payment.create({
-          body: processedPaymentData,
-          requestOptions: { 
-            idempotencyKey: randomUUID() 
-          }
-        });
-        
-        logger.info(`Pagamento criado com sucesso após retry: ${retryResponse.id}`);
-        
-        // Extrair dados do QR code e código copia e cola
-        const qrCode = retryResponse.point_of_interaction?.transaction_data?.qr_code || '';
-        const qrCodeBase64 = retryResponse.point_of_interaction?.transaction_data?.qr_code_base64 || '';
-        
-        // Verificar se temos o código PIX
-        let copyPasteCode = qrCode; // Por padrão, usar o mesmo valor do qrCode
-        
-        // Tentar extrair o código PIX de outras propriedades se disponíveis
-        const transactionData = retryResponse.point_of_interaction?.transaction_data || {};
-        if (transactionData && typeof transactionData === 'object') {
-          // Verificar se existe alguma propriedade que possa conter o código PIX
-          // @ts-ignore - Ignorar erro de tipagem, pois estamos verificando dinamicamente
-          if (transactionData.copy_paste) {
-            // @ts-ignore
-            copyPasteCode = transactionData.copy_paste;
-          }
-        }
-        
-        // Log para debug
-        logger.info(`QR Code: ${qrCode ? 'Disponível' : 'Indisponível'}`);
-        logger.info(`QR Code Base64: ${qrCodeBase64 ? 'Disponível' : 'Indisponível'}`);
-        logger.info(`Código Copia e Cola: ${copyPasteCode ? 'Disponível' : 'Indisponível'}`);
-        
-        // Retornar dados relevantes com tipos seguros
-        return {
-          id: retryResponse.id?.toString() || 'unknown',
-          status: retryResponse.status || 'pending',
-          qrCode: qrCode,
-          qrCodeBase64: qrCodeBase64,
-          ticketUrl: retryResponse.point_of_interaction?.transaction_data?.ticket_url || '',
-          copyPaste: copyPasteCode,
-          expirationDate: new Date(Date.now() + 5 * 60 * 1000), // 5 minutos
-        };
-      }
-      
-      // Se não for erro de CPF ou a segunda tentativa falhar, propagar o erro
-      throw paymentError;
-    }
+    return {
+      id: responseData.id?.toString() || 'unknown',
+      status: responseData.status || 'pending',
+      qrCode: transactionData.qr_code || '',
+      qrCodeBase64: transactionData.qr_code_base64 || '',
+      ticketUrl: transactionData.ticket_url || '',
+      copyPaste: transactionData.copy_paste || transactionData.qr_code || '',
+      expirationDate: new Date(Date.now() + 5 * 60 * 1000),
+    };
+    
   } catch (error: any) {
-    logger.error('Erro ao criar pagamento no Mercado Pago:', error);
+    logger.error('Erro ao criar pagamento PIX:', error);
     
     if (error.response) {
       logger.error('Detalhes da resposta de erro:', JSON.stringify(error.response.data || error.response));

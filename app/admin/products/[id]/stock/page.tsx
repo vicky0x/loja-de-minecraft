@@ -43,6 +43,8 @@ export default function ProductStockPage({ params }: { params: { id: string } })
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [hasVariants, setHasVariants] = useState(true);
+  const [directProductStock, setDirectProductStock] = useState(0);
 
   // Carregar dados do produto
   useEffect(() => {
@@ -57,9 +59,16 @@ export default function ProductStockPage({ params }: { params: { id: string } })
         const data = await response.json();
         setProduct(data.product);
         
-        // Selecionar a primeira variante por padrão
-        if (data.product.variants && data.product.variants.length > 0) {
+        // Verificar se o produto tem variantes
+        const productHasVariants = Array.isArray(data.product.variants) && data.product.variants.length > 0;
+        setHasVariants(productHasVariants);
+        
+        if (productHasVariants) {
+          // Selecionar a primeira variante por padrão
           setSelectedVariant(data.product.variants[0]._id);
+        } else {
+          // Se não tiver variantes, definir o estoque direto do produto
+          setDirectProductStock(data.product.stock || 0);
         }
       } catch (error) {
         console.error('Erro ao carregar produto:', error);
@@ -71,23 +80,36 @@ export default function ProductStockPage({ params }: { params: { id: string } })
     fetchProductData();
   }, [id]);
 
-  // Carregar itens de estoque quando selecionada uma variante
+  // Carregar itens de estoque
   useEffect(() => {
-    if (selectedVariant) {
+    if ((hasVariants && selectedVariant) || !hasVariants) {
       fetchStockItems();
     }
-  }, [selectedVariant, isUsedFilter, pagination.page]);
+  }, [selectedVariant, isUsedFilter, pagination.page, hasVariants]);
 
   // Função para buscar itens de estoque
   const fetchStockItems = async () => {
     try {
       setLoading(true);
+      setError('');
       
-      let url = `/api/stock?product=${id}&variant=${selectedVariant}&isUsed=${isUsedFilter}&limit=${pagination.limit}&page=${pagination.page}`;
+      console.log(`Buscando itens de estoque para produto ${id}, hasVariants: ${hasVariants}, variante: ${selectedVariant || 'nenhuma'}`);
+      
+      let url = `/api/stock?product=${id}`;
+      
+      // Adicionar variante ao URL apenas se o produto tiver variantes
+      if (hasVariants && selectedVariant) {
+        url += `&variant=${selectedVariant}`;
+      }
+      
+      // Adicionar outros parâmetros
+      url += `&isUsed=${isUsedFilter}&limit=${pagination.limit}&page=${pagination.page}`;
       
       if (searchTerm) {
         url += `&search=${encodeURIComponent(searchTerm)}`;
       }
+      
+      console.log('URL de requisição:', url);
       
       const response = await fetch(url);
       
@@ -96,8 +118,17 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       }
       
       const data = await response.json();
+      console.log(`Recebidos ${data.items.length} itens de estoque`);
       setStockItems(data.items);
       setPagination(data.pagination);
+      
+      // Atualizar também o estoque direto para produtos sem variantes
+      if (!hasVariants) {
+        setDirectProductStock(data.pagination.total);
+        if (product) {
+          setProduct({...product, stock: data.pagination.total});
+        }
+      }
     } catch (error) {
       console.error('Erro ao carregar itens de estoque:', error);
       setError('Não foi possível carregar os itens de estoque.');
@@ -111,7 +142,7 @@ export default function ProductStockPage({ params }: { params: { id: string } })
     e.preventDefault();
     setError('');
     
-    if (!selectedVariant) {
+    if (hasVariants && !selectedVariant) {
       setError('Selecione uma variante primeiro.');
       return;
     }
@@ -130,7 +161,7 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       setActionInProgress(true);
       console.log('Enviando requisição para adicionar itens:', {
         productId: id,
-        variantId: selectedVariant,
+        variantId: hasVariants ? selectedVariant : undefined,
         itemsCount: itemsToAdd.length
       });
       
@@ -141,7 +172,7 @@ export default function ProductStockPage({ params }: { params: { id: string } })
         },
         body: JSON.stringify({
           productId: id,
-          variantId: selectedVariant,
+          variantId: hasVariants ? selectedVariant : undefined,
           items: itemsToAdd,
         }),
       });
@@ -157,18 +188,25 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       setBulkCodes('');
       setBulkMode(false);
       
-      // Atualizar a contagem de estoque na variante selecionada
-      if (product && product.variants) {
-        const updatedVariants = product.variants.map((variant: Variant) => {
-          if (variant._id === selectedVariant) {
-            return { ...variant, stock: data.current_stock };
-          }
-          return variant;
-        });
-        
-        setProduct({ ...product, variants: updatedVariants });
+      if (hasVariants) {
+        // Atualizar a contagem de estoque na variante selecionada
+        if (product && product.variants) {
+          const updatedVariants = product.variants.map((variant: Variant) => {
+            if (variant._id === selectedVariant) {
+              return { ...variant, stock: data.current_stock };
+            }
+            return variant;
+          });
+          
+          setProduct({ ...product, variants: updatedVariants });
+        }
+      } else {
+        // Atualizar o estoque direto do produto
+        setDirectProductStock(data.current_stock);
+        setProduct({ ...product, stock: data.current_stock });
       }
       
+      // Atualizar a lista de itens de estoque
       fetchStockItems();
       
       alert(`${data.added} itens adicionados ao estoque com sucesso.`);
@@ -211,7 +249,7 @@ export default function ProductStockPage({ params }: { params: { id: string } })
     e.preventDefault();
     setError('');
     
-    if (!selectedVariant) {
+    if (hasVariants && !selectedVariant) {
       setError('Selecione uma variante primeiro.');
       return;
     }
@@ -225,14 +263,16 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       setActionInProgress(true);
       console.log('Enviando arquivo para importação:', {
         productId: id,
-        variantId: selectedVariant,
+        variantId: hasVariants ? selectedVariant : undefined,
         fileName: file.name,
         fileSize: file.size
       });
       
       const formData = new FormData();
       formData.append('productId', id);
-      formData.append('variantId', selectedVariant);
+      if (hasVariants && selectedVariant) {
+        formData.append('variantId', selectedVariant);
+      }
       formData.append('file', file);
       
       const response = await fetch('/api/stock/bulk', {
@@ -264,18 +304,25 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       const fileInput = document.getElementById('file-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       
-      // Atualizar a contagem de estoque na variante selecionada
-      if (product && product.variants) {
-        const updatedVariants = product.variants.map((variant: Variant) => {
-          if (variant._id === selectedVariant) {
-            return { ...variant, stock: data.current_stock };
-          }
-          return variant;
-        });
-        
-        setProduct({ ...product, variants: updatedVariants });
+      if (hasVariants) {
+        // Atualizar a contagem de estoque na variante selecionada
+        if (product && product.variants) {
+          const updatedVariants = product.variants.map((variant: Variant) => {
+            if (variant._id === selectedVariant) {
+              return { ...variant, stock: data.current_stock };
+            }
+            return variant;
+          });
+          
+          setProduct({ ...product, variants: updatedVariants });
+        }
+      } else {
+        // Atualizar o estoque direto do produto
+        setDirectProductStock(data.current_stock);
+        setProduct({ ...product, stock: data.current_stock });
       }
       
+      // Atualizar a lista de itens
       fetchStockItems();
       
       alert(`Importação concluída: ${data.added} itens adicionados, ${data.duplicates} duplicados.`);
@@ -339,18 +386,20 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       // Limpar seleção e atualizar a lista
       setSelectedItems([]);
       
-      // Atualizar a contagem de estoque na variante selecionada
-      if (product && product.variants) {
-        const stockCount = product.variants.find((v: Variant) => v._id === selectedVariant)?.stock - data.deleted;
-        
-        const updatedVariants = product.variants.map((variant: Variant) => {
-          if (variant._id === selectedVariant) {
-            return { ...variant, stock: Math.max(0, stockCount) };
-          }
-          return variant;
-        });
-        
-        setProduct({ ...product, variants: updatedVariants });
+      if (hasVariants) {
+        // Atualizar a contagem de estoque na variante selecionada
+        if (product && product.variants) {
+          const stockCount = product.variants.find((v: Variant) => v._id === selectedVariant)?.stock - data.deleted;
+          
+          const updatedVariants = product.variants.map((variant: Variant) => {
+            if (variant._id === selectedVariant) {
+              return { ...variant, stock: Math.max(0, stockCount) };
+            }
+            return variant;
+          });
+          
+          setProduct({ ...product, variants: updatedVariants });
+        }
       }
       
       fetchStockItems();
@@ -429,257 +478,268 @@ export default function ProductStockPage({ params }: { params: { id: string } })
           {product?.name} - Gerenciamento de Estoque
         </h3>
         
-        {/* Seleção de variante */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Selecione a Variante
-          </label>
-          <select
-            value={selectedVariant}
-            onChange={(e) => setSelectedVariant(e.target.value)}
-            className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+        {/* Seleção de variante (apenas para produtos com variantes) */}
+        {hasVariants ? (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Selecione a Variante
+            </label>
+            <select
+              value={selectedVariant}
+              onChange={(e) => setSelectedVariant(e.target.value)}
+              className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {product?.variants.map((variant: Variant) => (
+                <option key={variant._id} value={variant._id}>
+                  {variant.name} - Estoque: {variant.stock} unidades
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="mb-6">
+            <div className="bg-dark-300 p-4 rounded-md">
+              <h4 className="text-white font-medium mb-2">Estoque do Produto</h4>
+              <div className="flex items-center">
+                <span className="text-gray-300 mr-2">Estoque atual:</span>
+                <span className="text-white font-semibold">{directProductStock} unidades</span>
+              </div>
+              <p className="text-gray-400 text-sm mt-2">
+                Este produto não possui variantes. Você gerencia o estoque através dos códigos individuais adicionados abaixo.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* Ações de estoque (para ambos os tipos de produtos) */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <button
+            type="button"
+            onClick={() => setBulkMode(!bulkMode)}
+            className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md flex items-center justify-center"
           >
-            {product?.variants.map((variant: Variant) => (
-              <option key={variant._id} value={variant._id}>
-                {variant.name} - Estoque: {variant.stock} unidades
-              </option>
-            ))}
-          </select>
+            <FiPlus className="mr-2" />
+            Adicionar Códigos
+          </button>
+          
+          <label className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md flex items-center justify-center cursor-pointer">
+            <FiUpload className="mr-2" />
+            Importar Arquivo
+            <input
+              type="file"
+              id="file-input"
+              accept=".txt,.csv"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </label>
+          
+          {file && (
+            <button
+              type="button"
+              onClick={handleFileUpload}
+              disabled={actionInProgress}
+              className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center justify-center disabled:opacity-50"
+            >
+              {actionInProgress ? 'Processando...' : 'Processar Arquivo'}
+            </button>
+          )}
+          
+          {selectedItems.length > 0 && (
+            <button
+              type="button"
+              onClick={handleRemoveSelectedItems}
+              disabled={actionInProgress}
+              className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md flex items-center justify-center disabled:opacity-50"
+            >
+              <FiTrash2 className="mr-2" />
+              Remover ({selectedItems.length})
+            </button>
+          )}
         </div>
         
-        {selectedVariant && (
-          <>
-            {/* Ações de estoque */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+        {/* Formulário para adicionar itens em massa */}
+        {bulkMode && (
+          <div className="bg-dark-300 p-4 rounded-md mb-6">
+            <h4 className="text-white font-medium mb-2">Adicionar Códigos em Massa</h4>
+            <p className="text-gray-400 text-sm mb-3">
+              Adicione um código por linha. Códigos duplicados serão ignorados.
+            </p>
+            
+            <form onSubmit={handleAddStockItems}>
+              <textarea
+                value={bulkCodes}
+                onChange={(e) => setBulkCodes(e.target.value)}
+                rows={6}
+                placeholder="Insira um código por linha..."
+                className="w-full px-3 py-2 bg-dark-400 text-white border border-dark-500 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none mb-3"
+              />
+              
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setBulkMode(false)}
+                  className="bg-dark-400 hover:bg-dark-500 text-white py-1 px-3 rounded-md mr-2"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionInProgress || !bulkCodes.trim()}
+                  className="bg-primary hover:bg-primary/90 text-white py-1 px-3 rounded-md disabled:opacity-50"
+                >
+                  {actionInProgress ? 'Adicionando...' : 'Adicionar Itens'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+        
+        {/* Filtros e pesquisa */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <form onSubmit={handleSearch} className="flex">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Pesquisar por código..."
+                className="flex-1 px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
               <button
-                type="button"
-                onClick={() => setBulkMode(!bulkMode)}
-                className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md flex items-center justify-center"
+                type="submit"
+                className="bg-primary px-3 py-2 rounded-r-md text-white"
               >
-                <FiPlus className="mr-2" />
-                Adicionar Códigos
+                <FiSearch />
+              </button>
+            </form>
+          </div>
+          
+          <div className="flex items-center">
+            <span className="text-gray-300 mr-2">Filtrar:</span>
+            <select
+              value={isUsedFilter}
+              onChange={(e) => setIsUsedFilter(e.target.value)}
+              className="px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="false">Disponível</option>
+              <option value="true">Usado</option>
+              <option value="">Todos</option>
+            </select>
+          </div>
+        </div>
+        
+        {/* Tabela de itens de estoque */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-dark-300">
+            <thead>
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.length === stockItems.length && stockItems.length > 0}
+                      onChange={(e) => toggleSelectAll(e.target.checked)}
+                      className="h-4 w-4 bg-dark-300 border border-dark-400 rounded focus:ring-primary focus:ring-2"
+                    />
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Código
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Atribuído a
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Data
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-dark-300 divide-y divide-dark-400">
+              {stockItems.length > 0 ? (
+                stockItems.map((item) => (
+                  <tr key={item._id} className="hover:bg-dark-400">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item._id)}
+                        onChange={() => toggleSelectItem(item._id)}
+                        className="h-4 w-4 bg-dark-300 border border-dark-400 rounded focus:ring-primary focus:ring-2"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="font-mono text-sm text-white">{item.code}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        item.isUsed 
+                          ? 'bg-red-900/30 text-red-400' 
+                          : 'bg-green-900/30 text-green-400'
+                      }`}>
+                        {item.isUsed ? 'Usado' : 'Disponível'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {item.assignedTo ? (
+                        <div className="text-sm text-white">
+                          {item.assignedTo.username}
+                          <div className="text-xs text-gray-400">{item.assignedTo.email}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                      {item.isUsed ? (
+                        new Date(item.assignedAt as string).toLocaleString('pt-BR')
+                      ) : (
+                        new Date(item.createdAt).toLocaleString('pt-BR')
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-400">
+                    Nenhum item encontrado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Paginação */}
+        {pagination.pages > 1 && (
+          <div className="flex justify-between items-center mt-4">
+            <div className="text-sm text-gray-400">
+              Mostrando {stockItems.length} de {pagination.total} itens
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="px-3 py-1 bg-dark-300 text-white rounded-md disabled:opacity-50"
+              >
+                Anterior
               </button>
               
-              <label className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md flex items-center justify-center cursor-pointer">
-                <FiUpload className="mr-2" />
-                Importar Arquivo
-                <input
-                  type="file"
-                  id="file-input"
-                  accept=".txt,.csv"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
+              <span className="px-3 py-1 bg-dark-400 text-white rounded-md">
+                {pagination.page} / {pagination.pages}
+              </span>
               
-              {file && (
-                <button
-                  type="button"
-                  onClick={handleFileUpload}
-                  disabled={actionInProgress}
-                  className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center justify-center disabled:opacity-50"
-                >
-                  {actionInProgress ? 'Processando...' : 'Processar Arquivo'}
-                </button>
-              )}
-              
-              {selectedItems.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleRemoveSelectedItems}
-                  disabled={actionInProgress}
-                  className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md flex items-center justify-center disabled:opacity-50"
-                >
-                  <FiTrash2 className="mr-2" />
-                  Remover ({selectedItems.length})
-                </button>
-              )}
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.pages}
+                className="px-3 py-1 bg-dark-300 text-white rounded-md disabled:opacity-50"
+              >
+                Próxima
+              </button>
             </div>
-            
-            {/* Formulário para adicionar itens em massa */}
-            {bulkMode && (
-              <div className="bg-dark-300 p-4 rounded-md mb-6">
-                <h4 className="text-white font-medium mb-2">Adicionar Códigos em Massa</h4>
-                <p className="text-gray-400 text-sm mb-3">
-                  Adicione um código por linha. Códigos duplicados serão ignorados.
-                </p>
-                
-                <form onSubmit={handleAddStockItems}>
-                  <textarea
-                    value={bulkCodes}
-                    onChange={(e) => setBulkCodes(e.target.value)}
-                    rows={6}
-                    placeholder="Insira um código por linha..."
-                    className="w-full px-3 py-2 bg-dark-400 text-white border border-dark-500 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none mb-3"
-                  />
-                  
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setBulkMode(false)}
-                      className="bg-dark-400 hover:bg-dark-500 text-white py-1 px-3 rounded-md mr-2"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={actionInProgress || !bulkCodes.trim()}
-                      className="bg-primary hover:bg-primary/90 text-white py-1 px-3 rounded-md disabled:opacity-50"
-                    >
-                      {actionInProgress ? 'Adicionando...' : 'Adicionar Itens'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-            
-            {/* Filtros e pesquisa */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <form onSubmit={handleSearch} className="flex">
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Pesquisar por código..."
-                    className="flex-1 px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-primary px-3 py-2 rounded-r-md text-white"
-                  >
-                    <FiSearch />
-                  </button>
-                </form>
-              </div>
-              
-              <div className="flex items-center">
-                <span className="text-gray-300 mr-2">Filtrar:</span>
-                <select
-                  value={isUsedFilter}
-                  onChange={(e) => setIsUsedFilter(e.target.value)}
-                  className="px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="false">Disponível</option>
-                  <option value="true">Usado</option>
-                  <option value="">Todos</option>
-                </select>
-              </div>
-            </div>
-            
-            {/* Tabela de itens de estoque */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-dark-300">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.length === stockItems.length && stockItems.length > 0}
-                          onChange={(e) => toggleSelectAll(e.target.checked)}
-                          className="h-4 w-4 bg-dark-300 border border-dark-400 rounded focus:ring-primary focus:ring-2"
-                        />
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Código
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Atribuído a
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Data
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-dark-300 divide-y divide-dark-400">
-                  {stockItems.length > 0 ? (
-                    stockItems.map((item) => (
-                      <tr key={item._id} className="hover:bg-dark-400">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <input
-                            type="checkbox"
-                            checked={selectedItems.includes(item._id)}
-                            onChange={() => toggleSelectItem(item._id)}
-                            className="h-4 w-4 bg-dark-300 border border-dark-400 rounded focus:ring-primary focus:ring-2"
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-mono text-sm text-white">{item.code}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            item.isUsed 
-                              ? 'bg-red-900/30 text-red-400' 
-                              : 'bg-green-900/30 text-green-400'
-                          }`}>
-                            {item.isUsed ? 'Usado' : 'Disponível'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {item.assignedTo ? (
-                            <div className="text-sm text-white">
-                              {item.assignedTo.username}
-                              <div className="text-xs text-gray-400">{item.assignedTo.email}</div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                          {item.isUsed ? (
-                            new Date(item.assignedAt as string).toLocaleString('pt-BR')
-                          ) : (
-                            new Date(item.createdAt).toLocaleString('pt-BR')
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-4 text-center text-gray-400">
-                        Nenhum item encontrado para esta variante.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            
-            {/* Paginação */}
-            {pagination.pages > 1 && (
-              <div className="flex justify-between items-center mt-4">
-                <div className="text-sm text-gray-400">
-                  Mostrando {stockItems.length} de {pagination.total} itens
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                    disabled={pagination.page === 1}
-                    className="px-3 py-1 bg-dark-300 text-white rounded-md disabled:opacity-50"
-                  >
-                    Anterior
-                  </button>
-                  
-                  <span className="px-3 py-1 bg-dark-400 text-white rounded-md">
-                    {pagination.page} / {pagination.pages}
-                  </span>
-                  
-                  <button
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                    disabled={pagination.page === pagination.pages}
-                    className="px-3 py-1 bg-dark-300 text-white rounded-md disabled:opacity-50"
-                  >
-                    Próxima
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
     </div>

@@ -65,7 +65,7 @@ const DashboardSidebar = () => {
 
   return (
     <aside
-      className={`bg-dark-200 fixed md:sticky top-16 md:top-0 left-0 h-[calc(100vh-4rem)] z-10 w-64 transition-all duration-300 transform ${
+      className={`bg-dark-200 fixed md:sticky top-0 md:top-0 left-0 h-screen z-10 w-64 transition-all duration-300 transform ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } md:translate-x-0 shadow-lg`}
     >
@@ -216,16 +216,13 @@ export default function DashboardLayout({
   // Mostrar layout quando estiver autenticado (pelo hook ou localStorage)
   return (
     <div className="min-h-screen bg-dark-100">
-      {/* Header fixo no topo */}
-      <DashboardHeader />
-      
-      {/* Conteúdo principal com sidebar */}
-      <div className="flex pt-16">
+      {/* Conteúdo principal com sidebar, sem header */}
+      <div className="flex">
         {/* Sidebar */}
         <DashboardSidebar />
         
         {/* Área de conteúdo principal */}
-        <div className="w-full md:w-[calc(100%-16rem)] md:ml-64 transition-all duration-300">
+        <div className="w-full md:w-[calc(100%-16rem)] transition-all duration-300">
           <main className="p-6">
             {children}
           </main>

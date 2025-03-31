@@ -14,43 +14,35 @@ const logger = {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Conectar ao banco de dados
+    await connectDB();
+    
     logger.info('Recebido webhook do Mercado Pago');
     
     // Obter dados do corpo da requisição
     let data;
     try {
-      const clonedRequest = request.clone();
-      const text = await clonedRequest.text();
-      
-      if (!text || text.trim() === '') {
-        logger.error('Corpo da requisição vazio');
-        return NextResponse.json({ success: false, error: 'Corpo da requisição vazio' }, { status: 400 });
-      }
-      
-      try {
-        data = JSON.parse(text);
-        logger.info(`Dados do webhook: ${JSON.stringify(data)}`);
-      } catch (e) {
-        logger.error(`Erro ao analisar JSON: ${text}`);
-        return NextResponse.json({ success: false, error: 'JSON inválido no corpo da requisição' }, { status: 400 });
-      }
-    } catch (parseError) {
-      logger.error('Erro ao analisar corpo da requisição:', parseError);
-      return NextResponse.json({ success: false, error: 'Erro ao analisar corpo da requisição' }, { status: 400 });
+      const text = await request.text();
+      data = JSON.parse(text);
+      logger.info(`Dados do webhook: ${JSON.stringify(data)}`);
+    } catch (e) {
+      logger.error('Erro ao analisar dados do webhook:', e);
+      return NextResponse.json({ error: 'Falha ao analisar o corpo da requisição' }, { status: 400 });
     }
     
-    // Verificar se é um evento de pagamento
-    if (data.type !== 'payment' || !data.data || !data.data.id) {
+    // Ignorar webhooks que não são de pagamento
+    if (data.type !== 'payment') {
       logger.info(`Ignorando webhook não relacionado a pagamento: ${data.type}`);
-      return NextResponse.json({ success: true, message: 'Evento não processado' });
+      return NextResponse.json({ message: 'Webhook não relacionado a pagamento' });
     }
     
-    // Processar evento de pagamento
-    const paymentId = data.data.id;
-    logger.info(`Processando webhook de pagamento. ID: ${paymentId}`);
+    // Obter o ID do pagamento
+    const paymentId = data.data?.id;
+    if (!paymentId) {
+      return NextResponse.json({ error: 'ID de pagamento não fornecido no webhook' }, { status: 400 });
+    }
     
-    // Conectar ao banco de dados
-    await connectDB();
+    logger.info(`Processando webhook de pagamento. ID: ${paymentId}`);
     
     // Buscar o pedido relacionado ao pagamento
     const connection = mongoose.connection;
@@ -115,8 +107,10 @@ export async function POST(request: NextRequest) {
       
       // Atribuir produtos ao usuário
       try {
+        logger.info(`Iniciando atribuição de produtos do pedido ${order._id} para o usuário ${order.userId || order.user}`);
+        
         const assignResult = await assignProductsToUser(order, db);
-        logger.info(`Produtos atribuídos com sucesso para o pedido ${order._id}: ${JSON.stringify(assignResult)}`);
+        logger.info(`Resultado da atribuição de produtos: ${JSON.stringify(assignResult)}`);
         
         // Marcar o pedido como tendo produtos atribuídos
         if (assignResult) {
@@ -125,6 +119,52 @@ export async function POST(request: NextRequest) {
             { $set: { productAssigned: true } }
           );
           logger.info(`Pedido ${order._id} marcado como tendo produtos atribuídos`);
+          
+          // Verificar se os produtos foram corretamente adicionados à lista do usuário
+          const { default: User } = await import('@/app/lib/models/user');
+          const userId = order.userId || (order.user && (typeof order.user === 'string' ? order.user : order.user.toString()));
+          
+          if (userId) {
+            const user = await User.findById(userId);
+            logger.info(`Usuário ${userId} tem ${user?.products?.length || 0} produtos após atribuição`);
+          }
+        } else {
+          logger.error(`Falha na atribuição de produtos para o pedido ${order._id}. Verificando itens...`);
+          
+          // Verificar os itens do pedido para diagnóstico
+          const orderItems = order.orderItems || order.items;
+          if (orderItems && Array.isArray(orderItems)) {
+            logger.info(`Detalhes dos itens do pedido: ${JSON.stringify(orderItems)}`);
+            
+            // Verificar estoque disponível para cada item
+            for (const item of orderItems) {
+              const productId = item.productId || (item.product && (typeof item.product === 'string' ? item.product : item.product.toString()));
+              const variantId = item.variantId || item.variant;
+              
+              if (productId) {
+                // Buscar o produto para verificar se tem variantes
+                const { default: Product } = await import('@/app/lib/models/product');
+                const product = await Product.findById(productId);
+                
+                if (product) {
+                  const hasVariants = product.variants && product.variants.length > 0;
+                  logger.info(`Produto ${productId} ${hasVariants ? 'tem variantes' : 'não tem variantes'}`);
+                  
+                  // Verificar estoque disponível
+                  const { default: StockItem } = await import('@/app/lib/models/stock');
+                  const stockFilter = {
+                    product: productId,
+                    isUsed: false,
+                    assignedTo: null,
+                    ...(hasVariants ? { variant: variantId } : { variant: null })
+                  };
+                  
+                  const stockCount = await StockItem.countDocuments(stockFilter);
+                  logger.info(`Estoque disponível para o produto ${productId} ${hasVariants ? `variante ${variantId}` : 'sem variante'}: ${stockCount}`);
+                }
+              }
+            }
+          }
         }
       } catch (assignError) {
         logger.error(`Erro ao atribuir produtos: ${assignError}`);

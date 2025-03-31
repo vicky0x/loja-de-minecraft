@@ -14,7 +14,7 @@ try {
 // Interface para itens de pedido
 export interface IOrderItem {
   product: mongoose.Types.ObjectId;
-  variant: string;
+  variant?: string;
   price: number;
   name: string;
 }
@@ -80,7 +80,8 @@ const orderItemSchema = new Schema<IOrderItem>({
   },
   variant: {
     type: String,
-    required: true,
+    required: false,
+    default: null,
   },
   price: {
     type: Number,

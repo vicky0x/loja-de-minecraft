@@ -19,12 +19,25 @@ export async function GET(req: NextRequest) {
     // Buscar estatísticas de pedidos
     const orders = await Order.find({ user: userId });
     
-    // Calcular estatísticas
+    // Calcular estatísticas - diferenciando pedidos totais vs produtos adquiridos
     const stats = {
+      // Total de pedidos realizados (todos os pedidos)
       count: orders.length,
-      total: orders.reduce((sum, order) => sum + order.total, 0),
-      products: orders.reduce((sum, order) => sum + order.items.length, 0)
+      
+      // Valor total gasto
+      total: orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
+      
+      // Produtos efetivamente adquiridos (somente de pedidos aprovados/pagos)
+      products: orders
+        .filter(order => order.paymentInfo?.status === 'paid')
+        .reduce((sum, order) => sum + (order.orderItems?.length || 0), 0)
     };
+    
+    // Log para debug
+    console.log('Estatísticas calculadas:', stats);
+    console.log('Usuário ID:', userId);
+    console.log('Quantidade de pedidos encontrados:', orders.length);
+    console.log('Quantidade de produtos adquiridos:', stats.products);
     
     return NextResponse.json({ stats }, { status: 200 });
   } catch (error) {

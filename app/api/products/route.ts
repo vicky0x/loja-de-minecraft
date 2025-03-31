@@ -148,7 +148,9 @@ export async function POST(request: NextRequest) {
       is_featured: featured,
       variants,
       images,
-      requirements: reqData
+      requirements: reqData,
+      price,
+      stock
     } = body;
     
     // Processar os requisitos adequadamente
@@ -222,9 +224,13 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (!variants || variants.length === 0) {
+    // Verificar se tem variantes ou preço direto
+    const hasVariants = variants && variants.length > 0;
+    const hasDirectPrice = price !== undefined;
+    
+    if (!hasVariants && !hasDirectPrice) {
       return NextResponse.json(
-        { message: 'Pelo menos uma variante é obrigatória' },
+        { message: 'É necessário informar variantes ou um preço diretamente' },
         { status: 400 }
       );
     }
@@ -279,9 +285,11 @@ export async function POST(request: NextRequest) {
       shortDescription,
       images,
       category,
-      variants,
+      variants: hasVariants ? variants : [],
       featured: !!featured,
       requirements,
+      price: hasDirectPrice ? price : undefined,
+      stock: hasDirectPrice ? (stock || 0) : undefined
     });
     
     await newProduct.save();
