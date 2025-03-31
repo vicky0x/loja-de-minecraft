@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FiUser, FiMail, FiLock, FiSave, FiAlertCircle, FiUpload, FiPhone, FiMapPin, FiShoppingBag, FiDollarSign, FiPackage, FiCreditCard, FiEdit } from 'react-icons/fi';
+import { useAuth } from '@/app/contexts/AuthContext';
 
 interface UserProfile {
   id: string;
@@ -44,6 +45,8 @@ export default function ProfilePage() {
     address: '',
     phone: '',
   });
+
+  const { updateProfileImage, forceRefreshUserData } = useAuth();
 
   useEffect(() => {
     async function fetchUserProfile() {
@@ -181,6 +184,7 @@ export default function ProfilePage() {
 
     try {
       setIsUploading(true);
+      setError('');
       
       // Converter para base64 para visualização prévia
       const reader = new FileReader();
@@ -200,13 +204,56 @@ export default function ProfilePage() {
       
       if (response.ok) {
         const data = await response.json();
-        setSuccess('Imagem de perfil atualizada com sucesso');
-        // Atualizar o usuário com a nova URL da imagem
+        
+        // Garantir que a URL da imagem seja absoluta
+        const imageUrl = data.imageUrl.startsWith('http') 
+          ? data.imageUrl 
+          : window.location.origin + data.imageUrl;
+          
+        console.log('Nova imagem de perfil (URL absoluta):', imageUrl);
+        
         if (user) {
+          // Atualizar estado local
           setUser({
             ...user,
-            profileImage: data.imageUrl
+            profileImage: imageUrl
           });
+          
+          // Ordem importante:
+          // 1. Atualizar localStorage
+          try {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+              const userData = JSON.parse(storedUser);
+              userData.profileImage = imageUrl;
+              localStorage.setItem('user', JSON.stringify(userData));
+            }
+          } catch (storageError) {
+            console.error('Erro ao atualizar imagem no localStorage:', storageError);
+          }
+          
+          // 2. Usar a função do contexto para atualização global
+          updateProfileImage(imageUrl);
+          
+          // 3. Disparar evento para notificar outros componentes - ÚLTIMO PASSO
+          setTimeout(() => {
+            const event = new CustomEvent('profile-image-updated', {
+              detail: {
+                imageUrl: imageUrl,
+                timestamp: Date.now()
+              }
+            });
+            window.dispatchEvent(event);
+            console.log('Evento profile-image-updated disparado');
+            
+            // Forçar atualização global após um pequeno delay
+            setTimeout(() => {
+              forceRefreshUserData();
+            }, 200);
+          }, 100);
+          
+          // Informar ao usuário
+          setSuccess('Imagem de perfil atualizada com sucesso');
         }
       } else {
         const errorData = await response.json();
@@ -296,6 +343,25 @@ export default function ProfilePage() {
               ...user,
               ...data.user
             });
+            
+            // Atualizar o contexto de autenticação forçando o refresh dos dados
+            // já que houve alterações significativas no perfil
+            forceRefreshUserData();
+            
+            // Atualizar dados do usuário no localStorage também
+            try {
+              const storedUser = localStorage.getItem('user');
+              if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                // Atualizar cada campo modificado
+                Object.keys(data.user).forEach(key => {
+                  userData[key] = data.user[key];
+                });
+                localStorage.setItem('user', JSON.stringify(userData));
+              }
+            } catch (storageError) {
+              console.error('Erro ao atualizar dados no localStorage:', storageError);
+            }
           }
           
           // Limpar campos de senha
@@ -377,13 +443,27 @@ export default function ProfilePage() {
               >
                 {(uploadedImage || user?.profileImage) ? (
                   <Image 
-                    src={uploadedImage || user?.profileImage || '/images/default-avatar.png'} 
+                    src={uploadedImage || user?.profileImage || '#'} 
                     alt={user?.username || 'Avatar'} 
                     fill
                     className="object-cover"
+                    onError={(e) => {
+                      console.log('Erro ao carregar imagem de perfil:', uploadedImage || user?.profileImage);
+                      // Usar um fallback diretamente em vez de um arquivo
+                      e.currentTarget.style.display = 'none';
+                      // Mostrar a primeira letra do nome do usuário como fallback
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary-dark/30">
+                          <span class="text-white text-2xl font-bold">${user?.username.charAt(0).toUpperCase()}</span>
+                        </div>`;
+                      }
+                    }}
+                    unoptimized={true} // Desativar otimização para todas as imagens de perfil
+                    priority={true} 
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-primary text-2xl font-bold">
+                  <div className="w-full h-full flex items-center justify-center text-primary text-2xl font-bold bg-gradient-to-br from-primary/30 to-primary-dark/30">
                     {user?.username.charAt(0).toUpperCase()}
                   </div>
                 )}

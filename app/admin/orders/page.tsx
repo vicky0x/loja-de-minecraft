@@ -21,6 +21,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import OrderDetailModal from '@/app/components/OrderDetailModal';
+import OrderStatusBadge from '@/app/components/OrderStatusBadge';
 
 // Interfaces TypeScript
 interface User {
@@ -198,33 +199,44 @@ export default function OrdersPage() {
     }
   };
   
-  // Função para obter a cor do status
+  // Função para determinar a cor do status
   const getStatusColor = (status?: string) => {
-    switch (status) {
+    switch(status?.toLowerCase()) {
       case 'paid':
-        return 'green';
+      case 'completed':
+        return 'bg-green-500 text-green-100';
+      case 'processing':
+        return 'bg-blue-500 text-blue-100';
       case 'pending':
-        return 'yellow';
-      case 'failed':
-        return 'red';
-      case 'refunded':
-        return 'blue';
+        return 'bg-yellow-500 text-yellow-100';
+      case 'canceled':
+        return 'bg-red-500 text-red-100';
+      case 'expired':
+        return 'bg-red-400 text-red-100';
+      case 'fulfilled':
+        return 'bg-purple-500 text-purple-100';
       default:
-        return 'gray';
+        return 'bg-gray-500 text-gray-100';
     }
   };
   
   // Função para traduzir o status
   const translateStatus = (status?: string) => {
-    switch (status) {
+    switch(status?.toLowerCase()) {
       case 'paid':
         return 'Pago';
+      case 'completed':
+        return 'Completo';
+      case 'processing':
+        return 'Processando';
       case 'pending':
         return 'Pendente';
-      case 'failed':
-        return 'Falha';
-      case 'refunded':
-        return 'Reembolsado';
+      case 'canceled':
+        return 'Cancelado';
+      case 'expired':
+        return 'Expirado';
+      case 'fulfilled':
+        return 'Entregue';
       default:
         return status || 'Desconhecido';
     }
@@ -440,26 +452,7 @@ export default function OrdersPage() {
                       {order.paymentInfo?.method || 'Desconhecido'}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          getStatusColor(order.paymentInfo?.status) === 'green'
-                            ? 'bg-green-900/30 text-green-400'
-                            : getStatusColor(order.paymentInfo?.status) === 'yellow'
-                            ? 'bg-yellow-900/30 text-yellow-400'
-                            : getStatusColor(order.paymentInfo?.status) === 'red'
-                            ? 'bg-red-900/30 text-red-400'
-                            : 'bg-blue-900/30 text-blue-400'
-                        }`}
-                      >
-                        {getStatusColor(order.paymentInfo?.status) === 'green' ? (
-                          <FiCheck className="mr-1" size={12} />
-                        ) : getStatusColor(order.paymentInfo?.status) === 'red' ? (
-                          <FiX className="mr-1" size={12} />
-                        ) : (
-                          <FiClock className="mr-1" size={12} />
-                        )}
-                        {translateStatus(order.paymentInfo?.status)}
-                      </span>
+                      <OrderStatusBadge status={order.paymentInfo?.status || order.orderStatus} />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end">

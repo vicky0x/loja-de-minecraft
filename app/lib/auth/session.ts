@@ -114,12 +114,27 @@ export function useAuth() {
 // Função para fazer logout
 export async function logout() {
   try {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
+    console.log('Iniciando processo de logout...');
     
-    // Limpar cookies localmente
+    // Tentar fazer a requisição para a API de logout
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        console.warn('Resposta da API de logout não foi OK:', response.status);
+      } else {
+        console.log('Resposta da API de logout OK');
+      }
+    } catch (apiError) {
+      // Se a requisição para a API falhar, apenas logar o erro mas continuar o processo local
+      console.error('Erro ao fazer requisição para API de logout:', apiError);
+    }
+    
+    // Limpar cookies localmente de qualquer forma
+    console.log('Limpando cookies do navegador...');
     document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     document.cookie = "isAuthenticated=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     document.cookie = "userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
@@ -127,9 +142,39 @@ export async function logout() {
     document.cookie = "userEmail=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     document.cookie = "userRole=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     
+    // Limpar localStorage também
+    console.log('Limpando localStorage...');
+    try {
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('authExpiry');
+      localStorage.removeItem('cartItems');
+    } catch (localStorageError) {
+      console.error('Erro ao limpar localStorage:', localStorageError);
+    }
+    
+    // Disparar evento para atualizar o estado de autenticação global
+    try {
+      const event = new CustomEvent('auth-state-changed');
+      window.dispatchEvent(event);
+      console.log('Evento auth-state-changed disparado');
+    } catch (eventError) {
+      console.error('Erro ao disparar evento de mudança de autenticação:', eventError);
+    }
+    
+    console.log('Logout concluído, redirecionando para login...');
+    
     // Recarregar a página para limpar o estado
     window.location.href = '/auth/login';
   } catch (error) {
     console.error("Erro ao fazer logout:", error);
+    // Em caso de erro, tentar redirecionar de qualquer forma
+    try {
+      window.location.href = '/auth/login?error=logout_failed';
+    } catch (redirectError) {
+      console.error("Erro ao redirecionar após logout falhar:", redirectError);
+    }
   }
 } 

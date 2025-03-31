@@ -6,7 +6,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   name: string;
-  profileImage?: string;
+  profileImage?: string; // URL para a imagem (/api/images/[id])
   role: 'admin' | 'user';
   products: mongoose.Types.ObjectId[];
   memberNumber: number | null;
@@ -18,20 +18,27 @@ export interface IUser extends Document {
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
-// Gera um número de membro aleatório único
-async function generateMemberNumber() {
-  // Gerar um número aleatório de 6 dígitos
-  const randomNumber = Math.floor(100000 + Math.random() * 900000);
-  
-  // Verificar se já existe um usuário com este número
-  const existingUser = await mongoose.models.User?.findOne({ memberNumber: randomNumber });
-  
-  // Se existir, tentar novamente de forma recursiva
-  if (existingUser) {
-    return generateMemberNumber();
+// Função para gerar número de membro único
+function generateUniqueNumber(min = 100000, max = 999999) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Método personalizado para gerar número de membro
+async function generateUniqueMemberNumber(
+  this: mongoose.Model<IUser>,
+  retries = 5
+): Promise<number | null> {
+  if (retries <= 0) return null;
+
+  const randomNumber = generateUniqueNumber();
+  const existingUser = await this.findOne({ memberNumber: randomNumber });
+
+  if (!existingUser) {
+    return randomNumber;
   }
-  
-  return randomNumber;
+
+  // Tentar novamente se o número já estiver em uso
+  return generateUniqueMemberNumber.call(this, retries - 1);
 }
 
 const userSchema = new Schema<IUser>(
@@ -63,6 +70,8 @@ const userSchema = new Schema<IUser>(
     profileImage: {
       type: String,
       default: '',
+      // Agora pode armazenar URLs para o endpoint de imagens
+      // ex: /api/images/[id]
     },
     role: {
       type: String,
@@ -100,36 +109,40 @@ const userSchema = new Schema<IUser>(
 );
 
 // Gerar memberNumber antes de salvar, se não existir
-userSchema.pre('save', async function(next) {
-  try {
-    // Se for um novo documento e não tiver memberNumber definido
-    if (this.isNew && this.memberNumber === null) {
-      this.memberNumber = await generateMemberNumber();
-    }
-    next();
-  } catch (error) {
-    next(error as Error);
-  }
-});
-
-// Criptografar senha antes de salvar
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+  // Só executar se o documento for novo ou se a senha foi modificada
+  if (this.isNew || this.isModified('password')) {
+    try {
+      // Hash da senha
+      const salt = await bcrypt.genSalt(10);
+      this.password = await bcrypt.hash(this.password, salt);
+      
+      // Gerar número de membro se for um novo usuário e não tiver um número
+      if (this.isNew && !this.memberNumber) {
+        this.memberNumber = await generateUniqueMemberNumber.call(this.constructor as any);
+      }
+      
+      next();
+    } catch (error) {
+      next(error as Error);
+    }
+  } else {
     next();
-  } catch (error: any) {
-    next(error);
   }
 });
 
-// Método para comparar senhas
-userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+// Método para comparar senha
+userSchema.methods.comparePassword = async function (
+  candidatePassword: string
+): Promise<boolean> {
   try {
-    return await bcrypt.compare(candidatePassword, this.password);
+    // Buscar usuário com senha (que normalmente é excluída das consultas)
+    const user = await (this.constructor as any).findById(this._id).select('+password');
+    if (!user) return false;
+    
+    return await bcrypt.compare(candidatePassword, user.password);
   } catch (error) {
+    console.error('Erro ao comparar senha:', error);
     return false;
   }
 };

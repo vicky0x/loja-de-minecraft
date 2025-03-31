@@ -45,7 +45,7 @@ export default function Header() {
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <span className="text-primary font-bold text-xl md:text-2xl">Fantasy Cheats</span>
+            <span className="text-primary font-bold text-xl md:text-2xl">Fantasy Store</span>
           </Link>
 
           {/* Navegação Desktop */}

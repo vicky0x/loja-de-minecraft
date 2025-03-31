@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 
 // Interface para o item no carrinho
 interface CartItem {
@@ -43,21 +43,52 @@ export const useCart = () => {
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Estado para armazenar os itens do carrinho
   const [items, setItems] = useState<CartItem[]>([]);
+  // Ref para controlar se o componente está montado
+  const isMounted = useRef(false);
   
   // Carregar itens do localStorage quando o componente é montado
   useEffect(() => {
+    isMounted.current = true;
+    
     try {
       const savedItems = localStorage.getItem('cart');
-      if (savedItems) {
-        setItems(JSON.parse(savedItems));
+      if (savedItems && isMounted.current) {
+        const parsedItems = JSON.parse(savedItems);
+        if (Array.isArray(parsedItems)) {
+          setItems(parsedItems);
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar carrinho do localStorage:', error);
     }
+    
+    // Função para atualizar o carrinho quando o armazenamento muda em outra aba
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cart' && e.newValue && isMounted.current) {
+        try {
+          const parsedItems = JSON.parse(e.newValue);
+          if (Array.isArray(parsedItems)) {
+            setItems(parsedItems);
+          }
+        } catch (error) {
+          console.error('Erro ao processar alteração de carrinho:', error);
+        }
+      }
+    };
+    
+    // Adicionar listener para mudanças no storage (para sincronização entre abas)
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      isMounted.current = false;
+    };
   }, []);
   
   // Salvar itens no localStorage quando os itens mudam
   useEffect(() => {
+    if (!isMounted.current) return;
+    
     try {
       localStorage.setItem('cart', JSON.stringify(items));
     } catch (error) {

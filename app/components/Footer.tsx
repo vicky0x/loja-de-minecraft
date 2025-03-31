@@ -11,7 +11,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Bloco 1 - Sobre */}
           <div>
-            <h3 className="text-white text-xl font-bold mb-4">Fantasy Cheats</h3>
+            <h3 className="text-white text-xl font-bold mb-4">Fantasy Store</h3>
             <p className="text-gray-300 mb-4">
               Oferecemos os melhores cheats para seus jogos favoritos com segurança e suporte garantido.
             </p>
@@ -119,9 +119,9 @@ export default function Footer() {
         </div>
         
         {/* Copyright */}
-        <div className="border-t border-dark-400 mt-12 pt-8 text-center">
+        <div className="border-t border-gray-800 pt-8 mt-8 text-center">
           <p className="text-gray-400">
-            &copy; {currentYear} Fantasy Cheats. Todos os direitos reservados.
+            &copy; {currentYear} Fantasy Store. Todos os direitos reservados.
           </p>
         </div>
       </div>

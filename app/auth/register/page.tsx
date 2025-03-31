@@ -1,196 +1,144 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, FormEvent, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { FaUser } from 'react-icons/fa';
 
-export default function Register() {
+export default function RegisterPage() {
+  const router = useRouter();
+  
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [success, setSuccess] = useState('');
   
-  const router = useRouter();
-
-  // Verificar se o usuário já está autenticado
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const data = await response.json();
-          setIsAuthenticated(!!data.user);
-        }
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-      }
-    }
-    
-    checkAuth();
-  }, []);
-
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
     }));
   };
+  
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Verificar se é uma imagem
+    if (!file.type.startsWith('image/')) {
+      setError('O arquivo deve ser uma imagem (JPG, PNG ou GIF)');
+      return;
+    }
+
+    // Verificar tamanho (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('A imagem deve ter no máximo 2MB');
+      return;
+    }
+
+    setError('');
+    setProfileImage(file);
+    
+    // Converter para base64 para visualização prévia
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewUrl(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+  
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Validar campos
+    // Validações básicas
     if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError('Todos os campos são obrigatórios.');
+      setError('Todos os campos são obrigatórios');
       return;
     }
     
     if (formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem.');
+      setError('As senhas não coincidem');
       return;
     }
     
     if (formData.password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.');
+      setError('A senha deve ter pelo menos 6 caracteres');
       return;
     }
     
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    
     try {
-      setLoading(true);
-      setError('');
+      // Usar FormData para incluir a imagem, se existir
+      const submitData = new FormData();
+      submitData.append('email', formData.email);
+      submitData.append('username', formData.username);
+      submitData.append('password', formData.password);
       
-      console.log('Enviando requisição de registro...');
+      if (profileImage) {
+        submitData.append('profileImage', profileImage);
+      }
       
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        }),
+        body: submitData,
       });
       
       const data = await response.json();
-      console.log('Resposta do registro:', response.status);
       
-      if (!response.ok) {
-        if (response.status === 409) {
-          setError('Este email ou nome de usuário já está em uso.');
-        } else {
-          setError(data.message || 'Erro ao criar conta. Tente novamente.');
-        }
-        return;
-      }
-      
-      // Registro bem-sucedido, fazer login automático
-      console.log('Registro bem-sucedido, tentando login automático...');
-      
-      const loginResponse = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
-      });
-      
-      const loginData = await loginResponse.json();
-      console.log('Resposta do login automático:', loginResponse.status);
-      
-      if (!loginResponse.ok) {
-        setSuccess('Conta criada com sucesso! Por favor, faça login com suas credenciais.');
+      if (response.ok) {
+        setSuccess('Conta criada com sucesso! Você será redirecionado para o login.');
         setTimeout(() => {
           router.push('/auth/login');
         }, 2000);
-        return;
-      }
-      
-      // Login automático bem-sucedido
-      console.log('Login automático bem-sucedido. Dados do usuário:', loginData.user);
-      console.log('Cookies após login:', document.cookie);
-      
-      setSuccess('Conta criada com sucesso! Redirecionando...');
-      
-      // Timeout para garantir que os cookies foram definidos
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
-    } catch (err) {
-      console.error('Erro durante o registro:', err);
-      setError('Erro ao conectar ao servidor. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Função para fazer logout e limpar cookies
-  const handleForceLogout = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        // Recarregar a página para aplicar as mudanças
-        window.location.reload();
       } else {
-        setError('Erro ao limpar autenticação');
+        setError(data.message || 'Erro ao criar conta');
       }
     } catch (error) {
-      console.error('Erro ao limpar cookies:', error);
-      setError('Erro ao limpar autenticação');
+      setError('Ocorreu um erro ao processar seu registro');
+      console.error(error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark-100 px-4 py-16">
-      <div className="card max-w-md w-full p-8">
+    <div className="min-h-screen flex items-center justify-center bg-dark-100">
+      <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <span className="text-primary font-bold text-3xl">Fantasy Cheats</span>
-          </Link>
-          <h1 className="text-2xl font-bold mt-6 mb-2">Crie sua conta</h1>
-          <p className="text-gray-400">Junte-se à comunidade Fantasy Cheats</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Criar conta</h1>
+          <p className="text-gray-400">Cadastre-se para começar</p>
         </div>
-
-        {isAuthenticated && (
-          <div className="bg-yellow-500/20 border border-yellow-500 text-white p-4 rounded mb-6">
-            <p className="text-sm mb-2">Parece que você já está autenticado. Para criar uma nova conta, faça logout primeiro.</p>
-            <button
-              onClick={handleForceLogout}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded w-full"
-              disabled={loading}
-            >
-              {loading ? 'Limpando...' : 'Limpar autenticação atual'}
-            </button>
-          </div>
-        )}
-
+        
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-white p-4 rounded mb-6">
+          <div className="text-red-400 mb-4 text-center">
             {error}
           </div>
         )}
-
+        
         {success && (
-          <div className="bg-green-500/20 border border-green-500 text-white p-4 rounded mb-6">
+          <div className="text-green-400 mb-4 text-center">
             {success}
           </div>
         )}
-
+        
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1">
@@ -200,30 +148,32 @@ export default function Register() {
               id="username"
               name="username"
               type="text"
+              autoComplete="username"
               value={formData.username}
               onChange={handleChange}
-              className="input"
-              placeholder="seuusername"
               required
+              placeholder="brian"
+              className="w-full bg-dark-200 border border-dark-300 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
-
+          
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
-              E-mail
+              Email
             </label>
             <input
               id="email"
               name="email"
               type="email"
+              autoComplete="email"
               value={formData.email}
               onChange={handleChange}
-              className="input"
-              placeholder="seu@email.com"
               required
+              placeholder="seu@email.com"
+              className="w-full bg-dark-200 border border-dark-300 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
-
+          
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
               Senha
@@ -232,17 +182,15 @@ export default function Register() {
               id="password"
               name="password"
               type="password"
+              autoComplete="new-password"
               value={formData.password}
               onChange={handleChange}
-              className="input"
-              placeholder="••••••••"
               required
+              placeholder="••••••••"
+              className="w-full bg-dark-200 border border-dark-300 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-primary"
             />
-            <p className="text-xs text-gray-400 mt-1">
-              A senha deve ter pelo menos 6 caracteres
-            </p>
           </div>
-
+          
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
               Confirmar senha
@@ -251,46 +199,73 @@ export default function Register() {
               id="confirmPassword"
               name="confirmPassword"
               type="password"
+              autoComplete="new-password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="input"
+              required
               placeholder="••••••••"
-              required
+              className="w-full bg-dark-200 border border-dark-300 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
-
-          <div className="flex items-center">
+          
+          <div className="relative w-32 h-32 cursor-pointer mx-auto mt-4 rounded-full overflow-hidden border-2 border-primary-dark/50 transition-all duration-300 hover:border-primary-dark" onClick={handleImageClick}>
+            {previewUrl ? (
+              <Image
+                src={previewUrl}
+                alt="Preview da imagem"
+                width={128}
+                height={128}
+                className="object-cover w-full h-full"
+                style={{ objectFit: 'cover', objectPosition: 'center' }}
+                onError={(e) => {
+                  console.log('Erro ao carregar imagem de pré-visualização');
+                  e.currentTarget.style.display = 'none';
+                  // Mostrar o ícone padrão como fallback
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
+                      <span><FaUser size={48} className="text-white/70" /></span>
+                    </div>`;
+                  }
+                }}
+                unoptimized={true}
+                priority={true}
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
+                <span><FaUser size={48} className="text-white/70" /></span>
+              </div>
+            )}
             <input
-              id="terms"
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-600 bg-dark-300 text-primary focus:ring-primary"
-              required
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageChange}
+              ref={fileInputRef}
             />
-            <label htmlFor="terms" className="ml-2 block text-sm text-gray-300">
-              Eu aceito os{' '}
-              <Link href="/terms" className="text-primary hover:underline">
-                Termos de Uso
-              </Link>{' '}
-              e{' '}
-              <Link href="/privacy" className="text-primary hover:underline">
-                Política de Privacidade
-              </Link>
-            </label>
           </div>
-
+          
           <button
             type="submit"
-            className="btn btn-primary w-full py-3"
-            disabled={loading}
+            disabled={isLoading}
+            className="w-full py-3 bg-primary hover:bg-primary-dark text-white rounded-md font-medium transition-colors"
           >
-            {loading ? 'Criando conta...' : 'Criar conta'}
+            {isLoading ? 'Criando conta...' : 'Criar conta'}
           </button>
         </form>
-
-        <div className="mt-8 text-center">
-          <span className="text-gray-400">Já tem uma conta?</span>{' '}
-          <Link href="/auth/login" className="text-primary hover:underline">
-            Faça login
+        
+        <div className="mt-6 text-center">
+          <p className="text-gray-400">
+            Já tem uma conta?{' '}
+            <Link href="/auth/login" className="text-primary hover:text-primary-light">
+              Entrar
+            </Link>
+          </p>
+        </div>
+        
+        <div className="mt-4 text-center">
+          <Link href="/" className="text-sm text-gray-400 hover:text-gray-300">
+            Voltar para a página inicial
           </Link>
         </div>
       </div>

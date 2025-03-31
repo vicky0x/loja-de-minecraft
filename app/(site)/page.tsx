@@ -79,7 +79,7 @@ export default function Home() {
         <div className="container mx-auto px-4 z-10 text-center">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-yellow-500">
-              FANTASY CHEATS
+              FANTASY STORE
             </h1>
             <h2 className="text-5xl font-bold mb-6">
               A MELHOR EXPERIÊNCIA EM <span className="text-primary">CHEATS</span> PARA JOGOS
@@ -295,7 +295,7 @@ export default function Home() {
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">O QUE DIZEM NOSSOS CLIENTES</h2>
             <p className="text-gray-300 max-w-2xl mx-auto">
-              Veja o que nossa comunidade tem a dizer sobre a Fantasy Cheats
+              Veja o que nossa comunidade tem a dizer sobre a Fantasy Store
             </p>
           </div>
           
@@ -345,7 +345,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-gray-300 mb-4">
-                "Tentei vários outros cheats antes, mas a Fantasy Cheats está em outro nível. As atualizações são rápidas e o anti-ban realmente funciona!"
+                "Tentei vários outros cheats antes, mas a Fantasy Store está em outro nível. As atualizações são rápidas e o anti-ban realmente funciona!"
               </p>
               <div className="font-medium">Rodrigo M.</div>
               <div className="text-sm text-gray-400">Cliente há 5 meses</div>
@@ -367,7 +367,7 @@ export default function Home() {
           <div className="max-w-3xl mx-auto">
             <div className="space-y-4">
               <div className="bg-dark-200 rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3">É seguro usar os cheats da Fantasy Cheats?</h3>
+                <h3 className="text-xl font-bold mb-3">É seguro usar os cheats da Fantasy Store?</h3>
                 <p className="text-gray-300">
                   Sim, todos os nossos cheats são desenvolvidos com tecnologia anti-detecção avançada. Mesmo assim, recomendamos sempre seguir nossas diretrizes de uso para maior segurança.
                 </p>

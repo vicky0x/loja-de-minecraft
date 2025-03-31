@@ -207,7 +207,7 @@ export default function ProductsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-            {filteredProducts.map((product) => (
+            {filteredProducts.map((product, index) => (
               <div key={product._id} className="bg-dark-300 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="relative h-48">
                   {product.image ? (
@@ -216,6 +216,8 @@ export default function ProductsPage() {
                       alt={product.name}
                       fill
                       className="object-cover"
+                      unoptimized={true}
+                      priority={index < 6}
                     />
                   ) : (
                     <div className="absolute inset-0 bg-dark-400 flex items-center justify-center">

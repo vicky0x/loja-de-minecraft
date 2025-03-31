@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { logout } from '../../lib/auth/session';
+import { FiLogOut } from 'react-icons/fi';
 
 const Header = () => {
   const pathname = usePathname();
@@ -114,25 +116,16 @@ const Header = () => {
             </svg>
           </Link>
           
-          <Link 
-            href="/api/auth/logout" 
-            className="p-2 text-gray-300 hover:text-white transition-colors ml-2"
-            title="Sair"
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              logout();
+            }}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-          </Link>
+            <FiLogOut className="text-lg" />
+            <span>Sair</span>
+          </button>
         </div>
       </div>
     </header>

@@ -13,6 +13,7 @@ import {
   FiRefreshCw,
   FiAlertCircle
 } from 'react-icons/fi';
+import OrderStatusBadge from '@/app/components/OrderStatusBadge';
 
 interface OrderItem {
   _id: string;
@@ -31,9 +32,11 @@ interface Order {
   orderItems: OrderItem[];
   totalAmount: number;
   paymentMethod: 'pix' | 'credit_card';
+  paymentStatus?: string;
+  orderStatus?: string;
   paymentInfo: {
     id?: string;
-    status: 'pending' | 'paid' | 'failed' | 'refunded';
+    status: 'pending' | 'paid' | 'failed' | 'refunded' | 'expired' | 'canceled';
     method: string;
   };
   createdAt: string;
@@ -264,10 +267,10 @@ export default function OrdersPage() {
                       }).format(order.totalAmount || 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {getStatusBadge(order.paymentInfo?.status || 'pending')}
-                      <div className="mt-1">
-                        {getPaymentMethodBadge(order.paymentInfo?.method || order.paymentMethod || '')}
-                      </div>
+                      <OrderStatusBadge 
+                        status={order.paymentStatus || order.paymentInfo?.status} 
+                        size="sm" 
+                      />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                       <Link 

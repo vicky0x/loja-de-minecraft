@@ -1085,3 +1085,19 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
   transform: translateY(1px);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
+
+@layer utilities {
+  /* Animação de fade-in para transição de imagem de perfil */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-in-out forwards;
+  }
+}

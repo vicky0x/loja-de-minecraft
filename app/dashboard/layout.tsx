@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { FiHome, FiUser, FiShoppingCart, FiDownload, FiHelpCircle, FiLogOut, FiMessageSquare, FiMenu, FiX } from 'react-icons/fi';
-import { useAuth } from '@/app/lib/auth/session';
+import { useAuth, logout } from '@/app/lib/auth/session';
 
 // Componente de barra lateral simplificado
 const DashboardSidebar = () => {
@@ -14,10 +14,7 @@ const DashboardSidebar = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      localStorage.removeItem('user');
-      localStorage.removeItem('isAuthenticated');
-      router.push('/auth/login');
+      await logout();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
@@ -72,7 +69,7 @@ const DashboardSidebar = () => {
       <div className="flex-1 flex flex-col h-full">
         <div className="flex items-center justify-center h-16 border-b border-dark-400">
           <Link href="/" className="text-xl font-bold text-primary">
-            Fantasy Cheats
+            Fantasy Store
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto py-4 px-3">
@@ -109,7 +106,12 @@ const DashboardSidebar = () => {
 
 // Componente de cabeçalho simplificado
 const DashboardHeader = () => {
-  const [user, setUser] = useState<{ username: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ 
+    username: string; 
+    email: string; 
+    role?: string;
+    orders?: { count: number } 
+  } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -118,17 +120,55 @@ const DashboardHeader = () => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
+        
+        // Verifica se precisa buscar as estatísticas
+        const parsedUser = JSON.parse(storedUser);
+        if (!parsedUser.orders) {
+          fetchUserStats(parsedUser);
+        }
       }
     } catch (error) {
       console.error('Erro ao ler usuário do localStorage:', error);
     }
   }, []);
+  
+  // Função para buscar estatísticas do usuário
+  const fetchUserStats = async (userData: any) => {
+    try {
+      const response = await fetch('/api/user/stats');
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Atualizar o usuário com as estatísticas
+        if (data.stats) {
+          const updatedUser = {
+            ...userData,
+            orders: data.stats
+          };
+          
+          // Atualizar o localStorage e o estado
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas do usuário:', error);
+    }
+  };
 
   const toggleSidebar = () => {
     // Dispara um evento personalizado para que o componente Sidebar possa capturá-lo
     const event = new CustomEvent('toggle-sidebar');
     window.dispatchEvent(event);
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // Determinar o tipo de usuário com base nas estatísticas
+  const getUserType = () => {
+    if (!user) return '';
+    if (user.role === 'admin') return 'Administrador';
+    return user.orders?.count && user.orders.count > 0 ? 'Cliente' : 'Usuário';
   };
 
   return (
@@ -150,7 +190,9 @@ const DashboardHeader = () => {
         </div>
         {user && (
           <div className="flex items-center">
-            <span className="text-sm text-gray-300 mr-3 hidden sm:block">Olá, {user.username}</span>
+            <span className="text-sm text-gray-300 mr-3 hidden sm:block">
+              Olá, {user.username} <span className="text-xs text-gray-400">({getUserType()})</span>
+            </span>
             <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-lg font-semibold">
               {user.username.charAt(0).toUpperCase()}
             </div>

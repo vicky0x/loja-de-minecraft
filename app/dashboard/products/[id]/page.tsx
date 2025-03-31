@@ -203,6 +203,8 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                     fill
                     style={{ objectFit: 'cover' }}
                     className="transition-transform hover:scale-105"
+                    unoptimized={true}
+                    priority={true}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">

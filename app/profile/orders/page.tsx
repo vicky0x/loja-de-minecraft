@@ -3,6 +3,10 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiLoader } from 'react-icons/fi';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import OrderDetailModal from '@/app/components/OrderDetailModal';
+import OrderStatusBadge from '@/app/components/OrderStatusBadge';
 
 export default function ProfileOrdersRedirect() {
   const router = useRouter();

@@ -76,7 +76,15 @@ export default function CartPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'pix' | 'card'>('pix');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pixPaymentData, setPixPaymentData] = useState<any>(null);
+  const [pixPaymentData, setPixPaymentData] = useState<{
+    orderId: string;
+    paymentId?: string;
+    pixCopiaECola?: string;
+    qrCodeBase64?: string;
+    qrCodeUrl?: string;
+    expiresAt?: string;
+    total?: number;
+  } | null>(null);
   const [isPixModalOpen, setIsPixModalOpen] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [showCheckoutForm, setShowCheckoutForm] = useState(false);
@@ -96,33 +104,82 @@ export default function CartPage() {
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
-  const [key, setKey] = useState(0);
   
   // Estado para controlar se o componente está montado
   const isMounted = useRef(false);
 
-  // Efeito para recuperar de possíveis estados de travamento
+  // Efeito para recuperar dados de PIX do localStorage
   useEffect(() => {
-    // Marcar o componente como montado
+    // Marcar componente como montado
     isMounted.current = true;
     
+    // Função para verificar e restaurar dados do PIX do localStorage
+    const checkStoredPaymentData = () => {
+      try {
+        const storedPixData = localStorage.getItem('pixPaymentData');
+        const storedOrderId = localStorage.getItem('createdOrderId');
+        
+        if (storedPixData && storedOrderId) {
+          const parsedPixData = JSON.parse(storedPixData);
+          console.log('Restaurando dados de pagamento PIX do localStorage:', parsedPixData);
+          
+          setPixPaymentData(parsedPixData);
+          setCreatedOrderId(storedOrderId);
+          setIsPixModalOpen(true);
+        }
+      } catch (error) {
+        console.error('Erro ao recuperar dados de PIX do localStorage:', error);
+      }
+    };
+    
+    // Verificar dados armazenados quando o componente montar
+    checkStoredPaymentData();
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Efeito para recuperar de possíveis estados de travamento
+  useEffect(() => {
     // Função para limpar listeners e estados problemáticos
     const cleanup = () => {
-      // Remover qualquer estado que possa estar causando problemas
+      if (!isMounted.current) return;
+      
+      // Não resetamos o modal de PIX
       setShowDeleteConfirm(null);
-      setIsPixModalOpen(false);
       setIsLoading(false);
       setError(null);
     };
     
-    // Executar limpeza inicial
+    // Resetar estados ao iniciar
     cleanup();
     
     // Adicionar detector de visibilidade da página
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Quando o usuário volta para a página, fazer limpeza para evitar estados inconsistentes
-        cleanup();
+      if (document.visibilityState === 'visible' && isMounted.current) {
+        // Quando o usuário volta para a página, verificamos se há dados de PIX armazenados
+        // e reabrimos o modal se necessário
+        try {
+          const storedPixData = localStorage.getItem('pixPaymentData');
+          const storedOrderId = localStorage.getItem('createdOrderId');
+          
+          if (storedPixData && storedOrderId) {
+            const parsedPixData = JSON.parse(storedPixData);
+            
+            // Garantir que o modal esteja aberto
+            setPixPaymentData(parsedPixData);
+            setCreatedOrderId(storedOrderId);
+            setIsPixModalOpen(true);
+          }
+        } catch (error) {
+          console.error('Erro ao recuperar dados de PIX do localStorage:', error);
+        }
+        
+        // Limpeza de outros estados problemáticos
+        setShowDeleteConfirm(null);
+        setIsLoading(false);
+        setError(null);
       }
     };
     
@@ -131,6 +188,7 @@ export default function CartPage() {
     // Cleanup ao desmontar
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Marcar que o componente não está mais montado para evitar atualizações de estado
       isMounted.current = false;
     };
   }, []);
@@ -144,8 +202,10 @@ export default function CartPage() {
     } catch (error) {
       console.error('Erro na operação:', error);
       // Resetar estados para evitar travamentos
-      setIsLoading(false);
-      setError('Ocorreu um erro. Por favor, recarregue a página.');
+      if (isMounted.current) {
+        setIsLoading(false);
+        setError('Ocorreu um erro. Por favor, recarregue a página.');
+      }
     }
   };
 
@@ -154,131 +214,18 @@ export default function CartPage() {
   const cartTotal = cartSubtotal - couponDiscount;
   const isCartEmpty = items.length === 0;
   
-  // Efeito para detectar intenção de saída
-  useEffect(() => {
-    const handleMouseLeave = (e: MouseEvent) => {
-      if (e.clientY <= 0 && !isCartEmpty && !showExitIntent) {
-        setShowExitIntent(true);
-      }
-    };
-    
-    document.addEventListener('mouseleave', handleMouseLeave);
-    
-    return () => {
-      document.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, [isCartEmpty, showExitIntent]);
-
-  // Atualizar dados do cliente
-  const handleCustomerDataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    // Formatação especial para CPF
-    if (name === 'cpf') {
-      const formattedCPF = formatCPF(value);
-      setCustomerData((prev: CustomerData) => ({ ...prev, [name]: formattedCPF }));
-      return;
+  // Função para verificar se o componente ainda está montado antes de atualizar estados
+  const updateStateIfMounted = (stateUpdater: Function) => {
+    if (isMounted.current) {
+      stateUpdater();
     }
-    
-    // Formatação especial para telefone
-    if (name === 'phone') {
-      const cleanPhone = value.replace(/\D/g, '');
-      let formattedPhone = cleanPhone;
-      
-      if (cleanPhone.length <= 2) {
-        formattedPhone = cleanPhone;
-      } else if (cleanPhone.length <= 6) {
-        formattedPhone = `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2)}`;
-      } else if (cleanPhone.length <= 10) {
-        formattedPhone = `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2, 6)}-${cleanPhone.slice(6)}`;
-      } else {
-        formattedPhone = `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2, 7)}-${cleanPhone.slice(7, 11)}`;
-      }
-      
-      setCustomerData((prev: CustomerData) => ({ ...prev, [name]: formattedPhone }));
-      return;
-    }
-    
-    setCustomerData((prev: CustomerData) => ({ ...prev, [name]: value }));
-  };
-
-  // Função para formatar CPF
-  const formatCPF = (cpf: string): string => {
-    // Remover todos os caracteres não numéricos
-    const cleanCPF = cpf.replace(/\D/g, '');
-    
-    // Limitar a 11 dígitos
-    const limitedCPF = cleanCPF.slice(0, 11);
-    
-    // Formatar o CPF
-    if (limitedCPF.length <= 3) {
-      return limitedCPF;
-    }
-    if (limitedCPF.length <= 6) {
-      return `${limitedCPF.slice(0, 3)}.${limitedCPF.slice(3)}`;
-    }
-    if (limitedCPF.length <= 9) {
-      return `${limitedCPF.slice(0, 3)}.${limitedCPF.slice(3, 6)}.${limitedCPF.slice(6)}`;
-    }
-    return `${limitedCPF.slice(0, 3)}.${limitedCPF.slice(3, 6)}.${limitedCPF.slice(6, 9)}-${limitedCPF.slice(9, 11)}`;
-  };
-
-  // Função para aplicar cupom
-  const applyCoupon = async () => {
-    if (!couponCode.trim()) {
-      toast.error('Digite um código de cupom válido');
-      return;
-    }
-    
-    setIsApplyingCoupon(true);
-    setIsCouponValid(null);
-    
-    try {
-      // Simular verificação de cupom (substitua por uma chamada real à API)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Exemplo: cupom "FANTASY10" dá 10% de desconto
-      if (couponCode.toUpperCase() === 'FANTASY10') {
-        const discount = cartSubtotal * 0.1;
-        setCouponDiscount(discount);
-        setIsCouponValid(true);
-        toast.success('Cupom aplicado com sucesso!');
-      } else {
-        setCouponDiscount(0);
-        setIsCouponValid(false);
-        toast.error('Cupom inválido ou expirado');
-      }
-    } catch (error) {
-      console.error('Erro ao aplicar cupom:', error);
-      toast.error('Erro ao verificar cupom. Tente novamente.');
-      setIsCouponValid(false);
-    } finally {
-      setIsApplyingCoupon(false);
-    }
-  };
-
-  // Função para lidar com mudança de quantidade
-  const handleQuantityChange = (variantId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    
-    // Encontrar o item no carrinho
-    const item = items.find((item: CartItem) => item.variantId === variantId);
-    if (!item) return;
-    
-    // Verificar se a nova quantidade excede o estoque
-    if (item.stock && newQuantity > item.stock) {
-      toast.error(`Quantidade máxima disponível: ${item.stock}`);
-      return;
-    }
-    
-    updateQuantity(variantId, newQuantity);
   };
 
   // Função segura para remover item do carrinho
   const handleRemoveItem = (variantId: string) => {
     safeOperation(() => {
       removeItem(variantId);
-      setShowDeleteConfirm(null);
+      updateStateIfMounted(() => setShowDeleteConfirm(null));
       toast.success('Item removido do carrinho');
     });
   };
@@ -301,14 +248,16 @@ export default function CartPage() {
       }
       
       // Verificar se a nova quantidade não excede o estoque
-      const safeQuantity = Math.min(newQuantity, item.stock);
+      const safeQuantity = item.stock !== undefined ? Math.min(newQuantity, item.stock) : newQuantity;
       
       // Atualizar a quantidade
       updateQuantity(itemId, safeQuantity);
       
     } catch (error) {
       console.error('Erro ao atualizar quantidade:', error);
-      toast.error('Não foi possível atualizar a quantidade. Tente novamente.');
+      if (isMounted.current) {
+        toast.error('Não foi possível atualizar a quantidade. Tente novamente.');
+      }
     }
   };
   
@@ -347,7 +296,8 @@ export default function CartPage() {
           lastName: customerData.lastName,
           email: customerData.email,
           cpf: customerData.cpf,
-          phone: customerData.phone
+          // Enviar telefone apenas se estiver preenchido
+          ...(customerData.phone ? { phone: customerData.phone } : {})
         }
       };
 
@@ -400,11 +350,13 @@ export default function CartPage() {
       return false;
     }
     
+    // Telefone é opcional, não precisa validar
+    
     return true;
   };
   
-  // Processador de pagamento PIX
-  const processPixPayment = async (orderId: string): Promise<boolean> => {
+  // Função para gerar pagamento PIX
+  const generatePixPayment = async (orderId: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       
@@ -414,9 +366,32 @@ export default function CartPage() {
       // Limpar o CPF (remover pontos, traços e espaços)
       const cleanCPF = customerData.cpf.replace(/\D/g, '');
       
-      // Validar formato do CPF antes de enviar
+      // Validação completa do CPF antes de enviar
       if (cleanCPF.length !== 11) {
         throw new Error('CPF inválido. Insira um CPF com 11 dígitos.');
+      }
+      
+      // Verificar se tem padrões inválidos (todos os dígitos iguais)
+      if (/^(\d)\1{10}$/.test(cleanCPF)) {
+        throw new Error('CPF inválido. O CPF não pode ter todos os dígitos iguais.');
+      }
+      
+      // Preparar os dados para o pagamento PIX
+      const paymentData = {
+        order_id: orderId,
+        transaction_amount: totalAmount,
+        email: customerData.email,
+        cpf: cleanCPF, // Enviando CPF apenas com números
+        first_name: customerData.firstName,
+        last_name: customerData.lastName
+      };
+      
+      // Adicionar telefone apenas se estiver preenchido
+      if (customerData.phone) {
+        // Limpar telefone (remover formatação)
+        const cleanPhone = customerData.phone.replace(/\D/g, '');
+        // @ts-ignore - Adicionar ao objeto de dados
+        paymentData.phone = cleanPhone;
       }
       
       const pixResponse = await fetch('/api/payment/mercadopago', {
@@ -424,14 +399,7 @@ export default function CartPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          order_id: orderId,
-          transaction_amount: totalAmount,
-          email: customerData.email,
-          cpf: cleanCPF, // Enviando CPF apenas com números
-          first_name: customerData.firstName,
-          last_name: customerData.lastName
-        }),
+        body: JSON.stringify(paymentData),
       });
       
       if (!pixResponse.ok) {
@@ -448,16 +416,24 @@ export default function CartPage() {
         throw new Error('Não foi possível gerar o código PIX. Tente novamente.');
       }
 
-      // Guardar dados do PIX e abrir modal
-      setPixPaymentData({
+      // Dados do PIX que serão utilizados no modal
+      const pixPaymentDataToStore = {
         orderId: orderId,
         paymentId: pixData.paymentId,
         qrCodeBase64: pixData.qrCodeBase64,
         qrCodeUrl: pixData.qrCodeUrl,
         pixCopiaECola: pixData.pixCopiaECola,
-        expiresAt: pixData.expiresAt
-      });
+        expiresAt: pixData.expiresAt,
+        total: cartTotal // Armazenar o valor total do carrinho
+      };
+
+      // Guardar dados do PIX e abrir modal
+      setPixPaymentData(pixPaymentDataToStore);
       setIsPixModalOpen(true);
+      
+      // Salvar dados no localStorage para persistir entre navegações
+      localStorage.setItem('pixPaymentData', JSON.stringify(pixPaymentDataToStore));
+      localStorage.setItem('createdOrderId', orderId);
       
       return true;
     } catch (error: any) {
@@ -550,12 +526,14 @@ export default function CartPage() {
   
   // Função para lidar com o checkout
   const handleCheckout = () => {
-    if (isCartEmpty) return;
+    if (!isMounted.current || isCartEmpty) return;
     
     if (!showCheckoutForm) {
       // Se o formulário de checkout não estiver visível, mostrar
-      setShowCheckoutForm(true);
-      setActiveStep(2);
+      updateStateIfMounted(() => {
+        setShowCheckoutForm(true);
+        setActiveStep(2);
+      });
       return;
     }
     
@@ -571,29 +549,40 @@ export default function CartPage() {
   
   // Função para processar o pagamento
   const processPayment = async () => {
+    if (!isMounted.current) return;
+    
     try {
-      setIsLoading(true);
-      setError(null);
+      updateStateIfMounted(() => {
+        setIsLoading(true);
+        setError(null);
+      });
       
-      // Criar o pedido
-      const orderId = await createOrder(selectedPaymentMethod);
-      if (!orderId) return;
+      // Criar o pedido com o método de pagamento correto
+      const paymentMethodToSend = selectedPaymentMethod === 'card' ? 'credit_card' : selectedPaymentMethod;
+      const orderId = await createOrder(paymentMethodToSend);
+      if (!orderId || !isMounted.current) return;
       
       // Armazenar o ID do pedido para verificação posterior
-      setCreatedOrderId(orderId);
+      updateStateIfMounted(() => setCreatedOrderId(orderId));
       
       // Processar o pagamento de acordo com o método selecionado
       if (selectedPaymentMethod === 'pix') {
-        await processPixPayment(orderId);
+        await generatePixPayment(orderId);
+      } else if (selectedPaymentMethod === 'card') {
+        toast.error('Pagamento por cartão ainda não implementado');
       } else {
         toast.error('Método de pagamento não implementado');
       }
     } catch (error: any) {
       console.error('Erro ao finalizar compra:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao processar o pedido');
-      toast.error('Erro ao finalizar compra. Tente novamente.');
+      if (isMounted.current) {
+        setError(error instanceof Error ? error.message : 'Erro ao processar o pedido');
+        toast.error('Erro ao finalizar compra. Tente novamente.');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
   
@@ -607,33 +596,55 @@ export default function CartPage() {
         localStorage.setItem('test', 'test');
         localStorage.removeItem('test');
         
-        // Forçar uma atualização do componente
-        setKey(prev => prev + 1);
+        // Verificar se há dados de PIX para restaurar
+        const storedPixData = localStorage.getItem('pixPaymentData');
+        const storedOrderId = localStorage.getItem('createdOrderId');
+        
+        if (storedPixData && storedOrderId && isMounted.current) {
+          const parsedPixData = JSON.parse(storedPixData);
+          
+          // Restaurar dados e reabrir o modal
+          setPixPaymentData(parsedPixData);
+          setCreatedOrderId(storedOrderId);
+          setIsPixModalOpen(true);
+        }
+        
+        // Restauramos outros estados que possam ter travado
+        if (isMounted.current) {
+          setIsLoading(false);
+          setShowDeleteConfirm(null);
+          setError(null);
+        }
       } catch (error) {
         console.error('Erro ao acessar localStorage:', error);
       }
     };
     
-    // Adicionar listener para quando a página ficar visível
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
+    // Função específica para lidar com mudanças de visibilidade
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isMounted.current) {
         checkCartState();
       }
-    });
+    };
     
-    // Adicionar listener para quando a página for recarregada
-    window.addEventListener('pageshow', (event) => {
-      // O evento pageshow é disparado quando a página é mostrada, incluindo quando
-      // o usuário navega usando o botão voltar do navegador
-      if (event.persisted) {
-        // A página foi restaurada do cache do navegador
+    // Função específica para lidar com evento pageshow
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && isMounted.current) {
         checkCartState();
       }
-    });
+    };
+    
+    // Adicionamos os listeners usando as funções específicas
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
+    
+    // Executar limpeza inicial quando o componente montar
+    checkCartState();
     
     return () => {
-      document.removeEventListener('visibilitychange', checkCartState);
-      window.removeEventListener('pageshow', checkCartState);
+      // Remover listeners usando as mesmas funções referenciadas
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
     };
   }, []);
 
@@ -645,8 +656,190 @@ export default function CartPage() {
     return true;
   };
 
+  // Efeito para detectar intenção de saída
+  useEffect(() => {
+    if (!isMounted.current) return;
+    
+    const handleMouseLeave = (e: MouseEvent) => {
+      if (e.clientY <= 0 && !isCartEmpty && !showExitIntent && isMounted.current) {
+        setShowExitIntent(true);
+      }
+    };
+    
+    document.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [isCartEmpty, showExitIntent]);
+  
+  // Atualizar dados do cliente de forma segura
+  const handleCustomerDataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isMounted.current) return;
+    
+    const { name, value } = e.target;
+    
+    // Formatação especial para CPF
+    if (name === 'cpf') {
+      const formattedCPF = formatCPF(value);
+      updateStateIfMounted(() => setCustomerData((prev: CustomerData) => ({ ...prev, [name]: formattedCPF })));
+      return;
+    }
+    
+    // Formatação especial para telefone
+    if (name === 'phone') {
+      const cleanPhone = value.replace(/\D/g, '');
+      let formattedPhone = cleanPhone;
+      
+      if (cleanPhone.length <= 2) {
+        formattedPhone = cleanPhone;
+      } else if (cleanPhone.length <= 6) {
+        formattedPhone = `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2)}`;
+      } else if (cleanPhone.length <= 10) {
+        formattedPhone = `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2, 6)}-${cleanPhone.slice(6)}`;
+      } else {
+        formattedPhone = `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2, 7)}-${cleanPhone.slice(7, 11)}`;
+      }
+      
+      updateStateIfMounted(() => setCustomerData((prev: CustomerData) => ({ ...prev, [name]: formattedPhone })));
+      return;
+    }
+    
+    updateStateIfMounted(() => setCustomerData((prev: CustomerData) => ({ ...prev, [name]: value })));
+  };
+  
+  // Função para formatar CPF
+  const formatCPF = (cpf: string): string => {
+    // Remover todos os caracteres não numéricos
+    const cleanCPF = cpf.replace(/\D/g, '');
+    
+    // Limitar a 11 dígitos
+    const limitedCPF = cleanCPF.slice(0, 11);
+    
+    // Formatar o CPF
+    if (limitedCPF.length <= 3) {
+      return limitedCPF;
+    }
+    if (limitedCPF.length <= 6) {
+      return `${limitedCPF.slice(0, 3)}.${limitedCPF.slice(3)}`;
+    }
+    if (limitedCPF.length <= 9) {
+      return `${limitedCPF.slice(0, 3)}.${limitedCPF.slice(3, 6)}.${limitedCPF.slice(6)}`;
+    }
+    return `${limitedCPF.slice(0, 3)}.${limitedCPF.slice(3, 6)}.${limitedCPF.slice(6, 9)}-${limitedCPF.slice(9, 11)}`;
+  };
+  
+  // Função para aplicar cupom
+  const applyCoupon = async () => {
+    if (!isMounted.current || !couponCode.trim()) {
+      toast.error('Digite um código de cupom válido');
+      return;
+    }
+    
+    updateStateIfMounted(() => {
+      setIsApplyingCoupon(true);
+      setIsCouponValid(null);
+    });
+    
+    try {
+      // Simular verificação de cupom (substitua por uma chamada real à API)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (!isMounted.current) return;
+      
+      // Exemplo: cupom "FANTASY10" dá 10% de desconto
+      if (couponCode.toUpperCase() === 'FANTASY10') {
+        const discount = cartSubtotal * 0.1;
+        updateStateIfMounted(() => {
+          setCouponDiscount(discount);
+          setIsCouponValid(true);
+        });
+        toast.success('Cupom aplicado com sucesso!');
+      } else {
+        updateStateIfMounted(() => {
+          setCouponDiscount(0);
+          setIsCouponValid(false);
+        });
+        toast.error('Cupom inválido ou expirado');
+      }
+    } catch (error) {
+      console.error('Erro ao aplicar cupom:', error);
+      if (isMounted.current) {
+        toast.error('Erro ao verificar cupom. Tente novamente.');
+        setIsCouponValid(false);
+      }
+    } finally {
+      if (isMounted.current) {
+        setIsApplyingCoupon(false);
+      }
+    }
+  };
+
+  // Função para regenerar o código PIX quando expirado
+  const handleRegeneratePixCode = async () => {
+    try {
+      if (!pixPaymentData?.orderId) {
+        toast.error('Dados do pedido incompletos. Por favor, tente novamente.');
+        return;
+      }
+      
+      setIsProcessingPayment(true);
+      
+      // Obter os dados do usuário para o pagamento
+      const userInfo = getUserPaymentInfo();
+      
+      // Preparar os dados para criar um novo pagamento PIX
+      const paymentData = {
+        order_id: pixPaymentData.orderId,
+        transaction_amount: pixPaymentData.total || cartTotal,
+        email: userInfo.email,
+        cpf: userInfo.cpf,
+        first_name: userInfo.firstName,
+        last_name: userInfo.lastName,
+        reference_id: `order_${pixPaymentData.orderId}_regenerated_${Date.now()}`
+      };
+
+      console.log('Regenerando código PIX para pedido:', pixPaymentData.orderId);
+      
+      // Enviar solicitação para criar novo pagamento
+      const response = await fetch('/api/payment/mercadopago', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao regenerar código PIX');
+      }
+      
+      const responseData = await response.json();
+      
+      // Atualizar os dados do pagamento com o novo código PIX
+      setPixPaymentData({
+        orderId: pixPaymentData.orderId,
+        paymentId: responseData.paymentId,
+        pixCopiaECola: responseData.pixCopiaECola,
+        qrCodeBase64: responseData.qrCodeBase64,
+        qrCodeUrl: responseData.qrCodeUrl,
+        expiresAt: responseData.expiresAt,
+        total: pixPaymentData.total || cartTotal
+      });
+      
+      toast.success('Um novo código PIX foi gerado com sucesso!');
+      
+    } catch (error) {
+      console.error('Erro ao regenerar código PIX:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao regenerar código PIX');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   return (
-    <div key={key} className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200">
+    <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200">
       {/* Barra de progresso */}
       {!isCartEmpty && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-dark-300 h-1">
@@ -772,6 +965,8 @@ export default function CartPage() {
                                     width={96}
                                     height={96}
                                     className="w-full h-full object-cover"
+                                    unoptimized={true}
+                                    priority={index < 2}
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-dark-300 text-dark-100">
@@ -940,7 +1135,7 @@ export default function CartPage() {
                       </div>
                       
                       <div>
-                        <label htmlFor="phone" className="block text-gray-300 mb-1 text-sm">Telefone *</label>
+                        <label htmlFor="phone" className="block text-gray-300 mb-1 text-sm">Telefone (opcional)</label>
                         <div className="relative">
                           <input
                             type="text"
@@ -1155,22 +1350,23 @@ export default function CartPage() {
         <div className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4">
           <PixPaymentModal 
             isOpen={isPixModalOpen}
-            onClose={() => setIsPixModalOpen(false)}
-            paymentData={{
-              orderId: createdOrderId || '',
-              paymentId: pixPaymentData.paymentId || '',
-              pixCopiaECola: pixPaymentData.pixCopiaECola || '',
-              qrCodeBase64: pixPaymentData.qrCodeBase64 || '',
-              qrCodeUrl: pixPaymentData.qrCodeUrl || '',
-              expiresAt: pixPaymentData.expiresAt || '',
-              total: cartTotal
+            onClose={() => {
+              setIsPixModalOpen(false);
+              // Quando o modal é fechado intencionalmente pelo usuário, limpar dados do localStorage
+              localStorage.removeItem('pixPaymentData');
+              localStorage.removeItem('createdOrderId');
             }}
+            paymentData={pixPaymentData}
             onPaymentConfirmed={() => {
               if (createdOrderId) {
                 checkPaymentStatus(createdOrderId);
+                // Limpar os dados do localStorage quando o pagamento é confirmado
+                localStorage.removeItem('pixPaymentData');
+                localStorage.removeItem('createdOrderId');
               }
             }}
             clearCart={clearCart}
+            onRegeneratePixCode={handleRegeneratePixCode}
           />
         </div>
       )}

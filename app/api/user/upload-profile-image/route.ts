@@ -2,9 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkAuth } from '@/app/lib/auth';
 import connectDB from '@/app/lib/db/mongodb';
 import User from '@/app/lib/models/user';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import mongoose from 'mongoose';
+
+// Verificar se já existe o modelo de imagem, se não existir, criar
+let Image;
+try {
+  Image = mongoose.model('Image');
+} catch (error) {
+  // Criar esquema para armazenar imagens
+  const imageSchema = new mongoose.Schema({
+    filename: String,
+    contentType: String,
+    data: Buffer,
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    uploadDate: {
+      type: Date,
+      default: Date.now
+    }
+  });
+  
+  Image = mongoose.model('Image', imageSchema);
+}
 
 export async function POST(req: NextRequest) {
   console.log('Recebida requisição para upload de imagem de perfil');
@@ -55,38 +77,28 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    // Criar nome de arquivo único
-    const fileExt = path.extname(file.name);
-    const fileName = `${uuidv4()}${fileExt}`;
+    // Gerar um ID único para a imagem
+    const imageId = uuidv4();
+    const filename = `${imageId}.${file.type.split('/')[1]}`;
     
-    // Definir caminho de upload
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'profiles');
-    const filePath = path.join(uploadDir, fileName);
+    await connectDB();
     
-    console.log('Tentando salvar imagem em:', filePath);
+    // Armazenar imagem no MongoDB
+    const newImage = new Image({
+      filename: filename,
+      contentType: file.type,
+      data: buffer,
+      userId: new mongoose.Types.ObjectId(userId)
+    });
     
-    // Garantir que o diretório exista
-    try {
-      // Criar diretório recursivamente se não existir
-      await mkdir(uploadDir, { recursive: true });
-      console.log('Diretório de upload verificado/criado com sucesso');
-      
-      // Salvar arquivo
-      await writeFile(filePath, buffer);
-      console.log('Arquivo salvo com sucesso');
-    } catch (error) {
-      console.error('Erro ao salvar arquivo:', error);
-      return NextResponse.json(
-        { error: 'Erro ao salvar imagem' },
-        { status: 500 }
-      );
-    }
+    console.log('Salvando imagem no MongoDB...');
+    await newImage.save();
+    console.log('Imagem salva com sucesso');
     
-    // Caminho relativo para salvar no banco de dados
-    const imageUrl = `/uploads/profiles/${fileName}`;
+    // Criar URL para acessar a imagem
+    const imageUrl = `/api/images/${imageId}`;
     
     // Atualizar o usuário no banco de dados
-    await connectDB();
     const updatedUser = await User.findByIdAndUpdate(
       userId, 
       { profileImage: imageUrl },
@@ -131,7 +143,19 @@ export async function DELETE(req: NextRequest) {
     // Conectar ao banco de dados
     await connectDB();
     
-    // Remover a imagem de perfil
+    // Obter o usuário para verificar a imagem atual
+    const user = await User.findById(userId);
+    if (user && user.profileImage) {
+      // Extrair o ID da imagem da URL
+      const imageId = user.profileImage.split('/').pop();
+      
+      // Remover a imagem do MongoDB se existir
+      if (imageId) {
+        await Image.deleteOne({ filename: new RegExp(`^${imageId}`) });
+      }
+    }
+    
+    // Remover a referência à imagem de perfil
     await User.findByIdAndUpdate(userId, { profileImage: '' });
     
     return NextResponse.json(

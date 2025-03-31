@@ -54,6 +54,45 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Validação adicional do CPF
+    if (!cpf) {
+      logger.error('CPF não fornecido');
+      return NextResponse.json(
+        { error: 'CPF é obrigatório' },
+        { status: 400 }
+      );
+    }
+    
+    // Limpar CPF (remover pontos, traços e espaços)
+    const cleanCPF = cleanCpf(cpf);
+    
+    // Validar formato do CPF
+    if (cleanCPF.length !== 11) {
+      logger.error(`CPF inválido, não tem 11 dígitos: ${cleanCPF.length} dígitos`);
+      return NextResponse.json(
+        { error: 'CPF inválido. Deve conter 11 dígitos.' },
+        { status: 400 }
+      );
+    }
+    
+    // Verificar se tem padrões inválidos (todos os dígitos iguais)
+    if (/^(\d)\1{10}$/.test(cleanCPF)) {
+      logger.error('CPF inválido: todos os dígitos são iguais');
+      return NextResponse.json(
+        { error: 'CPF inválido. O CPF não pode ter todos os dígitos iguais.' },
+        { status: 400 }
+      );
+    }
+    
+    // Em ambiente de desenvolvimento, substituir por um CPF válido de teste
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const validTestCPFs = ['19119119100', '12345678909', '01234567890'];
+    const cpfToUse = isDevelopment ? validTestCPFs[0] : cleanCPF;
+    
+    if (isDevelopment && cleanCPF !== cpfToUse) {
+      logger.warn(`Ambiente de desenvolvimento: substituindo CPF ${cleanCPF} por CPF de teste ${cpfToUse}`);
+    }
+    
     // Buscar o pedido para confirmar se existe e obter mais detalhes se necessário
     const ordersCollection = mongoose.connection.db.collection('orders');
     const order = await ordersCollection.findOne({ _id: new mongoose.Types.ObjectId(order_id) });
@@ -105,6 +144,20 @@ export async function POST(request: NextRequest) {
       notificationUrl = 'https://hooks.webhook.site/your_test_id';
     }
     
+    // Importar a função de criação de pagamento
+    const { createPixPayment } = await import('@/app/lib/mercadopago');
+    
+    // Preparar dados do pagador com CPF validado
+    const payerData = {
+      email,
+      first_name: first_name || 'Cliente',
+      last_name: last_name || 'Sem sobrenome',
+      identification: {
+        type: 'CPF',
+        number: cpfToUse
+      }
+    };
+    
     // Objeto com campos explicitamente nomeados para evitar erros de ortografia
     const paymentData = {
       transaction_amount: Number(transaction_amount),
@@ -112,23 +165,12 @@ export async function POST(request: NextRequest) {
       payment_method_id: 'pix',
       external_reference: reference,
       notification_url: notificationUrl,
-      payer: {
-        email: email,
-        first_name: first_name || 'Cliente',
-        last_name: last_name || 'Sem sobrenome',
-        identification: {
-          type: 'CPF',
-          number: cpf
-        }
-      }
+      payer: payerData
     };
     
     // Verificar a URL de notificação - para diagnóstico
     logger.info(`URL de notificação configurada: ${paymentData.notification_url}`);
 
-    // Importar a função de criação de pagamento
-    const { createPixPayment } = await import('@/app/lib/mercadopago');
-    
     // Criar pagamento PIX
     const pixPayment = await createPixPayment(paymentData);
     logger.info(`Pagamento criado com sucesso: ID ${pixPayment.id}, status ${pixPayment.status}`);
@@ -148,6 +190,8 @@ export async function POST(request: NextRequest) {
           'metadata.paymentId': pixPayment.id,
           'metadata.paymentCreatedAt': new Date(),
           'metadata.externalReference': reference,
+          'metadata.pixExpiresAt': pixPayment.expirationDate ? new Date(pixPayment.expirationDate) : new Date(Date.now() + 30 * 60 * 1000), // 30 minutos por padrão
+          'metadata.paymentResponse': pixPayment.qrCodeBase64,
           updatedAt: new Date()
         }
       }

@@ -1,6 +1,6 @@
-# Fantasy Cheats
+# Fantasy Store
 
-Fantasy Cheats é uma loja online moderna para venda de cheats para jogos, desenvolvida com tecnologias modernas e uma arquitetura robusta.
+Fantasy Store é uma loja online moderna para venda de cheats para jogos, desenvolvida com tecnologias modernas e uma arquitetura robusta.
 
 ## Tecnologias Utilizadas
 

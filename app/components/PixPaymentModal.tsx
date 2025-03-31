@@ -40,6 +40,7 @@ interface PixPaymentModalProps {
   };
   onPaymentConfirmed?: () => void;
   clearCart?: () => void;
+  onRegeneratePixCode?: () => void;
 }
 
 // Componente PixPaymentModal
@@ -48,7 +49,8 @@ function PixPaymentModal({
   onClose,
   paymentData,
   onPaymentConfirmed,
-  clearCart
+  clearCart,
+  onRegeneratePixCode
 }: PixPaymentModalProps) {
   // Estados do componente
   const [isPaid, setIsPaid] = useState(false);
@@ -56,10 +58,13 @@ function PixPaymentModal({
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [error, setError] = useState<string>('');
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
   
   // Referência para o timer de verificação de status
   const statusCheckRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  
+  // Referência para controlar se o componente está montado
+  const isMounted = useRef(false);
   
   // Função para copiar o código PIX para a área de transferência
   const copyToClipboard = () => {
@@ -81,18 +86,51 @@ function PixPaymentModal({
       });
   };
   
+  // Efeito para marcar o componente como montado
+  useEffect(() => {
+    isMounted.current = true;
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+  
   // Efeito para calcular o tempo restante para expiração do pagamento
   useEffect(() => {
     if (!isOpen || !paymentData?.expiresAt) return;
     
     const calculateTimeLeft = () => {
       try {
-        const expiresAt = new Date(paymentData.expiresAt || '');
+        // Garantir que temos uma data válida
+        let expiresAt;
+        try {
+          // Verificar e converter a string de data para um objeto Date
+          expiresAt = new Date(paymentData.expiresAt);
+          
+          // Verificar se a data é válida
+          if (isNaN(expiresAt.getTime())) {
+            console.error('Data de expiração inválida:', paymentData.expiresAt);
+            setTimeLeft('--:--');
+            return;
+          }
+        } catch (dateError) {
+          console.error('Erro ao processar data de expiração:', dateError);
+          setTimeLeft('--:--');
+          return;
+        }
+        
         const now = new Date();
         
-        // Se já expirou, mostrar 00:00
+        // Se já expirou, mostrar 00:00 e marcar como expirado
         if (expiresAt <= now) {
           setTimeLeft('00:00');
+          setIsExpired(true);
+          
+          // Notificar o usuário na primeira vez que expira
+          if (!isExpired) {
+            toast.error('O pagamento PIX expirou. Gere um novo código para continuar.');
+          }
+          
           return;
         }
         
@@ -105,6 +143,11 @@ function PixPaymentModal({
         
         // Formatar como MM:SS
         setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+        
+        // Alertar quando estiver próximo da expiração (menos de 60 segundos)
+        if (minutes === 0 && seconds <= 60 && seconds % 15 === 0 && seconds > 0) {
+          toast.warning(`Atenção! Pagamento expira em ${seconds} segundos.`);
+        }
       } catch (error) {
         console.error('Erro ao calcular tempo restante:', error);
         setTimeLeft('--:--');
@@ -119,7 +162,23 @@ function PixPaymentModal({
     
     // Limpar o timer quando o componente for desmontado
     return () => clearInterval(timer);
-  }, [isOpen, paymentData?.expiresAt]);
+  }, [isOpen, paymentData?.expiresAt, isExpired]);
+  
+  // Efeito para lidar com mudanças de visibilidade da página
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isMounted.current) {
+        // Apenas garantimos que o estado de verificação seja resetado
+        setCheckingStatus(false);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
   
   // Efeito para configurar a verificação periódica do status do pagamento
   useEffect(() => {
@@ -393,6 +452,11 @@ function PixPaymentModal({
         if (clearCart) {
           clearCart();
         }
+      } else if (data.isExpired) {
+        // Se o pagamento expirou
+        console.log('Pagamento expirado! Atualizando estado...');
+        setIsExpired(true);
+        toast.error('O pagamento expirou. Você precisa gerar um novo código PIX.');
       } else {
         console.log('Pagamento ainda não confirmado, status:', data.paymentStatus || 'pendente');
       }
@@ -490,24 +554,6 @@ function PixPaymentModal({
                 </div>
                 
                 <div className="w-full">
-                  {/* Instruções passo a passo */}
-                  {showInstructions && (
-                    <div className="bg-dark-300 rounded-lg p-4 mb-4">
-                      <h4 className="text-white font-medium mb-3 flex items-center">
-                        <div className="mr-2"><IconFiAlertCircle size={18} color="#FF5722" /></div>
-                        Como realizar o pagamento:
-                      </h4>
-                      <ol className="text-gray-300 text-sm space-y-2 ml-6 list-decimal">
-                        <li>Abra o aplicativo do seu banco ou instituição financeira</li>
-                        <li>Acesse a área de <strong className="text-white">PIX</strong> no aplicativo</li>
-                        <li>Selecione a opção <strong className="text-white">Pagar com QR Code</strong></li>
-                        <li>Escaneie o QR code acima ou use o código PIX abaixo</li>
-                        <li>Confirme os dados do pagamento (valor e destinatário)</li>
-                        <li>Confirme o pagamento com sua senha ou biometria</li>
-                      </ol>
-                    </div>
-                  )}
-                  
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-sm text-gray-300">
                       Ou copie o código PIX:
@@ -538,22 +584,32 @@ function PixPaymentModal({
               </div>
               
               <div className={`flex items-center justify-center text-sm font-medium py-2 px-4 rounded-full mt-4 ${
-                timeLeft && timeLeft.includes(':') && timeLeft.startsWith('00:') && parseInt(timeLeft.split(':')[1]) < 30 
+                isExpired
                   ? 'text-red-400 bg-red-500/10 animate-pulse' 
-                  : 'text-yellow-400 bg-yellow-500/10'
+                  : timeLeft && timeLeft.includes(':') && timeLeft.startsWith('00:') && parseInt(timeLeft.split(':')[1]) < 30 
+                    ? 'text-red-400 bg-red-500/10 animate-pulse' 
+                    : 'text-yellow-400 bg-yellow-500/10'
               }`}>
-                <div className="mr-2"><IconFiClock size={16} /></div>
-                <span>Expira em {timeLeft || '--:--'}</span>
+                <div className="mr-2">
+                  {isExpired ? <IconFiAlertCircle size={16} /> : <IconFiClock size={16} />}
+                </div>
+                <span>
+                  {isExpired 
+                    ? "Pagamento expirado" 
+                    : `Expira em ${timeLeft || '--:--'}`}
+                </span>
               </div>
             </div>
 
             {/* Mensagens de segurança e gatilhos mentais */}
-            <div className="mb-4 bg-green-900/20 border border-green-800 rounded-lg p-3">
+            <div className="mb-4 bg-gradient-to-r from-green-900/20 to-green-800/10 border border-green-800/50 rounded-lg p-4 shadow-lg transform transition-all duration-300 hover:shadow-green-900/20 hover:scale-[1.02]">
               <div className="flex items-start">
-                <div className="mr-2 mt-0.5"><IconFiCheck size={16} color="#10b981" /></div>
+                <div className="mr-3 mt-0.5 bg-green-500/20 p-2 rounded-full">
+                  <IconFiCheck size={18} color="#10b981" className="animate-pulse" />
+                </div>
                 <div>
-                  <p className="text-green-400 text-sm font-medium">Compra 100% segura</p>
-                  <p className="text-gray-400 text-xs mt-1">
+                  <p className="text-green-400 font-medium mb-1">Compra 100% segura</p>
+                  <p className="text-gray-400 text-sm">
                     Os dados do PIX estão corretos e seu produto será liberado imediatamente após a confirmação do pagamento.
                   </p>
                 </div>
@@ -565,6 +621,8 @@ function PixPaymentModal({
                 <span className="text-gray-400">Status:</span>{" "}
                 {checkingStatus ? (
                   <span className="text-yellow-400">Verificando...</span>
+                ) : isExpired ? (
+                  <span className="text-red-400">Pagamento expirado</span>
                 ) : (
                   <span className="text-yellow-400">Aguardando pagamento</span>
                 )}
@@ -585,6 +643,36 @@ function PixPaymentModal({
                   <div>
                     <p className="font-medium">Pagamento confirmado!</p>
                     <p className="text-sm mt-1">Você será redirecionado em breve...</p>
+                  </div>
+                </div>
+              ) : isExpired ? (
+                <div className="mb-4">
+                  <div className="bg-red-900/30 border-l-4 border-red-500 p-4 text-red-400 flex items-start mb-4">
+                    <div className="mr-2 mt-0.5 flex-shrink-0"><IconFiAlertCircle size={16} /></div>
+                    <div>
+                      <p className="font-medium">Tempo para pagamento expirado</p>
+                      <p className="text-sm mt-1">Você precisará gerar um novo código PIX para continuar com a compra.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="py-3 px-4 rounded-md bg-dark-400 hover:bg-dark-500 focus:outline-none focus:ring-2 focus:ring-dark-300 text-white font-medium flex items-center justify-center"
+                    >
+                      <div className="mr-2"><IconFiX size={18} /></div>
+                      <span>Cancelar</span>
+                    </button>
+                    {onRegeneratePixCode && (
+                      <button
+                        type="button"
+                        onClick={onRegeneratePixCode}
+                        className="py-3 px-4 rounded-md bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary text-white font-medium flex items-center justify-center"
+                      >
+                        <div className="mr-2"><IconFiRefreshCw size={18} /></div>
+                        <span>Novo PIX</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -614,27 +702,6 @@ function PixPaymentModal({
                 </button>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowInstructions(!showInstructions)}
-              className={`mt-4 mb-4 py-2 px-4 rounded-md ${
-                showInstructions
-                  ? 'bg-dark-500 text-gray-300'
-                  : 'bg-dark-400 hover:bg-dark-500 text-gray-200'
-              } font-medium flex items-center justify-center transition-colors`}
-            >
-              {showInstructions ? (
-                <>
-                  <div className="mr-2"><IconFiX size={16} /></div>
-                  <span>Esconder instruções</span>
-                </>
-              ) : (
-                <>
-                  <div className="mr-2"><IconFiHelpCircle size={16} /></div>
-                  <span>Como realizar o pagamento?</span>
-                </>
-              )}
-            </button>
           </>
         )}
       </div>

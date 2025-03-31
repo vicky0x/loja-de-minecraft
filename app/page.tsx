@@ -145,10 +145,8 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center">
             {/* Main Title */}
             <div className="mb-8 opacity-0 animate-fade-in" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-2 tracking-tight">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary-light to-primary">
-                  FANTASY CHEATS
-                </span>
+              <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
+                Fantasy Store
               </h1>
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold mb-6 tracking-wide">
                 DOMINE CADA <span className="text-primary">PARTIDA</span>
@@ -670,7 +668,7 @@ export default function Home() {
             <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
               <div className="mb-6">
                 <h3 className="text-2xl font-bold mb-4 text-white relative inline-block">
-                  Fantasy Cheats
+                  Fantasy Store
                   <span className="absolute -bottom-1 left-0 w-12 h-1 bg-gradient-to-r from-primary to-primary-light rounded-full"></span>
                 </h3>
                 <p className="text-gray-300 mb-4">
@@ -788,7 +786,7 @@ export default function Home() {
           <div className="border-t border-dark-300 pt-6 mt-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <p className="text-gray-400 text-sm mb-4 md:mb-0">
-                &copy; {new Date().getFullYear()} Fantasy Cheats. Todos os direitos reservados.
+                &copy; {new Date().getFullYear()} Fantasy Store. Todos os direitos reservados.
               </p>
               <div className="flex space-x-6">
                 <a href="#" className="text-gray-400 hover:text-primary text-sm transition-colors duration-300">Termos de Uso</a>

@@ -7,6 +7,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { FiSearch, FiShoppingCart, FiUser, FiLogOut, FiSettings, FiPackage } from 'react-icons/fi';
 import { useCart } from '@/app/contexts/CartContext';
 import { IoWifi } from 'react-icons/io5';
+import { useAuth, logout } from '../lib/auth/session';
+import { toast } from 'react-hot-toast';
+import { useAuth as useAuthContext } from '../contexts/AuthContext';
 
 // Interface para o usuário
 interface User {
@@ -15,6 +18,11 @@ interface User {
   email: string;
   role: string;
   profileImage?: string;
+  orders?: {
+    count: number;
+    products?: number;
+    total?: number;
+  };
 }
 
 export default function Navbar() {
@@ -22,10 +30,18 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  
+  // Usar o contexto de autenticação com os novos métodos
+  const { user, loading: loadingUser, refreshUserData, pendingProfileImage, setUser } = useAuthContext();
+  
+  // Estado para controlar a animação da imagem
+  const [imageTransition, setImageTransition] = useState({
+    isChanging: false,
+    oldImage: '',
+    newImage: ''
+  });
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -52,33 +68,6 @@ export default function Navbar() {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Efeito para verificar o estado de autenticação do usuário
-  useEffect(() => {
-    async function checkAuthStatus() {
-      try {
-        console.log('Verificando autenticação...');
-        setLoadingUser(true);
-        const response = await fetch('/api/auth/me');
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Usuário autenticado:', data.user);
-          setUser(data.user);
-        } else {
-          console.log('Usuário não autenticado');
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-        setUser(null);
-      } finally {
-        setLoadingUser(false);
-      }
-    }
-
-    checkAuthStatus();
   }, []);
 
   // Fechar dropdown quando mudar de página
@@ -118,26 +107,194 @@ export default function Navbar() {
     return () => clearInterval(interval);
   }, []);
 
+  // Efeito para animar transição da imagem de perfil quando for atualizada
+  useEffect(() => {
+    // Forçar atualização sempre que a imagem mudar
+    if (user?.profileImage) {
+      console.log('Imagem de perfil atualizada:', user.profileImage);
+      
+      // Limpar qualquer animação anterior
+      setImageTransition(prev => {
+        if (prev.isChanging) {
+          return {
+            isChanging: false,
+            oldImage: user.profileImage,
+            newImage: user.profileImage
+          };
+        }
+        return prev;
+      });
+    }
+  }, [user?.profileImage]);
+
+  // Efeito separado para animação quando pendingProfileImage mudar
+  useEffect(() => {
+    if (pendingProfileImage && user?.profileImage !== pendingProfileImage) {
+      // Iniciar transição
+      setImageTransition({
+        isChanging: true,
+        oldImage: user?.profileImage || '',
+        newImage: pendingProfileImage
+      });
+      
+      // Finalizar transição após 600ms (tempo da animação)
+      const timeout = setTimeout(() => {
+        setImageTransition({
+          isChanging: false,
+          oldImage: pendingProfileImage,
+          newImage: pendingProfileImage
+        });
+      }, 600);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [pendingProfileImage, user?.profileImage]);
+
+  // Efeito para atualizar quando a página é focada com controle de frequência
+  const lastUpdateTimeRef = useRef<number>(Date.now());
+  
+  useEffect(() => {
+    const handleFocus = () => {
+      const currentTime = Date.now();
+      const timeSinceLastUpdate = currentTime - lastUpdateTimeRef.current;
+      const minUpdateInterval = 5 * 60 * 1000; // 5 minutos em milissegundos
+      
+      const returningFromProfilePage = document.referrer.includes('/dashboard/profile');
+      
+      if (returningFromProfilePage || timeSinceLastUpdate > minUpdateInterval) {
+        console.log('Verificando atualizações após foco...');
+        refreshUserData();
+        lastUpdateTimeRef.current = currentTime;
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [refreshUserData]);
+
+  // Efeito para monitorar eventos de autenticação e imagem de perfil
+  useEffect(() => {
+    const handleAuthEvent = () => {
+      console.log('Evento de autenticação detectado, atualizando dados...');
+      refreshUserData();
+    };
+    
+    const handleProfileImageUpdate = (event: Event) => {
+      if (event instanceof CustomEvent && event.detail?.imageUrl) {
+        const newImageUrl = event.detail.imageUrl;
+        console.log('Evento de atualização de imagem recebido:', newImageUrl);
+        
+        // Evitar atualização se a imagem for a mesma
+        if (user && user.profileImage === newImageUrl) {
+          console.log('Mesma imagem, ignorando atualização');
+          return;
+        }
+        
+        // Atualizar diretamente a imagem na interface
+        if (user) {
+          // Iniciar transição
+          setImageTransition({
+            isChanging: true,
+            oldImage: user.profileImage || '',
+            newImage: newImageUrl
+          });
+          
+          // Atualizar usuário no estado local
+          setUser({
+            ...user,
+            profileImage: newImageUrl
+          });
+          
+          // Finalizar transição após tempo da animação
+          setTimeout(() => {
+            setImageTransition({
+              isChanging: false,
+              oldImage: newImageUrl,
+              newImage: newImageUrl
+            });
+          }, 600);
+          
+          // Atualizar localStorage
+          try {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+              const userData = JSON.parse(storedUser);
+              userData.profileImage = newImageUrl;
+              localStorage.setItem('user', JSON.stringify(userData));
+            }
+          } catch (error) {
+            console.error('Erro ao atualizar localStorage:', error);
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('auth-state-changed', handleAuthEvent);
+    window.addEventListener('profile-image-updated', handleProfileImageUpdate);
+    
+    return () => {
+      window.removeEventListener('auth-state-changed', handleAuthEvent);
+      window.removeEventListener('profile-image-updated', handleProfileImageUpdate);
+    };
+  }, [user]);
+
+  // Buscar estatísticas do usuário quando o componente montar
+  useEffect(() => {
+    if (user && !user.orders) {
+      fetchUserStats();
+    }
+  }, [user]);
+
+  // Função para buscar estatísticas do usuário
+  const fetchUserStats = async () => {
+    try {
+      const response = await fetch('/api/user/stats');
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Atualizar o usuário com as estatísticas
+        if (data.stats && user) {
+          const updatedUser = {
+            ...user,
+            orders: data.stats
+          };
+          
+          // Atualizar o localStorage
+          try {
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+          } catch (storageError) {
+            console.error('Erro ao salvar estatísticas no localStorage:', storageError);
+          }
+          
+          // Atualizar o contexto
+          refreshUserData();
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas do usuário:', error);
+    }
+  };
+
   // Função para lidar com logout
   const handleLogout = async () => {
     try {
       console.log('Fazendo logout...');
-      const response = await fetch('/api/auth/logout', { 
-        method: 'POST',
-        credentials: 'include'
-      });
       
-      if (response.ok) {
-        console.log('Logout bem-sucedido');
-        setUser(null);
-        router.push('/');
-        // Forçar recarregamento da página para limpar completamente o estado
-        window.location.href = '/';
-      } else {
-        console.error('Falha ao fazer logout');
-      }
+      // Usar a função de logout centralizada
+      await logout();
+      
+      // Disparar evento para atualizar o estado de autenticação
+      const event = new CustomEvent('auth-state-changed');
+      window.dispatchEvent(event);
+      
+      // A função logout já cuida do redirecionamento
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+      toast.error('Falha ao fazer logout. Tente novamente.');
     }
   };
 
@@ -159,9 +316,20 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           {/* Store Name */}
           <Link href="/" className="flex items-center group" style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-            <div>
+            <div className="flex items-center">
+              <Image 
+                src="/fantasy_logo.png" 
+                alt="Fantasy Store Logo" 
+                width={38} 
+                height={38} 
+                className="mr-2"
+                quality={100}
+                priority
+                style={{ objectFit: 'contain' }}
+                unoptimized
+              />
               <span className="text-white font-bold text-xl md:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary-light to-primary group-hover:from-white group-hover:to-primary-light transition-all duration-500">
-                Fantasy<span className="text-white group-hover:text-primary-light transition-colors duration-500">Cheats</span>
+                Fantasy<span className="text-white group-hover:text-primary-light transition-colors duration-500">Store</span><span className="text-primary text-2xl md:text-3xl">.</span>
               </span>
             </div>
           </Link>
@@ -243,15 +411,62 @@ export default function Navbar() {
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   >
                     <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-primary/50 group-hover:border-primary transition-all duration-300 shadow-md">
-                      {user.profileImage ? (
-                        <Image 
-                          src={user.profileImage} 
-                          alt={user.username} 
-                          width={40} 
-                          height={40} 
-                          className="object-cover w-full h-full"
-                          style={{ objectFit: 'cover', objectPosition: 'center' }}
-                        />
+                      {user?.profileImage ? (
+                        <div className="relative w-full h-full">
+                          {/* Imagem atual com fade-out quando em transição */}
+                          <div className={`absolute inset-0 transition-opacity duration-500 ${imageTransition.isChanging ? 'opacity-0' : 'opacity-100'}`}>
+                            <Image 
+                              src={user.profileImage} 
+                              alt={user.username} 
+                              width={40} 
+                              height={40} 
+                              className="object-cover w-full h-full"
+                              style={{ objectFit: 'cover', objectPosition: 'center' }}
+                              onError={(e) => {
+                                console.log('Erro ao carregar imagem:', user.profileImage);
+                                // Usar um fallback diretamente em vez de um arquivo
+                                e.currentTarget.style.display = 'none';
+                                // Mostrar a primeira letra do nome do usuário como fallback
+                                const parent = e.currentTarget.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
+                                    <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
+                                  </div>`;
+                                }
+                              }}
+                              unoptimized={true}
+                              priority={true}
+                            />
+                          </div>
+                          
+                          {/* Nova imagem com fade-in quando em transição */}
+                          {imageTransition.isChanging && (
+                            <div className="absolute inset-0 opacity-0 animate-fadeIn">
+                              <Image 
+                                src={imageTransition.newImage} 
+                                alt={user.username} 
+                                width={40} 
+                                height={40} 
+                                className="object-cover w-full h-full"
+                                style={{ objectFit: 'cover', objectPosition: 'center' }}
+                                onError={(e) => {
+                                  console.log('Erro ao carregar nova imagem:', imageTransition.newImage);
+                                  // Usar um fallback diretamente em vez de um arquivo
+                                  e.currentTarget.style.display = 'none';
+                                  // Mostrar a primeira letra do nome do usuário como fallback
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
+                                      <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
+                                    </div>`;
+                                  }
+                                }}
+                                unoptimized={true}
+                                priority={true}
+                              />
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
                           <FiUser size={20} className="text-white" />
@@ -261,7 +476,10 @@ export default function Navbar() {
                     </div>
                     <div className="flex flex-col items-start">
                       <span className="text-white text-sm font-medium group-hover:text-primary transition-colors duration-300">{user.username}</span>
-                      <span className="text-xs text-gray-400">{user.role === 'admin' ? 'Administrador' : 'Usuário'}</span>
+                      <span className="text-xs text-gray-400">
+                        {user.role === 'admin' ? 'Administrador' : 
+                          (user.orders?.count > 0 ? 'Cliente' : 'Usuário')}
+                      </span>
                     </div>
                     <svg 
                       className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} 
@@ -451,15 +669,62 @@ export default function Navbar() {
             <div className="flex flex-col space-y-2 pt-2 border-t border-dark-300/50">
               <div className="flex items-center space-x-3 py-2">
                 <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-primary/50 shadow-md">
-                  {user.profileImage ? (
-                    <Image 
-                      src={user.profileImage} 
-                      alt={user.username} 
-                      width={40} 
-                      height={40} 
-                      className="object-cover w-full h-full"
-                      style={{ objectFit: 'cover', objectPosition: 'center' }}
-                    />
+                  {user?.profileImage ? (
+                    <div className="relative w-full h-full">
+                      {/* Imagem atual com fade-out quando em transição */}
+                      <div className={`absolute inset-0 transition-opacity duration-500 ${imageTransition.isChanging ? 'opacity-0' : 'opacity-100'}`}>
+                        <Image 
+                          src={user.profileImage} 
+                          alt={user.username} 
+                          width={40} 
+                          height={40} 
+                          className="object-cover w-full h-full"
+                          style={{ objectFit: 'cover', objectPosition: 'center' }}
+                          onError={(e) => {
+                            console.log('Erro ao carregar imagem:', user.profileImage);
+                            // Usar um fallback diretamente em vez de um arquivo
+                            e.currentTarget.style.display = 'none';
+                            // Mostrar a primeira letra do nome do usuário como fallback
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
+                                <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
+                              </div>`;
+                            }
+                          }}
+                          unoptimized={true}
+                          priority={true}
+                        />
+                      </div>
+                      
+                      {/* Nova imagem com fade-in quando em transição */}
+                      {imageTransition.isChanging && (
+                        <div className="absolute inset-0 opacity-0 animate-fadeIn">
+                          <Image 
+                            src={imageTransition.newImage} 
+                            alt={user.username} 
+                            width={40} 
+                            height={40} 
+                            className="object-cover w-full h-full"
+                            style={{ objectFit: 'cover', objectPosition: 'center' }}
+                            onError={(e) => {
+                              console.log('Erro ao carregar nova imagem:', imageTransition.newImage);
+                              // Usar um fallback diretamente em vez de um arquivo
+                              e.currentTarget.style.display = 'none';
+                              // Mostrar a primeira letra do nome do usuário como fallback
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
+                                  <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
+                                </div>`;
+                              }
+                            }}
+                            unoptimized={true}
+                            priority={true}
+                          />
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
                       <FiUser size={20} className="text-white" />

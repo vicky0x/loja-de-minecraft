@@ -15,6 +15,96 @@ const lastCheckTimes = new Map<string, number>();
 // Tempo mínimo entre verificações (em milissegundos) - 10 segundos
 const MIN_CHECK_INTERVAL = 10000;
 
+// Tempo máximo para expiração do pagamento (em milissegundos) - 30 minutos por padrão
+const PAYMENT_EXPIRATION_TIME = 30 * 60 * 1000;
+
+/**
+ * Verifica e atualiza pedidos com status de pagamento expirado
+ */
+export async function GET(request: NextRequest) {
+  try {
+    await connectDB();
+    
+    // Obter todos os pedidos pendentes
+    const connection = mongoose.connection;
+    if (!connection || !connection.db) {
+      throw new Error('Falha na conexão com o banco de dados');
+    }
+    
+    const db = connection.db;
+    const ordersCollection = db.collection('orders');
+    
+    // Buscar pedidos pendentes
+    const pendingOrders = await ordersCollection.find({
+      $or: [
+        { paymentStatus: 'pending' },
+        { orderStatus: 'pending' },
+        { 'paymentInfo.status': 'pending' }
+      ],
+      'metadata.pixExpiresAt': { $exists: true },
+    }).toArray();
+    
+    logger.info(`Verificando ${pendingOrders.length} pedidos pendentes para expiração`);
+    
+    const now = new Date();
+    const expiredOrders = [];
+    
+    // Verificar e atualizar cada pedido
+    for (const order of pendingOrders) {
+      try {
+        // Verificar se o pagamento expirou
+        const expirationDate = new Date(order.metadata.pixExpiresAt);
+        
+        if (expirationDate < now) {
+          // Atualizar status para "expirado"
+          await ordersCollection.updateOne(
+            { _id: order._id },
+            {
+              $set: {
+                paymentStatus: 'expired',
+                orderStatus: 'canceled',
+                'paymentInfo.status': 'expired',
+                'metadata.expiredAt': now,
+                updatedAt: now
+              },
+              $push: {
+                statusHistory: {
+                  status: 'expired',
+                  changedBy: 'Sistema (Verificação Automática)',
+                  changedAt: now
+                }
+              }
+            }
+          );
+          
+          logger.info(`Pedido ${order._id} marcado como expirado/cancelado`);
+          expiredOrders.push({
+            id: order._id.toString(),
+            expirationDate
+          });
+        }
+      } catch (error) {
+        logger.error(`Erro ao processar expiração do pedido ${order._id}: ${error}`);
+      }
+    }
+    
+    return NextResponse.json({
+      success: true,
+      processed: pendingOrders.length,
+      expired: expiredOrders.length,
+      orders: expiredOrders
+    });
+    
+  } catch (error) {
+    logger.error('Erro ao processar verificação de expiração:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: `Erro ao processar: ${error instanceof Error ? error.message : String(error)}`
+    }, { status: 500 });
+  }
+}
+
 /**
  * Verifica o status de um pagamento e atualiza o pedido se necessário
  */
@@ -147,6 +237,59 @@ export async function POST(request: NextRequest) {
       });
     }
     
+    // Verificar se o pedido já foi expirado/cancelado
+    if (order.paymentStatus === 'expired' || 
+        order.orderStatus === 'canceled' || 
+        (order.paymentInfo && order.paymentInfo.status === 'expired')) {
+      logger.info(`Pedido ${orderId} já está marcado como expirado/cancelado`);
+      return NextResponse.json({ 
+        success: true, 
+        isPaid: false,
+        orderId,
+        paymentStatus: 'expired',
+        orderStatus: 'canceled',
+        isExpired: true
+      });
+    }
+    
+    // Verificar expiração para pagamentos PIX
+    if (order.metadata?.pixExpiresAt) {
+      const expirationDate = new Date(order.metadata.pixExpiresAt);
+      if (expirationDate < new Date()) {
+        // Atualizar pedido para expirado/cancelado
+        await ordersCollection.updateOne(
+          { _id: new mongoose.Types.ObjectId(orderId) },
+          {
+            $set: {
+              paymentStatus: 'expired',
+              orderStatus: 'canceled',
+              'paymentInfo.status': 'expired',
+              'metadata.expiredAt': new Date(),
+              updatedAt: new Date()
+            },
+            $push: {
+              statusHistory: {
+                status: 'expired',
+                changedBy: 'Sistema (Verificação Automática)',
+                changedAt: new Date()
+              }
+            }
+          }
+        );
+        
+        logger.info(`Pedido ${orderId} marcado como expirado/cancelado durante verificação`);
+        
+        return NextResponse.json({ 
+          success: true, 
+          isPaid: false,
+          orderId,
+          paymentStatus: 'expired',
+          orderStatus: 'canceled',
+          isExpired: true
+        });
+      }
+    }
+    
     // Obter o ID do pagamento associado ao pedido, se não for fornecido diretamente
     const actualPaymentId = paymentId || order.metadata?.paymentId;
     
@@ -178,6 +321,13 @@ export async function POST(request: NextRequest) {
               'metadata.paymentVerifiedAt': new Date(),
               'metadata.paymentStatusResponse': paymentStatus,
               updatedAt: new Date()
+            },
+            $push: {
+              statusHistory: {
+                status: 'paid',
+                changedBy: 'Sistema (Verificação Automática)',
+                changedAt: new Date()
+              }
             }
           }
         );
@@ -203,6 +353,38 @@ export async function POST(request: NextRequest) {
           orderId,
           paymentStatus: 'paid',
           orderStatus: 'processing'
+        });
+      } else if (paymentStatus.status === 'rejected' || paymentStatus.status === 'cancelled') {
+        // Pagamento foi rejeitado ou cancelado
+        await ordersCollection.updateOne(
+          { _id: new mongoose.Types.ObjectId(orderId) },
+          { 
+            $set: {
+              paymentStatus: 'canceled',
+              orderStatus: 'canceled',
+              'paymentInfo.status': 'canceled',
+              'metadata.paymentStatusResponse': paymentStatus,
+              updatedAt: new Date()
+            },
+            $push: {
+              statusHistory: {
+                status: 'canceled',
+                changedBy: 'Sistema (Verificação Automática)',
+                changedAt: new Date(),
+                reason: `Pagamento ${paymentStatus.status}`
+              }
+            }
+          }
+        );
+        
+        logger.info(`Pedido ${orderId} marcado como cancelado devido a status ${paymentStatus.status}`);
+        
+        return NextResponse.json({ 
+          success: true, 
+          isPaid: false,
+          orderId,
+          paymentStatus: 'canceled',
+          orderStatus: 'canceled'
         });
       } else {
         // Pagamento ainda está pendente

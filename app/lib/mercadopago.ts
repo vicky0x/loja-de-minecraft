@@ -169,6 +169,32 @@ export async function createPixPayment(paymentData: any): Promise<PixPaymentResp
     if (!payer.identification.number || payer.identification.number.length !== 11) {
       logger.warn(`CPF inválido ou não fornecido, usando CPF de teste`);
       payer.identification.number = validTestCPFs[0];
+    } else {
+      // Validação adicional para garantir que o CPF seja aceito pelo Mercado Pago
+      // Alguns CPFs, mesmo com 11 dígitos, podem ser rejeitados pela API
+      // Em caso de erro, usaremos um CPF de teste válido
+      try {
+        // Verificar se o CPF contém apenas números
+        if (!/^\d+$/.test(payer.identification.number)) {
+          logger.warn(`CPF contém caracteres não numéricos, usando CPF de teste`);
+          payer.identification.number = validTestCPFs[0];
+        }
+        
+        // Verificar se o CPF tem padrões inválidos (todos os dígitos iguais)
+        if (/^(\d)\1{10}$/.test(payer.identification.number)) {
+          logger.warn(`CPF com padrão inválido (todos dígitos iguais), usando CPF de teste`);
+          payer.identification.number = validTestCPFs[0];
+        }
+        
+        // No ambiente de desenvolvimento, sempre usar um CPF válido conhecido
+        if (isDevelopment) {
+          logger.warn(`Ambiente de desenvolvimento detectado, substituindo CPF por valor de teste`);
+          payer.identification.number = validTestCPFs[0];
+        }
+      } catch (error) {
+        logger.warn(`Erro ao validar CPF, usando CPF de teste: ${error}`);
+        payer.identification.number = validTestCPFs[0];
+      }
     }
     
     logger.info(`Criando pagamento PIX (direto com fetch): ${description} - R$ ${transaction_amount}`);
