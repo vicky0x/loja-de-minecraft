@@ -458,7 +458,11 @@ function PixPaymentModal({
         setIsExpired(true);
         toast.error('O pagamento expirou. Você precisa gerar um novo código PIX.');
       } else {
-        console.log('Pagamento ainda não confirmado, status:', data.paymentStatus || 'pendente');
+        // Só mostrar essa mensagem se o pagamento ainda não estiver confirmado
+        if (!isPaid) {
+          console.log('Pagamento ainda não confirmado, status:', data.paymentStatus || 'pendente');
+          toast.error('Pagamento ainda pendente. Tente novamente em alguns instantes.');
+        }
       }
     } catch (error) {
       console.error('Erro ao verificar status do pagamento:', error);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiPlus, FiEdit, FiTrash2, FiEye, FiSearch, FiPackage } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiEye, FiSearch, FiPackage, FiCopy } from 'react-icons/fi';
 
 interface Product {
   _id: string;
@@ -77,6 +77,33 @@ export default function ProductsPage() {
       // Define o novo campo de ordenação e reseta a direção para desc
       setSortBy(field);
       setSortDir('desc');
+    }
+  };
+
+  const handleCloneProduct = async (id: string) => {
+    if (!window.confirm('Deseja criar uma cópia deste produto? A cópia terá as mesmas informações, exceto estoque e imagens.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/products/${id}/clone`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Redirecionar para a edição do novo produto clonado
+        router.push(`/admin/products/${data.newProductId}/edit`);
+      } else {
+        const errorData = await response.json();
+        alert(`Erro ao clonar produto: ${errorData.message || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao clonar produto:', error);
+      alert('Erro ao clonar produto. Verifique o console para mais detalhes.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -274,6 +301,13 @@ export default function ProductsPage() {
                             title="Editar"
                           >
                             <FiEdit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleCloneProduct(product._id)}
+                            className="text-green-400 hover:text-green-300"
+                            title="Clonar Produto"
+                          >
+                            <FiCopy size={18} />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(product._id)}

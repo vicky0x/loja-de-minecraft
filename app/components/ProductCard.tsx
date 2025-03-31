@@ -31,128 +31,10 @@ interface Product {
 
 export default function ProductCard({ product }: { product: Product }) {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
-  const [salesCount, setSalesCount] = useState(0);
-  const [displayedCount, setDisplayedCount] = useState(0);
-  const countAnimationTriggered = useRef(false);
   const cardRef = useRef<HTMLDivElement>(null);
   
   // Verificar se o produto tem variantes
   const hasVariants = product.variants && product.variants.length > 0;
-  
-  // Gerar um número de vendas personalizado e realista para cada produto
-  useEffect(() => {
-    // Função para gerar um hash determinístico a partir da string do ID
-    const generateSeed = (id: string) => {
-      let hash = 0;
-      for (let i = 0; i < id.length; i++) {
-        const char = id.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-      }
-      return Math.abs(hash);
-    };
-    
-    // Obter valor base a partir do ID do produto
-    const seed = generateSeed(product._id);
-    
-    // Definir valores específicos para criar mais variação
-    // O operador módulo cria um padrão cíclico, garantindo diferentes faixas
-    const modValue = seed % 25; // 25 categorias diferentes
-    
-    let salesValue: number;
-    
-    // Distribuição personalizada para maior variabilidade
-    if (modValue === 0) salesValue = 390 + (seed % 15); // ~390-404 vendas
-    else if (modValue === 1) salesValue = 350 + (seed % 30); // ~350-379 vendas
-    else if (modValue === 2) salesValue = 280 + (seed % 25); // ~280-304 vendas
-    else if (modValue === 3) salesValue = 240 + (seed % 20); // ~240-259 vendas
-    else if (modValue === 4) salesValue = 220 + (seed % 18); // ~220-237 vendas
-    else if (modValue === 5) salesValue = 180 + (seed % 15); // ~180-194 vendas
-    else if (modValue === 6) salesValue = 150 + (seed % 20); // ~150-169 vendas
-    else if (modValue === 7) salesValue = 110 + (seed % 25); // ~110-134 vendas
-    else if (modValue === 8) salesValue = 180 + (seed % 15); // ~180-194 vendas
-    else if (modValue === 9) salesValue = 250 + (seed % 20); // ~250-269 vendas
-    else if (modValue === 10) salesValue = 210 + (seed % 15); // ~210-224 vendas
-    else if (modValue === 11) salesValue = 90 + (seed % 10); // ~90-99 vendas
-    else if (modValue === 12) salesValue = 170 + (seed % 15); // ~170-184 vendas
-    else if (modValue === 13) salesValue = 150 + (seed % 18); // ~150-167 vendas
-    else if (modValue === 14) salesValue = 130 + (seed % 15); // ~130-144 vendas
-    else if (modValue === 15) salesValue = 110 + (seed % 12); // ~110-121 vendas
-    else if (modValue === 16) salesValue = 90 + (seed % 15); // ~90-104 vendas
-    else if (modValue === 17) salesValue = 80 + (seed % 10); // ~80-89 vendas
-    else if (modValue === 18) salesValue = 70 + (seed % 10); // ~70-79 vendas
-    else if (modValue === 19) salesValue = 60 + (seed % 8); // ~60-67 vendas
-    else if (modValue === 20) salesValue = 50 + (seed % 10); // ~50-59 vendas
-    else if (modValue === 21) salesValue = 40 + (seed % 8); // ~40-47 vendas
-    else if (modValue === 22) salesValue = 30 + (seed % 8); // ~30-37 vendas
-    else if (modValue === 23) salesValue = 20 + (seed % 10); // ~20-29 vendas
-    else salesValue = 10 + (seed % 10); // ~10-19 vendas
-    
-    // Adicionar um pequeno ajuste aleatório para números menos redondos
-    const randomAdjustment = Math.floor(Math.random() * 5) - 2; // -2 a +2
-    salesValue += randomAdjustment;
-    
-    // Definir o valor inicial
-    setSalesCount(salesValue);
-    
-    // Opcional: incremento ocasional para simular novas vendas
-    const interval = setInterval(() => {
-      // Apenas 30% de chance de incremento a cada hora
-      if (Math.random() < 0.3) {
-        setSalesCount(current => current + 1);
-      }
-    }, 60 * 60 * 1000); // A cada hora
-    
-    return () => clearInterval(interval);
-  }, [product._id]);
-  
-  // Efeito para animar a contagem quando o card é visível
-  useEffect(() => {
-    if (!cardRef.current) return;
-    
-    const observer = new IntersectionObserver((entries) => {
-      const [entry] = entries;
-      if (entry.isIntersecting && !countAnimationTriggered.current) {
-        countAnimationTriggered.current = true;
-        
-        // Animar o contador
-        let start = 0;
-        const duration = 1500; // 1.5 segundos
-        const startTime = performance.now();
-        
-        const animateCount = (timestamp: number) => {
-          const elapsed = timestamp - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          
-          // Função de easing para suavizar a animação
-          const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-          
-          setDisplayedCount(Math.floor(easeOutQuart * salesCount));
-          
-          if (progress < 1) {
-            requestAnimationFrame(animateCount);
-          } else {
-            setDisplayedCount(salesCount);
-          }
-        };
-        
-        requestAnimationFrame(animateCount);
-      }
-    }, { threshold: 0.1 });
-    
-    observer.observe(cardRef.current);
-    
-    return () => {
-      observer.disconnect();
-    };
-  }, [salesCount]);
-  
-  // Atualizar o contador exibido quando o salesCount mudar após a animação inicial
-  useEffect(() => {
-    if (countAnimationTriggered.current) {
-      setDisplayedCount(salesCount);
-    }
-  }, [salesCount]);
   
   // Verificar o status do estoque
   const getTotalStock = () => {
@@ -200,35 +82,33 @@ export default function ProductCard({ product }: { product: Product }) {
       return basePrice / (1 - (product.discountPercentage / 100));
     }
     
-    // Se não tiver desconto, retorne null
+    // Caso contrário, retorne null (sem preço original)
     return null;
   };
   
-  // Verificar se o produto tem desconto
+  // Verificar se tem desconto
   const hasDiscount = () => {
-    return (product.originalPrice !== undefined && product.originalPrice > 0) || 
-           (product.discountPercentage !== undefined && product.discountPercentage > 0);
+    return getOriginalPrice() !== null;
   };
   
-  // Calcular porcentagem de desconto
+  // Obter o percentual de desconto
   const getDiscountPercentage = () => {
-    // Se já tiver porcentagem definida, use-a
-    if (product.discountPercentage && product.discountPercentage > 0) {
+    if (product.discountPercentage) {
       return product.discountPercentage;
     }
     
-    // Se tiver preço original, calcule a porcentagem
-    if (product.originalPrice && product.originalPrice > 0) {
-      const basePrice = getBasePrice();
-      if (basePrice > 0 && product.originalPrice > basePrice) {
-        return Math.round(((product.originalPrice - basePrice) / product.originalPrice) * 100);
-      }
+    const originalPrice = getOriginalPrice();
+    const basePrice = getBasePrice();
+    
+    if (originalPrice && basePrice) {
+      const discount = ((originalPrice - basePrice) / originalPrice) * 100;
+      return Math.round(discount);
     }
     
     return 0;
   };
   
-  // Verificar se o produto tem imagem
+  // Verificar se tem imagem
   const hasImage = product.images && product.images.length > 0;
   const mainImage = hasImage ? product.images[0] : '/placeholder-product.jpg';
   

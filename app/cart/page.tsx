@@ -448,54 +448,52 @@ export default function CartPage() {
   
   // Verificar status do pagamento
   const checkPaymentStatus = async (orderId: string): Promise<boolean> => {
+    if (!isMounted.current) return false;
+    
     try {
       setIsCheckingStatus(true);
-      setError(null);
       
+      // Verificar se o orderId está disponível
       if (!orderId) {
-        const errorMsg = 'ID do pedido não disponível para verificação manual';
-        console.error(errorMsg);
-        toast.error(errorMsg);
-        setError(errorMsg);
-        return false;
+        console.error('ID do pedido não disponível para verificação de status');
+        throw new Error('Dados do pedido incompletos');
       }
       
-      console.log('Verificando status do pagamento para o pedido:', orderId);
+      const requestBody = {
+        orderId: orderId,
+        paymentId: pixPaymentData?.paymentId || ''
+      };
       
-      // Enviar requisição para verificar o status
+      console.log('Verificando status do pagamento:', requestBody);
+      
       const response = await fetch('/api/payment/check-status', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify(requestBody)
       });
       
-      // Se a requisição falhar, notificar o usuário
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-        console.error('Erro na resposta da API:', errorData);
-        
-        // Mostrar mensagem de erro específica ou genérica
-        const errorMessage = errorData.error || errorData.details || 'Erro ao verificar status do pagamento';
-        toast.error(errorMessage);
-        setError(errorMessage);
-        return false;
+        throw new Error(`Erro ${response.status}: ${response.statusText}`);
       }
       
-      // Processar resposta
-      const data = await response.json().catch(() => ({ success: false, isPaid: false }));
-      console.log('Resposta da verificação de status:', data);
+      const data = await response.json();
+      console.log('Resposta da verificação:', data);
       
+      // Se o pagamento foi confirmado
       if (data.isPaid) {
-        // Pagamento aprovado
-        toast.success('Pagamento aprovado! Redirecionando...');
+        console.log('Pagamento confirmado!');
         
-        // Limpar o carrinho
+        // Limpar dados do localStorage
+        localStorage.removeItem('pixPaymentData');
+        localStorage.removeItem('createdOrderId');
+        
+        // Limpar carrinho
         clearCart();
         
-        // Fechar modal
-        setIsPixModalOpen(false);
+        // Mostrar toast de sucesso
+        toast.success('Pagamento confirmado com sucesso!');
         
         // Redirecionar para a página de confirmação/pedidos
         setTimeout(() => {
@@ -503,9 +501,16 @@ export default function CartPage() {
         }, 2000);
         
         return true;
+      } else if (data.isExpired) {
+        console.log('Pagamento expirado!');
+        toast.error('O pagamento expirou. Por favor, gere um novo código PIX.');
+        return false;
       } else {
-        // Ainda aguardando pagamento
-        toast.error('Pagamento ainda pendente. Tente novamente em alguns instantes.');
+        // Apenas mostrar mensagem de pendente se não estiver na modal
+        if (!isPixModalOpen) {
+          console.log('Pagamento ainda pendente');
+          toast.error('Pagamento ainda pendente. Tente novamente em alguns instantes.');
+        }
         
         if (data.paymentStatus) {
           console.log(`Status atual do pagamento: ${data.paymentStatus}`);

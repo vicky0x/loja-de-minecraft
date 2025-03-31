@@ -478,7 +478,7 @@ export default function Navbar() {
                       <span className="text-white text-sm font-medium group-hover:text-primary transition-colors duration-300">{user.username}</span>
                       <span className="text-xs text-gray-400">
                         {user.role === 'admin' ? 'Administrador' : 
-                          (user.orders?.count > 0 ? 'Cliente' : 'Usuário')}
+                          (user.orders && user.orders.count > 0 ? 'Cliente' : 'Usuário')}
                       </span>
                     </div>
                     <svg 

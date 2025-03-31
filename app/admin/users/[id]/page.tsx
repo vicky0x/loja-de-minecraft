@@ -167,6 +167,18 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     }
   };
   
+  // Função para copiar ID para o clipboard
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        toast.success('ID copiado para a área de transferência!');
+      })
+      .catch((err) => {
+        console.error('Erro ao copiar: ', err);
+        toast.error('Erro ao copiar ID');
+      });
+  };
+  
   // Interface da página
   const renderLoading = () => (
     <div className="flex justify-center items-center h-96">
@@ -242,7 +254,11 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
               )}
             </div>
             <div className="mt-2 flex items-center">
-              <span className="px-2 py-1 text-xs rounded-full bg-dark-500/80 text-gray-300 border border-dark-600/50 font-mono">
+              <span 
+                onClick={() => copyToClipboard(user?._id || '')}
+                className="px-2 py-1 text-xs rounded-full bg-dark-500/80 text-gray-300 border border-dark-600/50 font-mono flex items-center cursor-pointer hover:bg-dark-400 transition-colors"
+                title="Clique para copiar"
+              >
                 <FiDatabase className="inline mr-1" />
                 ID: {user?._id}
               </span>

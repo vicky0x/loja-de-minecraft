@@ -396,15 +396,6 @@ export default function OrderDetailPage() {
                 <p className="font-medium">{order.orderItems.length} {order.orderItems.length === 1 ? 'item' : 'itens'}</p>
               </div>
             </div>
-            <div className="flex items-start space-x-3">
-              <FiClipboard className="text-primary mt-1" />
-              <div>
-                <p className="text-gray-400 text-sm">ID da Transação</p>
-                <p className="font-mono text-xs bg-dark-300 p-2 rounded">
-                  {order.paymentInfo.id ? order.paymentInfo.id : 'N/A'}
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -496,7 +487,6 @@ export default function OrderDetailPage() {
 
       {/* Itens do Pedido */}
       <div className="space-y-4">
-        <p className="text-lg font-semibold">Produtos</p>
         <div className="bg-dark-200 rounded-lg shadow-md overflow-hidden mt-6">
           <div className="p-6 border-b border-dark-300">
             <h3 className="text-lg font-semibold">Itens do Pedido</h3>
@@ -537,17 +527,6 @@ export default function OrderDetailPage() {
                         )}
                         <div>
                           <div className="text-sm font-medium text-white">{item.product.name}</div>
-                          <div className="text-xs text-gray-400">ID: {item.product._id?.substring(0, 10)}...</div>
-                          {item.product.description && (
-                            <div 
-                              className="text-xs text-gray-400 mt-1 product-description"
-                              dangerouslySetInnerHTML={{ 
-                                __html: item.product.description
-                                  // Remover tags HTML não permitidas para segurança
-                                  .replace(/<(?!\/?(strong|em|span|b|i|p|br)\b)[^>]+>/gi, '') 
-                              }}
-                            />
-                          )}
                         </div>
                       </div>
                     </td>
