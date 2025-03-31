@@ -25,6 +25,8 @@ interface Product {
   status?: 'indetectavel' | 'detectavel' | 'manutencao' | 'beta';
   price?: number;  // Preço direto para produtos sem variantes
   stock?: number;  // Estoque direto para produtos sem variantes
+  originalPrice?: number; // Preço original antes do desconto
+  discountPercentage?: number; // Porcentagem de desconto
 }
 
 export default function ProductCard({ product }: { product: Product }) {
@@ -37,22 +39,68 @@ export default function ProductCard({ product }: { product: Product }) {
   // Verificar se o produto tem variantes
   const hasVariants = product.variants && product.variants.length > 0;
   
-  // Gerar um número de vendas baseado no ID do produto para consistência
+  // Gerar um número de vendas personalizado e realista para cada produto
   useEffect(() => {
-    // Usar o ID do produto para gerar um número de base entre 100 e 980
-    const idSum = product._id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    const baseSales = 100 + (idSum % 880);
+    // Função para gerar um hash determinístico a partir da string do ID
+    const generateSeed = (id: string) => {
+      let hash = 0;
+      for (let i = 0; i < id.length; i++) {
+        const char = id.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    };
+    
+    // Obter valor base a partir do ID do produto
+    const seed = generateSeed(product._id);
+    
+    // Definir valores específicos para criar mais variação
+    // O operador módulo cria um padrão cíclico, garantindo diferentes faixas
+    const modValue = seed % 25; // 25 categorias diferentes
+    
+    let salesValue: number;
+    
+    // Distribuição personalizada para maior variabilidade
+    if (modValue === 0) salesValue = 390 + (seed % 15); // ~390-404 vendas
+    else if (modValue === 1) salesValue = 350 + (seed % 30); // ~350-379 vendas
+    else if (modValue === 2) salesValue = 280 + (seed % 25); // ~280-304 vendas
+    else if (modValue === 3) salesValue = 240 + (seed % 20); // ~240-259 vendas
+    else if (modValue === 4) salesValue = 220 + (seed % 18); // ~220-237 vendas
+    else if (modValue === 5) salesValue = 180 + (seed % 15); // ~180-194 vendas
+    else if (modValue === 6) salesValue = 150 + (seed % 20); // ~150-169 vendas
+    else if (modValue === 7) salesValue = 110 + (seed % 25); // ~110-134 vendas
+    else if (modValue === 8) salesValue = 180 + (seed % 15); // ~180-194 vendas
+    else if (modValue === 9) salesValue = 250 + (seed % 20); // ~250-269 vendas
+    else if (modValue === 10) salesValue = 210 + (seed % 15); // ~210-224 vendas
+    else if (modValue === 11) salesValue = 90 + (seed % 10); // ~90-99 vendas
+    else if (modValue === 12) salesValue = 170 + (seed % 15); // ~170-184 vendas
+    else if (modValue === 13) salesValue = 150 + (seed % 18); // ~150-167 vendas
+    else if (modValue === 14) salesValue = 130 + (seed % 15); // ~130-144 vendas
+    else if (modValue === 15) salesValue = 110 + (seed % 12); // ~110-121 vendas
+    else if (modValue === 16) salesValue = 90 + (seed % 15); // ~90-104 vendas
+    else if (modValue === 17) salesValue = 80 + (seed % 10); // ~80-89 vendas
+    else if (modValue === 18) salesValue = 70 + (seed % 10); // ~70-79 vendas
+    else if (modValue === 19) salesValue = 60 + (seed % 8); // ~60-67 vendas
+    else if (modValue === 20) salesValue = 50 + (seed % 10); // ~50-59 vendas
+    else if (modValue === 21) salesValue = 40 + (seed % 8); // ~40-47 vendas
+    else if (modValue === 22) salesValue = 30 + (seed % 8); // ~30-37 vendas
+    else if (modValue === 23) salesValue = 20 + (seed % 10); // ~20-29 vendas
+    else salesValue = 10 + (seed % 10); // ~10-19 vendas
+    
+    // Adicionar um pequeno ajuste aleatório para números menos redondos
+    const randomAdjustment = Math.floor(Math.random() * 5) - 2; // -2 a +2
+    salesValue += randomAdjustment;
     
     // Definir o valor inicial
-    setSalesCount(baseSales);
+    setSalesCount(salesValue);
     
-    // A cada hora, incrementar um valor pequeno (1-3)
+    // Opcional: incremento ocasional para simular novas vendas
     const interval = setInterval(() => {
-      setSalesCount(current => {
-        // Incremento aleatório entre 1 e 3
-        const increment = Math.floor(Math.random() * 3) + 1;
-        return current + increment;
-      });
+      // Apenas 30% de chance de incremento a cada hora
+      if (Math.random() < 0.3) {
+        setSalesCount(current => current + 1);
+      }
     }, 60 * 60 * 1000); // A cada hora
     
     return () => clearInterval(interval);
@@ -139,15 +187,53 @@ export default function ProductCard({ product }: { product: Product }) {
     return product.price || 0;
   };
   
+  // Obter o preço original para exibição
+  const getOriginalPrice = () => {
+    // Se tiver um preço original definido, use-o
+    if (product.originalPrice) {
+      return product.originalPrice;
+    }
+    
+    // Se tiver um percentual de desconto definido, calcule o preço original
+    if (product.discountPercentage && product.discountPercentage > 0) {
+      const basePrice = getBasePrice();
+      return basePrice / (1 - (product.discountPercentage / 100));
+    }
+    
+    // Se não tiver desconto, retorne null
+    return null;
+  };
+  
+  // Verificar se o produto tem desconto
+  const hasDiscount = () => {
+    return (product.originalPrice !== undefined && product.originalPrice > 0) || 
+           (product.discountPercentage !== undefined && product.discountPercentage > 0);
+  };
+  
+  // Calcular porcentagem de desconto
+  const getDiscountPercentage = () => {
+    // Se já tiver porcentagem definida, use-a
+    if (product.discountPercentage && product.discountPercentage > 0) {
+      return product.discountPercentage;
+    }
+    
+    // Se tiver preço original, calcule a porcentagem
+    if (product.originalPrice && product.originalPrice > 0) {
+      const basePrice = getBasePrice();
+      if (basePrice > 0 && product.originalPrice > basePrice) {
+        return Math.round(((product.originalPrice - basePrice) / product.originalPrice) * 100);
+      }
+    }
+    
+    return 0;
+  };
+  
   // Verificar se o produto tem imagem
   const hasImage = product.images && product.images.length > 0;
   const mainImage = hasImage ? product.images[0] : '/placeholder-product.jpg';
   
   // Adicionar a função para configuração do status logo após a função getBasePrice
   const getStatusConfig = (status?: string) => {
-    // Adicionar log para depuração
-    console.log('Status recebido no ProductCard:', status);
-    
     // Se o status for null, undefined ou string vazia
     if (!status) {
       return null; // Retornar null para indicar que não há status
@@ -155,7 +241,6 @@ export default function ProductCard({ product }: { product: Product }) {
     
     // Convertendo para minúsculas e garantindo que é uma string
     const validStatus = status.toLowerCase();
-    console.log('Status convertido para minúsculas:', validStatus);
     
     // Verificações mais específicas para cada status
     if (validStatus === 'detectavel' || (validStatus.includes('detect') && !validStatus.includes('indetect'))) {
@@ -196,7 +281,6 @@ export default function ProductCard({ product }: { product: Product }) {
     }
     else {
       // Caso padrão para qualquer outro valor
-      console.log('Status não reconhecido, usando padrão Indetectável');
       return {
         label: 'Indetectável',
         bgColor: 'bg-green-900/40',
@@ -211,15 +295,16 @@ export default function ProductCard({ product }: { product: Product }) {
     <>
       <div ref={cardRef} className="bg-dark-200 rounded-lg overflow-hidden shadow-md transition-transform duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg">
         <div className="relative">
+          {/* Badge de status do estoque - movida para antes da imagem, mas mantendo seu estilo */}
+          <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-md z-20 ${getStockClass()}`}>
+            {getStockStatus()}
+          </div>
+          
           {/* Imagem do produto com fallback */}
           <div className="aspect-w-16 aspect-h-9 bg-dark-300 relative">
-            {/* Background image for all product cards */}
-            <div className="absolute inset-0 z-0 opacity-20">
-              <img 
-                src="https://wallpapercave.com/wp/wp9493309.jpg"
-                alt="Background"
-                className="w-full h-full object-cover"
-              />
+            {/* Background pattern with wavy lines */}
+            <div className="absolute inset-0 z-0 overflow-hidden">
+              <div className="wavy-pattern h-full w-full"></div>
             </div>
             {hasImage ? (
               product.images[0].startsWith('data:') ? (
@@ -227,31 +312,31 @@ export default function ProductCard({ product }: { product: Product }) {
                 <img 
                   src={product.images[0]}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover relative z-10"
                 />
               ) : product.images[0].startsWith('/uploads/') ? (
                 // Imagem do servidor
                 <img 
                   src={product.images[0]}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover relative z-10"
                 />
               ) : product.images[0].startsWith('http') ? (
                 // URL externa
                 <img 
                   src={product.images[0]}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover relative z-10"
                 />
               ) : (
                 // Fallback para texto
-                <div className="flex items-center justify-center h-full p-4 text-gray-400">
+                <div className="flex items-center justify-center h-full p-4 text-gray-400 relative z-10">
                   <span>Imagem não disponível</span>
                 </div>
               )
             ) : (
               // Nenhuma imagem encontrada
-              <div className="flex items-center justify-center h-full p-4 text-gray-400">
+              <div className="flex items-center justify-center h-full p-4 text-gray-400 relative z-10">
                 <span>Sem imagem</span>
               </div>
             )}
@@ -273,19 +358,14 @@ export default function ProductCard({ product }: { product: Product }) {
               {getStatusConfig(product.status)?.label}
             </div>
           )}
-          
-          {/* Badge de status do estoque */}
-          <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-md ${getStockClass()}`}>
-            {getStockStatus()}
-          </div>
         </div>
         
         <div className="p-4">
-          <h3 className="text-white font-semibold mb-2 line-clamp-1">{product.name}</h3>
+          <h3 className="text-white font-medium text-base mb-2">{product.name}</h3>
           
           {product.shortDescription && (
             <div 
-              className="text-gray-400 text-sm mb-4 line-clamp-2 product-description"
+              className="text-gray-400 text-xs mb-4 line-clamp-2 product-description"
               dangerouslySetInnerHTML={{ 
                 __html: product.shortDescription
                   // Remover tags HTML não permitidas para segurança
@@ -294,53 +374,34 @@ export default function ProductCard({ product }: { product: Product }) {
             />
           )}
           
-          {/* Contador de vendas com animação */}
-          <div className="relative mb-3 overflow-hidden">
-            <div className="bg-gradient-to-r from-dark-300 to-dark-400 rounded-md p-2 group transition-all duration-300 hover:shadow-md hover:shadow-primary/10 border border-dark-400 hover:border-primary/30">
-              <div className="flex items-center">
-                <div className="w-7 h-7 rounded-full bg-green-900/40 flex items-center justify-center mr-2 group-hover:scale-110 transition-transform">
-                  <FiTrendingUp className="text-green-400 animate-subtle-bounce" size={14} />
+          {/* Preço e botão de detalhes */}
+          <div>
+            <div className="mb-3">
+              {hasDiscount() && (
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-gray-400 line-through text-sm">
+                    R$ {getOriginalPrice()!.toFixed(2).replace('.', ',')}
+                  </span>
+                  {getDiscountPercentage() > 0 && (
+                    <span className="bg-green-600/30 text-green-400 text-xs font-bold px-2 py-0.5 rounded">
+                      -{getDiscountPercentage()}%
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <div className="flex items-center">
-                    <span className="text-green-400 font-bold">{displayedCount}</span>
-                    <span className="text-xs ml-1.5 text-gray-300">clientes satisfeitos</span>
-                  </div>
-                  <div className="text-xs text-gray-400">Produto muito vendido</div>
-                </div>
-              </div>
-              <div className="absolute -bottom-0.5 left-0 h-0.5 bg-gradient-to-r from-green-500/70 to-primary/70 w-0 group-hover:w-full transition-all duration-700"></div>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-primary font-bold">
+              )}
+              <div className="text-primary font-bold text-xl">
                 R$ {getBasePrice().toFixed(2).replace('.', ',')}
               </div>
             </div>
             
-            <div className="flex space-x-1">
-              {/* Botão para ver estoque ou variantes (mostrado apenas se tiver variantes) */}
-              {hasVariants && (
-                <button
-                  onClick={() => setIsStockModalOpen(true)}
-                  className="p-2 text-white hover:text-primary transition-colors"
-                  title="Ver planos"
-                >
-                  <FiPackage size={18} />
-                </button>
-              )}
-              
-              {/* Link para visualizar produto */}
-              <Link
-                href={`/product/${product.slug}`}
-                className="p-2 text-white hover:text-primary transition-colors"
-                title="Ver detalhes"
-              >
-                <FiEye size={18} />
-              </Link>
-            </div>
+            <Link
+              href={`/product/${product.slug}`}
+              className="relative block w-full text-center bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md transition-all duration-300 overflow-hidden group"
+            >
+              <span className="relative z-10">Ver detalhes</span>
+              <span className="absolute left-0 top-0 w-full h-0 bg-gradient-to-r from-[#e05400] to-[#ff8a42] opacity-50 group-hover:h-full transition-all duration-300"></span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-500 delay-100"></span>
+            </Link>
           </div>
         </div>
       </div>

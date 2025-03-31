@@ -20,6 +20,8 @@ export interface IProduct extends Document {
   variants?: IVariant[];
   stock?: number; // Estoque do produto (quando não usa variantes)
   price?: number; // Preço do produto (quando não usa variantes)
+  originalPrice?: number; // Preço original para mostrar desconto
+  discountPercentage?: number; // Porcentagem de desconto
   featured: boolean;
   requirements: string[];
   status: 'indetectavel' | 'detectavel' | 'manutencao' | 'beta';
@@ -102,6 +104,17 @@ const productSchema = new Schema<IProduct>(
     price: {
       type: Number,
       min: [0, 'Preço não pode ser negativo'],
+    },
+    originalPrice: {
+      type: Number,
+      min: [0, 'Preço original não pode ser negativo'],
+      default: 0,
+    },
+    discountPercentage: {
+      type: Number,
+      min: [0, 'Desconto não pode ser negativo'],
+      max: [99, 'Desconto não pode ser maior que 99%'],
+      default: 0,
     },
     featured: {
       type: Boolean,

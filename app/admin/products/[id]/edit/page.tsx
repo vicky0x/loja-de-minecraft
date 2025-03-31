@@ -54,6 +54,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     useVariants: true, // Controla se o produto usa variantes ou não
     price: 0, // Preço quando não usa variantes
     stock: 0, // Estoque quando não usa variantes
+    originalPrice: 0, // Preço original para exibir desconto
+    discountPercentage: 0, // Porcentagem de desconto
   });
 
   const [variants, setVariants] = useState<Variant[]>([{
@@ -126,6 +128,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           useVariants: Array.isArray(product.variants) && product.variants.length > 0, // Verifica se usa variantes
           price: product.price || 0, // Preço do produto quando não usa variantes
           stock: product.stock || 0, // Estoque do produto quando não usa variantes
+          originalPrice: product.originalPrice || 0, // Preço original para exibir desconto
+          discountPercentage: product.discountPercentage || 0, // Porcentagem de desconto
         });
         
         if (product.variants && product.variants.length > 0) {
@@ -268,11 +272,23 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   };
   
   const removeVariant = (index: number) => {
-    if (variants.length <= 1) return;
+    const newVariants = [...variants];
+    newVariants.splice(index, 1);
+    setVariants(newVariants);
+  };
+  
+  // Função para obter o rótulo a partir da chave
+  const getLabelFromKey = (key: string): string => {
+    const labelMap: Record<string, string> = {
+      'sistema_operacional': 'Sistema Operacional',
+      'processador': 'Processador',
+      'memoria': 'Memória',
+      'placa_grafica': 'Placa de Vídeo',
+      'armazenamento': 'Armazenamento',
+      'notas_adicionais': 'Notas Adicionais',
+    };
     
-    const updatedVariants = [...variants];
-    updatedVariants.splice(index, 1);
-    setVariants(updatedVariants);
+    return labelMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
   
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,29 +389,35 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     try {
       setLoading(true);
       
-      // Converter requisitos para array
-      const requirementsArray = Object.entries(requirements)
-        .filter(([_, value]) => value.trim() !== '')
-        .map(([key, value]) => `${key}: ${value}`);
-      
-      // Preparar dados para envio
-      const formData: any = {
+      // Preparar objeto para enviar à API
+      const productToSave = {
         name: productData.name,
+        slug: productData.name.toLowerCase().replace(/ /g, '-'),
         shortDescription: productData.short_description,
         description: productData.description,
+        category: productData.category,
         featured: productData.is_featured,
         status: productData.status,
-        variants: productData.useVariants ? variants : [], // Só envia variantes se estiver usando
-        stock: productData.useVariants ? undefined : productData.stock, // Envia estoque direto se não usar variantes
-        price: productData.useVariants ? undefined : productData.price, // Envia preço direto se não usar variantes
-        requirements: requirementsArray,
-        images: images, // Adicionando as imagens
+        // Adicionar campos específicos com base no modo (variantes ou não)
+        ...(productData.useVariants 
+          ? { variants: variants } 
+          : { 
+              price: productData.price, 
+              stock: productData.stock,
+              originalPrice: productData.originalPrice > 0 ? productData.originalPrice : undefined,
+              discountPercentage: productData.discountPercentage > 0 ? productData.discountPercentage : undefined
+            }
+        ),
+        // Mapear requisitos para formato de string
+        requirements: Object.entries(requirements)
+          .filter(([_, value]) => value.trim() !== '')
+          .map(([key, value]) => {
+            const label = getLabelFromKey(key);
+            return `${label}: ${value}`;
+          }),
+        // Imagens
+        images: images,
       };
-      
-      // Adicionar categoria apenas se estiver definida
-      if (productData.category) {
-        formData.category = productData.category;
-      }
       
       // Enviar requisição de atualização
       const response = await fetch(`/api/products/${id}`, {
@@ -403,7 +425,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(productToSave),
       });
       
       if (!response.ok) {
@@ -724,37 +746,79 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               </label>
             </div>
 
+            {/* Preço e estoque (quando não usa variantes) */}
             {!productData.useVariants && (
-              <div className="border border-dark-400 rounded-lg p-4">
-                <h4 className="font-bold text-white mb-4">Preço e Estoque</h4>
+              <div className="mt-8 bg-dark-200 p-4 rounded-md border border-dark-400">
+                <h3 className="text-lg font-medium text-white mb-4">Preço e Estoque</h3>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Preço (R$) *
+                      Preço (R$)
                     </label>
                     <input
                       type="number"
-                      value={productData.price}
-                      onChange={(e) => setProductData({...productData, price: Number(e.target.value)})}
-                      className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="0.00"
-                      min="0"
+                      name="price"
                       step="0.01"
-                      required
+                      min="0"
+                      value={productData.price}
+                      onChange={handleInputChange}
+                      className="w-full bg-dark-300 text-white border border-dark-400 rounded-md p-2"
                     />
                   </div>
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Estoque Disponível
+                      Estoque
                     </label>
                     <input
                       type="number"
-                      value={productData.stock}
-                      onChange={(e) => setProductData({...productData, stock: Number(e.target.value)})}
-                      className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="0"
+                      name="stock"
                       min="0"
+                      value={productData.stock}
+                      onChange={handleInputChange}
+                      className="w-full bg-dark-300 text-white border border-dark-400 rounded-md p-2"
                     />
+                  </div>
+                </div>
+
+                {/* Gatilho Mental de Desconto */}
+                <div className="bg-dark-200 p-6 rounded-lg shadow-md mt-6">
+                  <h3 className="text-xl font-semibold text-white mb-4">Gatilho Mental de Desconto</h3>
+                  <p className="text-gray-400 text-sm mb-4">Configure um desconto falso para aumentar as conversões. Estes valores serão mostrados no card do produto.</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-300 mb-1">
+                        Preço Original (R$)
+                      </label>
+                      <input
+                        type="number"
+                        id="originalPrice"
+                        name="originalPrice"
+                        value={productData.originalPrice}
+                        onChange={(e) => setProductData({...productData, originalPrice: Number(e.target.value)})}
+                        className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                      />
+                      <p className="mt-1 text-xs text-gray-400">Valor original que aparecerá riscado</p>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="discountPercentage" className="block text-sm font-medium text-gray-300 mb-1">
+                        Desconto (%)
+                      </label>
+                      <input
+                        type="number"
+                        id="discountPercentage"
+                        name="discountPercentage"
+                        value={productData.discountPercentage}
+                        onChange={(e) => setProductData({...productData, discountPercentage: Number(e.target.value)})}
+                        className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0"
+                      />
+                      <p className="mt-1 text-xs text-gray-400">Porcentagem de desconto que será exibida</p>
+                    </div>
                   </div>
                 </div>
               </div>

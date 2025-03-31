@@ -152,13 +152,17 @@ export async function PUT(
       requirements,
       price,
       stock,
-      images
+      images,
+      originalPrice,
+      discountPercentage
     } = data;
     
     // Log de depuração
+    console.log('Dados recebidos:', data);
     console.log('Status recebido:', status);
     console.log('Tipo do status:', typeof status);
-    console.log('Dados recebidos:', data);
+    console.log('Preço original:', originalPrice);
+    console.log('Desconto:', discountPercentage);
     
     // Validações básicas
     if (!name || !description) {
@@ -194,7 +198,7 @@ export async function PUT(
     }
     
     // Verificar se a categoria é válida
-    let categoryField;
+    let category;
     if (categoryId) {
       // Verificar se é um ID válido
       if (!mongoose.Types.ObjectId.isValid(categoryId)) {
@@ -204,10 +208,10 @@ export async function PUT(
           { status: 400 }
         );
       }
-      categoryField = new mongoose.Types.ObjectId(categoryId);
+      category = new mongoose.Types.ObjectId(categoryId);
     } else {
       // Se não tiver categoria, usar null ou manter a atual
-      categoryField = product.category;
+      category = product.category;
     }
     
     // Verificar se temos imagens
@@ -244,22 +248,19 @@ export async function PUT(
       description,
       shortDescription,
       images,
-      category: categoryField,
+      category,
       variants: variants || [],
       featured: featured || false,
       requirements: requirements || [],
       // Definir status apenas se tiver um valor
       ...(normalizedStatus ? { status: normalizedStatus } : { $unset: { status: 1 } }),
+      // Adicionar preço e estoque para produtos sem variantes
+      ...(price !== undefined ? { price: Number(price) } : {}),
+      ...(stock !== undefined ? { stock: Number(stock) } : {}),
+      // Adicionar preço original e porcentagem de desconto
+      ...(originalPrice !== undefined && originalPrice !== '' ? { originalPrice: Number(originalPrice) } : {}),
+      ...(discountPercentage !== undefined && discountPercentage !== '' ? { discountPercentage: Number(discountPercentage) } : {})
     };
-    
-    // Adicionar price e stock se forem fornecidos (para produtos sem variantes)
-    if (price !== undefined) {
-      updateObject.price = price;
-    }
-    
-    if (stock !== undefined) {
-      updateObject.stock = stock;
-    }
     
     // Atualizar o produto
     const updatedProduct = await Product.findByIdAndUpdate(
