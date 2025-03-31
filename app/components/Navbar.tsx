@@ -249,7 +249,8 @@ export default function Navbar() {
                           alt={user.username} 
                           width={40} 
                           height={40} 
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          className="object-cover w-full h-full"
+                          style={{ objectFit: 'cover', objectPosition: 'center' }}
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
@@ -456,7 +457,8 @@ export default function Navbar() {
                       alt={user.username} 
                       width={40} 
                       height={40} 
-                      className="object-cover"
+                      className="object-cover w-full h-full"
+                      style={{ objectFit: 'cover', objectPosition: 'center' }}
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">

@@ -53,20 +53,55 @@ export async function GET(
     const forwardedFor = req.headers.get('x-forwarded-for');
     const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : req.headers.get('x-real-ip') || 'Desconhecido';
     
-    // Retornar dados do usuário com estatísticas
-    return NextResponse.json({
-      user,
-      orders,
-      clientInfo: {
-        userAgent: clientInfo,
-        ip: clientIp
-      },
-      statistics: {
-        totalOrders: orders.length,
-        totalSpent: orders.reduce((acc, order) => acc + order.total, 0),
-        lastOrder: orders[0]?.createdAt || null
-      }
+    // Calcular estatísticas do usuário
+    const totalSpent = orders.reduce((acc, order) => {
+      // Verificar se order.totalAmount existe
+      return acc + (order.totalAmount || order.total || 0);
+    }, 0);
+    
+    // Preparar timeline básica
+    const timeline = [];
+    
+    // Adicionar registro de usuário à timeline
+    timeline.push({
+      id: 'registration',
+      type: 'registration',
+      title: 'Registro de Conta',
+      description: 'Usuário criou uma conta na plataforma',
+      date: user.createdAt
     });
+    
+    // Adicionar pedidos à timeline
+    orders.forEach(order => {
+      timeline.push({
+        id: order._id.toString(),
+        type: 'order',
+        title: `Pedido #${order._id.toString().slice(-6)}`,
+        description: `Realizou um pedido com ${order.orderItems?.length || 0} item(s)`,
+        status: order.paymentInfo?.status || 'pending',
+        items: order.orderItems?.length || 0,
+        date: order.createdAt
+      });
+    });
+    
+    // Preparar o objeto de usuário com todos os dados necessários
+    const userDetail = {
+      ...user,
+      stats: {
+        totalSpent: totalSpent,
+        totalOrders: orders.length,
+        lastActivity: orders.length > 0 ? orders[0].createdAt : user.createdAt
+      },
+      clientInfo: {
+        ip: clientIp,
+        userAgent: clientInfo
+      },
+      orders: orders,
+      timeline: timeline
+    };
+    
+    // Retornar dados do usuário com estatísticas
+    return NextResponse.json({ user: userDetail });
   } catch (error) {
     console.error('Erro ao buscar dados do usuário:', error);
     return NextResponse.json(

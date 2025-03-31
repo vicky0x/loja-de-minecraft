@@ -319,7 +319,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 <div>
                   <p className="text-sm text-gray-400">Total Gasto</p>
                   <p className="text-lg font-bold text-white">
-                    R$ {user?.stats?.totalSpent.toFixed(2) || '0.00'}
+                    R$ {user?.stats?.totalSpent?.toFixed(2) || '0.00'}
                   </p>
                 </div>
               </div>

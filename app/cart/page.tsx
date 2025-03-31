@@ -708,10 +708,10 @@ export default function CartPage() {
             transition={{ duration: 0.5 }}
           >
             <div className="flex flex-col items-center max-w-md mx-auto">
-              <div className="w-24 h-24 bg-dark-300 rounded-full flex-shrink-0 shadow-md transition-transform duration-300">
-                <div><IconFiShoppingBag size={32} color="#FF5722" /></div>
+              <div className="w-24 h-24 bg-dark-300 rounded-full flex items-center justify-center flex-shrink-0 shadow-md transition-transform duration-300">
+                <IconFiShoppingBag size={32} color="#FF5722" />
               </div>
-              <h2 className="text-2xl text-white font-bold mb-3">Seu carrinho está vazio</h2>
+              <h2 className="text-2xl text-white font-bold mb-3 mt-4">Seu carrinho está vazio</h2>
               <p className="text-gray-400 mb-8">Adicione produtos ao carrinho para continuar com sua compra.</p>
               <Link 
                 href="/products" 
@@ -970,7 +970,7 @@ export default function CartPage() {
                                 : 'border-dark-400 bg-dark-300 text-gray-300 hover:border-gray-400'
                             }`}
                           >
-                            <Image src="/pix-logo.svg" alt="PIX" width={24} height={24} className="mr-2" />
+                            <Image src="/icons8-pix-480.png" alt="PIX" width={24} height={24} className="mr-2" />
                             <span>PIX</span>
                           </button>
                           <button
@@ -982,7 +982,7 @@ export default function CartPage() {
                                 : 'border-dark-400 bg-dark-300 text-gray-300 hover:border-gray-400'
                             }`}
                           >
-                            <div className="mr-2"><IconFiCreditCard size={18} /></div>
+                            <Image src="/credit.png" alt="Cartão de Crédito" width={24} height={24} className="mr-2" />
                             <span>Cartão</span>
                           </button>
                         </div>
