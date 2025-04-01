@@ -68,9 +68,9 @@ const AnnouncementList = () => {
           onClick={fetchAnnouncements}
           className="flex items-center justify-center mx-auto px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80 transition-colors"
         >
-          <div className="mr-2">
+          <span className="mr-2">
             <FiRefreshCw />
-          </div>
+          </span>
           Tentar novamente
         </button>
       </div>

@@ -30,6 +30,19 @@ export async function GET(request: NextRequest) {
     
     const user = authResult.user;
     
+    // Buscar informações adicionais do usuário diretamente do banco de dados
+    // para garantir que todos os campos estejam disponíveis
+    const User = (await import('@/app/lib/models/user')).default;
+    const userFromDB = await User.findById(user._id);
+    
+    if (!userFromDB) {
+      console.log('Usuário não encontrado no banco de dados:', user._id);
+      return NextResponse.json(
+        { message: 'Usuário não encontrado' },
+        { status: 404 }
+      );
+    }
+    
     // Dados do usuário para retornar (removendo dados sensíveis)
     const userData = {
       id: user._id.toString(),
@@ -38,14 +51,19 @@ export async function GET(request: NextRequest) {
       name: user.name || '',
       role: user.role,
       profileImage: user.profileImage || '',
-      memberNumber: user.memberNumber,
-      cpf: user.cpf || '',
-      address: user.address || '',
-      phone: user.phone || '',
-      createdAt: user.createdAt
+      // Garantir que memberNumber e createdAt sejam enviados corretamente
+      memberNumber: userFromDB.memberNumber,
+      createdAt: userFromDB.createdAt.toISOString(),
+      cpf: userFromDB.cpf || '',
+      address: userFromDB.address || '',
+      phone: userFromDB.phone || '',
     };
     
-    console.log('Enviando dados do usuário:', userData);
+    console.log('Enviando dados do usuário:', {
+      ...userData,
+      memberNumber: userData.memberNumber || 'não definido',
+      createdAt: userData.createdAt || 'não definido'
+    });
     
     // Definir cabeçalhos para evitar cache
     const response = NextResponse.json({ user: userData }, {

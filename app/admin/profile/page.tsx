@@ -713,7 +713,7 @@ export default function AdminProfilePage() {
                 className="w-full flex justify-center items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? (
-                  <div className="mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-r-2 border-white"></div>
+                  <span className="mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-r-2 border-white"></span>
                 ) : (
                   <FiSave className="mr-2" />
                 )}

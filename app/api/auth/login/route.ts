@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
     console.log('Criando resposta com dados do usuário');
     const userData = {
       id: user._id,
+      _id: user._id,
       username: user.username,
       email: user.email,
       name: user.name || '',

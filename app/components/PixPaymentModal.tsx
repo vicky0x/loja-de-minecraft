@@ -170,15 +170,36 @@ function PixPaymentModal({
       if (document.visibilityState === 'visible' && isMounted.current) {
         // Apenas garantimos que o estado de verificação seja resetado
         setCheckingStatus(false);
+        
+        // Verificar se precisamos forçar alguma atualização 
+        if (checkingStatus) {
+          setCheckingStatus(false);
+        }
+        
+        // Verificar se o modal ainda está aberto e se os dados ainda são válidos
+        if (isOpen && paymentData?.orderId) {
+          console.log('Documento voltou a ser visível, modal ainda aberto');
+        }
+      }
+    };
+    
+    // Adicionar evento para quando o navegador restaura a página do histórico
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && isMounted.current) {
+        // Evitar estados de UI travados
+        console.log('Página PIX restaurada do cache');
+        setCheckingStatus(false);
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
     };
-  }, []);
+  }, [isOpen, paymentData?.orderId, checkingStatus]);
   
   // Efeito para configurar a verificação periódica do status do pagamento
   useEffect(() => {
@@ -472,8 +493,87 @@ function PixPaymentModal({
     }
   };
   
+  // Logo após a definição das referências (isMounted, statusCheckRef)
+  // Adicionar um efeito para verificação periódica de estados travados
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    // Verificar se há algum estado bloqueante
+    let blockingStateTimer: NodeJS.Timeout;
+    
+    const checkBlockingState = () => {
+      if (!isMounted.current) return;
+      
+      // Se o status de verificação estiver travado por mais de 15 segundos, resetar
+      if (checkingStatus) {
+        console.log('Verificando possível estado de verificação travado...');
+        setCheckingStatus(false);
+      }
+    };
+    
+    blockingStateTimer = setInterval(checkBlockingState, 15000);
+    
+    return () => {
+      clearInterval(blockingStateTimer);
+    };
+  }, [isOpen, checkingStatus]);
+
+  // Adicionar um efeito para corrigir o z-index do modal se necessário
+  useEffect(() => {
+    // Verificar se há algum problema de z-index ou posicionamento absoluto
+    const fixZIndexIfNeeded = () => {
+      if (!isMounted.current || !isOpen) return;
+      
+      // Tentar verificar se há cliques sendo interceptados incorretamente
+      try {
+        const modalElements = document.querySelectorAll('.fixed.inset-0');
+        
+        if (modalElements.length > 1) {
+          console.log('Múltiplos elementos fixed.inset-0 detectados, verificando sobreposição...');
+          
+          // Verificar quais elementos podem estar na frente, mas invisíveis
+          modalElements.forEach((element) => {
+            const el = element as HTMLElement;
+            const computed = window.getComputedStyle(el);
+            
+            if (computed.opacity === '0' && computed.zIndex !== '-1') {
+              console.log('Elemento invisível com z-index alto detectado, ajustando...');
+              el.style.zIndex = '-1';
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao tentar corrigir problemas de z-index:', error);
+      }
+    };
+    
+    // Executar uma vez na montagem
+    fixZIndexIfNeeded();
+    
+    // E também quando o estado de visibilidade da página mudar
+    const handleVisChange = () => {
+      if (document.visibilityState === 'visible') {
+        fixZIndexIfNeeded();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisChange);
+    };
+  }, [isOpen]);
+  
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={(e) => {
+        // Se o clique foi no overlay (não em um elemento filho)
+        if (e.target === e.currentTarget) {
+          // Fechar o modal
+          onClose();
+        }
+      }}
+    >
       <div className="fixed inset-0 bg-black/75" onClick={(e) => e.stopPropagation()}></div>
       
       <div className="relative z-10 w-full max-w-md transform overflow-hidden rounded-lg bg-dark-200 p-6 text-left align-middle shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -594,9 +694,9 @@ function PixPaymentModal({
                     ? 'text-red-400 bg-red-500/10 animate-pulse' 
                     : 'text-yellow-400 bg-yellow-500/10'
               }`}>
-                <div className="mr-2">
+                <span className="mr-2">
                   {isExpired ? <IconFiAlertCircle size={16} /> : <IconFiClock size={16} />}
-                </div>
+                </span>
                 <span>
                   {isExpired 
                     ? "Pagamento expirado" 
@@ -608,9 +708,9 @@ function PixPaymentModal({
             {/* Mensagens de segurança e gatilhos mentais */}
             <div className="mb-4 bg-gradient-to-r from-green-900/20 to-green-800/10 border border-green-800/50 rounded-lg p-4 shadow-lg transform transition-all duration-300 hover:shadow-green-900/20 hover:scale-[1.02]">
               <div className="flex items-start">
-                <div className="mr-3 mt-0.5 bg-green-500/20 p-2 rounded-full">
+                <span className="mr-3 mt-0.5 bg-green-500/20 p-2 rounded-full">
                   <IconFiCheck size={18} color="#10b981" className="animate-pulse" />
-                </div>
+                </span>
                 <div>
                   <p className="text-green-400 font-medium mb-1">Compra 100% segura</p>
                   <p className="text-gray-400 text-sm">
@@ -635,7 +735,7 @@ function PixPaymentModal({
 
             {error && (
               <div className="mt-2 p-2 bg-red-900/30 border-l-4 border-red-500 text-red-400 text-sm flex items-start">
-                <div className="mr-1 mt-0.5 flex-shrink-0"><IconFiAlertCircle size={16} /></div>
+                <span className="mr-1 mt-0.5 flex-shrink-0"><IconFiAlertCircle size={16} /></span>
                 <span>{error}</span>
               </div>
             )}
@@ -643,7 +743,7 @@ function PixPaymentModal({
             <div className="mt-6">
               {isPaid ? (
                 <div className="bg-green-900/30 border-l-4 border-green-500 p-4 text-green-400 flex items-start">
-                  <div className="mr-2 mt-0.5 flex-shrink-0"><IconFiCheck size={16} /></div>
+                  <span className="mr-2 mt-0.5 flex-shrink-0"><IconFiCheck size={16} /></span>
                   <div>
                     <p className="font-medium">Pagamento confirmado!</p>
                     <p className="text-sm mt-1">Você será redirecionado em breve...</p>
@@ -652,7 +752,7 @@ function PixPaymentModal({
               ) : isExpired ? (
                 <div className="mb-4">
                   <div className="bg-red-900/30 border-l-4 border-red-500 p-4 text-red-400 flex items-start mb-4">
-                    <div className="mr-2 mt-0.5 flex-shrink-0"><IconFiAlertCircle size={16} /></div>
+                    <span className="mr-2 mt-0.5 flex-shrink-0"><IconFiAlertCircle size={16} /></span>
                     <div>
                       <p className="font-medium">Tempo para pagamento expirado</p>
                       <p className="text-sm mt-1">Você precisará gerar um novo código PIX para continuar com a compra.</p>
@@ -664,7 +764,7 @@ function PixPaymentModal({
                       onClick={onClose}
                       className="py-3 px-4 rounded-md bg-dark-400 hover:bg-dark-500 focus:outline-none focus:ring-2 focus:ring-dark-300 text-white font-medium flex items-center justify-center"
                     >
-                      <div className="mr-2"><IconFiX size={18} /></div>
+                      <span className="mr-2"><IconFiX size={18} /></span>
                       <span>Cancelar</span>
                     </button>
                     {onRegeneratePixCode && (
@@ -673,7 +773,7 @@ function PixPaymentModal({
                         onClick={onRegeneratePixCode}
                         className="py-3 px-4 rounded-md bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary text-white font-medium flex items-center justify-center"
                       >
-                        <div className="mr-2"><IconFiRefreshCw size={18} /></div>
+                        <span className="mr-2"><IconFiRefreshCw size={18} /></span>
                         <span>Novo PIX</span>
                       </button>
                     )}
@@ -692,14 +792,14 @@ function PixPaymentModal({
                 >
                   {checkingStatus ? (
                     <>
-                      <div className="mr-2">
+                      <span className="mr-2">
                         <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white inline-block"></span>
-                      </div>
+                      </span>
                       <span>Verificando pagamento...</span>
                     </>
                   ) : (
                     <>
-                      <div className="mr-2"><IconFiRefreshCw size={18} /></div>
+                      <span className="mr-2"><IconFiRefreshCw size={18} /></span>
                       <span>Verificar pagamento agora</span>
                     </>
                   )}

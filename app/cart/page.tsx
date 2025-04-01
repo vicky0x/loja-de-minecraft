@@ -104,6 +104,7 @@ export default function CartPage() {
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   
   // Estado para controlar se o componente está montado
   const isMounted = useRef(false);
@@ -146,7 +147,10 @@ export default function CartPage() {
     const cleanup = () => {
       if (!isMounted.current) return;
       
-      // Não resetamos o modal de PIX
+      // Não resetamos o modal de PIX se ele estiver sendo usado
+      if (!pixPaymentData) {
+        setIsPixModalOpen(false);
+      }
       setShowDeleteConfirm(null);
       setIsLoading(false);
       setError(null);
@@ -159,7 +163,6 @@ export default function CartPage() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isMounted.current) {
         // Quando o usuário volta para a página, verificamos se há dados de PIX armazenados
-        // e reabrimos o modal se necessário
         try {
           const storedPixData = localStorage.getItem('pixPaymentData');
           const storedOrderId = localStorage.getItem('createdOrderId');
@@ -167,13 +170,18 @@ export default function CartPage() {
           if (storedPixData && storedOrderId) {
             const parsedPixData = JSON.parse(storedPixData);
             
-            // Garantir que o modal esteja aberto
+            // Garantir que o modal esteja aberto apenas se houver dados válidos
             setPixPaymentData(parsedPixData);
             setCreatedOrderId(storedOrderId);
             setIsPixModalOpen(true);
+          } else {
+            // Se não há dados armazenados, garantir que o modal esteja fechado
+            setIsPixModalOpen(false);
           }
         } catch (error) {
           console.error('Erro ao recuperar dados de PIX do localStorage:', error);
+          // Se houver erro, garantimos que o modal esteja fechado
+          setIsPixModalOpen(false);
         }
         
         // Limpeza de outros estados problemáticos
@@ -185,13 +193,33 @@ export default function CartPage() {
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
+    // Adicionar evento para quando o navegador restaura a página do histórico
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted && isMounted.current) {
+        // A página foi restaurada do cache (voltar do navegador)
+        console.log('Página restaurada do cache');
+        
+        // Verificar se há um modal que precisa ser fechado
+        setIsPixModalOpen(false);
+        
+        // Forçar atualização dos estados para evitar UI travada
+        setShowDeleteConfirm(null);
+        setIsLoading(false);
+        setError(null);
+        
+        // Chamar o cleanup após um pequeno delay
+        setTimeout(cleanup, 100);
+      }
+    });
+    
     // Cleanup ao desmontar
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handleVisibilityChange);
       // Marcar que o componente não está mais montado para evitar atualizações de estado
       isMounted.current = false;
     };
-  }, []);
+  }, [pixPaymentData]);
   
   // Verificação de segurança para operações que podem causar problemas
   const safeOperation = (operation: Function) => {
@@ -298,7 +326,14 @@ export default function CartPage() {
           cpf: customerData.cpf,
           // Enviar telefone apenas se estiver preenchido
           ...(customerData.phone ? { phone: customerData.phone } : {})
-        }
+        },
+        // Adicionar informações do cupom se tiver algum aplicado
+        ...(isCouponValid && couponDiscount > 0 ? {
+          coupon: {
+            code: couponCode,
+            discountAmount: couponDiscount
+          }
+        } : {})
       };
 
       // Enviar o pedido para a API
@@ -320,6 +355,32 @@ export default function CartPage() {
       
       // Armazenar o ID do pedido para usar no pagamento
       setCreatedOrderId(orderResult.orderId);
+      
+      // Se tiver cupom aplicado, registrar o uso
+      if (isCouponValid && couponDiscount > 0 && orderResult.orderId) {
+        try {
+          const couponUseResponse = await fetch('/api/coupons/use', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              couponCode: couponCode,
+              orderId: orderResult.orderId
+            })
+          });
+          
+          if (couponUseResponse.ok) {
+            console.log('Uso de cupom registrado com sucesso');
+          } else {
+            console.warn('Não foi possível registrar o uso do cupom');
+          }
+        } catch (error) {
+          console.error('Erro ao registrar uso do cupom:', error);
+          // Não falhar a criação do pedido se o registro do cupom falhar
+        }
+      }
+      
       return orderResult.orderId;
     } catch (error: any) {
       console.error('Erro ao criar pedido:', error);
@@ -747,25 +808,37 @@ export default function CartPage() {
     });
     
     try {
-      // Simular verificação de cupom (substitua por uma chamada real à API)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Fazer chamada real à API para validar o cupom
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: couponCode,
+          cartTotal: cartSubtotal
+        })
+      });
+      
+      const data = await response.json();
       
       if (!isMounted.current) return;
       
-      // Exemplo: cupom "FANTASY10" dá 10% de desconto
-      if (couponCode.toUpperCase() === 'FANTASY10') {
-        const discount = cartSubtotal * 0.1;
+      if (response.ok && data.success) {
+        // Cupom válido
+        const discountValue = parseFloat(data.coupon.discountValue);
         updateStateIfMounted(() => {
-          setCouponDiscount(discount);
+          setCouponDiscount(discountValue);
           setIsCouponValid(true);
         });
-        toast.success('Cupom aplicado com sucesso!');
+        toast.success(data.message || 'Cupom aplicado com sucesso!');
       } else {
+        // Cupom inválido
         updateStateIfMounted(() => {
           setCouponDiscount(0);
           setIsCouponValid(false);
         });
-        toast.error('Cupom inválido ou expirado');
+        toast.error(data.message || 'Cupom inválido ou expirado');
       }
     } catch (error) {
       console.error('Erro ao aplicar cupom:', error);
@@ -842,6 +915,141 @@ export default function CartPage() {
       setIsProcessingPayment(false);
     }
   };
+
+  // Efeito para detectar e corrigir possíveis estados inconsistentes
+  useEffect(() => {
+    // Verificar se há algum modal invisível que possa estar bloqueando a interação
+    const checkForBlockingState = () => {
+      if (!isMounted.current) return;
+      
+      // Verificar se o modal de PIX está aberto sem dados válidos
+      if (isPixModalOpen && !pixPaymentData) {
+        console.log('Detectado modal PIX aberto sem dados válidos. Fechando...');
+        setIsPixModalOpen(false);
+      }
+    };
+    
+    // Verificar imediatamente ao montar o componente
+    checkForBlockingState();
+    
+    // Verificar sempre que o estado do modal ou dos dados PIX mudar
+    return () => {
+      // Fazemos a verificação ao limpar também para garantir
+      checkForBlockingState();
+    };
+  }, [isPixModalOpen, pixPaymentData]);
+  
+  // Efeito para lidar com o evento popstate (quando o usuário navega usando os botões do navegador)
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isMounted.current) {
+        console.log('Evento popstate detectado');
+        
+        // Verificar e corrigir estados inconsistentes
+        if (isPixModalOpen && !pixPaymentData) {
+          console.log('Modal PIX em estado inconsistente. Fechando...');
+          setIsPixModalOpen(false);
+        }
+        
+        setShowDeleteConfirm(null);
+        setIsLoading(false);
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isPixModalOpen, pixPaymentData]);
+
+  // Adicionar uma função para limpar estados inconsistentes ou camadas bloqueantes invisíveis
+  const clearBlockingElements = () => {
+    try {
+      console.log('Verificando elementos bloqueantes...');
+      
+      // 1. Verificar modais ou overlays não visíveis que estejam bloqueando
+      const hiddenOverlays = document.querySelectorAll('.fixed.inset-0');
+      
+      hiddenOverlays.forEach(element => {
+        const el = element as HTMLElement;
+        const style = window.getComputedStyle(el);
+        
+        // Se o elemento for invisível mas estiver no DOM e tiver z-index alto
+        if (style.opacity === '0' && style.zIndex !== '-1' && style.pointerEvents !== 'none') {
+          console.log('Encontrado overlay invisível bloqueando interações. Corrigindo...');
+          el.style.pointerEvents = 'none';
+          el.style.zIndex = '-1';
+        }
+      });
+      
+      // 2. Garantir que o estado do modal seja consistente
+      if (isPixModalOpen && !pixPaymentData) {
+        console.log('Corrigindo estado inconsistente do modal PIX...');
+        setIsPixModalOpen(false);
+      }
+      
+      // 3. Resetar quaisquer outros estados potencialmente problemáticos
+      setIsLoading(false);
+      setShowDeleteConfirm(null);
+      setIsCheckingStatus(false);
+      
+    } catch (error) {
+      console.error('Erro ao limpar elementos bloqueantes:', error);
+    }
+  };
+
+  // Adicionar efeito para executar limpeza quando o documento ficar visível
+  useEffect(() => {
+    const handleVisibilityRecovery = () => {
+      if (document.visibilityState === 'visible' && isMounted.current) {
+        // Atrasar um pouco para garantir que o DOM esteja estabilizado
+        setTimeout(clearBlockingElements, 300);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityRecovery);
+    
+    // Também executar quando o componente é montado
+    setTimeout(clearBlockingElements, 500);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityRecovery);
+    };
+  }, []);
+
+  // Adicionar um último mecanismo de segurança - ouvinte global de cliques
+  useEffect(() => {
+    let clickCount = 0;
+    let lastClickTime = 0;
+    
+    const handleGlobalClick = () => {
+      const now = Date.now();
+      
+      // Se o usuário clicar várias vezes rapidamente (possível sinal de interface travada)
+      if (now - lastClickTime < 300) {
+        clickCount++;
+        
+        // Após 5 cliques rápidos, assumir que a interface está travada
+        if (clickCount >= 5) {
+          console.log('Detectados múltiplos cliques rápidos. Recuperando interface...');
+          clearBlockingElements();
+          clickCount = 0;
+        }
+      } else {
+        // Resetar contador se os cliques não forem rápidos
+        clickCount = 1;
+      }
+      
+      lastClickTime = now;
+    };
+    
+    document.addEventListener('click', handleGlobalClick);
+    
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200">
@@ -939,7 +1147,7 @@ export default function CartPage() {
                 <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
                   <div className="p-6 border-b border-dark-300 flex justify-between items-center">
                     <h2 className="text-xl font-bold text-white flex items-center">
-                      <div className="mr-2"><IconFiShoppingBag size={18} /></div>
+                      <span className="mr-2"><IconFiShoppingBag size={18} /></span>
                       <span>Itens do Carrinho ({items.length})</span>
                     </h2>
                     <div className="flex items-center text-sm">
@@ -1073,7 +1281,7 @@ export default function CartPage() {
                 <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
                   <div className="p-6 border-b border-dark-300">
                     <h2 className="text-xl font-bold text-white flex items-center">
-                      <div className="mr-2"><IconFiUser size={18} /></div>
+                      <span className="mr-2"><IconFiUser size={18} /></span>
                       <span>Seus Dados</span>
                     </h2>
                   </div>
@@ -1194,7 +1402,7 @@ export default function CartPage() {
                           onClick={() => setShowCheckoutForm(false)}
                           className="text-gray-400 hover:text-white transition-colors flex items-center"
                         >
-                          <div className="mr-2"><IconFiArrowLeft size={16} /></div>
+                          <span className="mr-2"><IconFiArrowLeft size={16} /></span>
                           <span>Voltar para o carrinho</span>
                         </button>
                       </div>
@@ -1213,7 +1421,7 @@ export default function CartPage() {
               <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
                 <div className="p-6 border-b border-dark-300">
                   <h2 className="text-xl font-bold text-white flex items-center">
-                    <div className="mr-2"><IconFiShoppingBag size={20} /></div> 
+                    <span className="mr-2"><IconFiShoppingBag size={20} /></span> 
                     Resumo do Pedido
                   </h2>
                 </div>
@@ -1269,12 +1477,12 @@ export default function CartPage() {
                     </div>
                     {isCouponValid === true && (
                       <p className="text-green-500 text-sm mt-2 flex items-center">
-                        <div className="mr-1"><IconFiCheck size={14} /></div> Cupom aplicado com sucesso!
+                        <span className="mr-1"><IconFiCheck size={14} /></span> Cupom aplicado com sucesso!
                       </p>
                     )}
                     {isCouponValid === false && (
                       <p className="text-red-500 text-sm mt-2 flex items-center">
-                        <div className="mr-1"><IconFiX size={14} /></div> Cupom inválido ou expirado
+                        <span className="mr-1"><IconFiX size={14} /></span> Cupom inválido ou expirado
                       </p>
                     )}
                   </div>
@@ -1287,7 +1495,7 @@ export default function CartPage() {
                     {couponDiscount > 0 && (
                       <div className="flex justify-between text-green-500">
                         <span className="flex items-center">
-                          <div className="mr-1"><IconFiTag size={14} /></div> Desconto
+                          <span className="mr-1"><IconFiTag size={14} /></span> Desconto
                         </span>
                         <span>- R$ {couponDiscount.toFixed(2)}</span>
                       </div>
@@ -1315,24 +1523,24 @@ export default function CartPage() {
                         Processando...
                       </span>
                     ) : (
-                      <>
-                        <div className="mr-2">{showCheckoutForm ? <IconFiCreditCard size={18} /> : <IconFiArrowRight size={18} />}</div>
+                      <span className="flex items-center">
+                        <span className="mr-2">{showCheckoutForm ? <IconFiCreditCard size={18} /> : <IconFiArrowRight size={18} />}</span>
                         <span>{showCheckoutForm ? 'Finalizar Compra' : 'Continuar'}</span>
-                      </>
+                      </span>
                     )}
                   </motion.button>
                   {/* Mensagens de segurança */}
                   <div className="mt-6 space-y-3">
                     <div className="flex items-center text-gray-400 text-sm">
-                      <div className="mr-2"><IconFiLock size={16} color="#10b981" /></div>
+                      <span className="mr-2"><IconFiLock size={16} color="#10b981" /></span>
                       <span>Pagamento 100% seguro</span>
                     </div>
                     <div className="flex items-center text-gray-400 text-sm">
-                      <div className="mr-2"><IconFiShield size={16} color="#10b981" /></div>
+                      <span className="mr-2"><IconFiShield size={16} color="#10b981" /></span>
                       <span>Seus dados estão protegidos</span>
                     </div>
                     <div className="flex items-center text-gray-400 text-sm">
-                      <div className="mr-2"><IconFiAlertCircle size={16} color="#10b981" /></div>
+                      <span className="mr-2"><IconFiAlertCircle size={16} color="#10b981" /></span>
                       <span>Suporte 24/7</span>
                     </div>
                   </div>
@@ -1351,8 +1559,20 @@ export default function CartPage() {
         )}
       </div>
       {/* Modal de pagamento PIX */}
-      {isPixModalOpen && pixPaymentData && (
-        <div className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4">
+      {isPixModalOpen && pixPaymentData ? (
+        <div 
+          className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Verificar se o clique foi no overlay (fundo escuro) e não no conteúdo do modal
+            if (e.target === e.currentTarget) {
+              // Fechar o modal apenas se o clique foi no overlay
+              setIsPixModalOpen(false);
+              // Quando o modal é fechado intencionalmente pelo usuário, limpar dados do localStorage
+              localStorage.removeItem('pixPaymentData');
+              localStorage.removeItem('createdOrderId');
+            }
+          }}
+        >
           <PixPaymentModal 
             isOpen={isPixModalOpen}
             onClose={() => {
@@ -1374,7 +1594,7 @@ export default function CartPage() {
             onRegeneratePixCode={handleRegeneratePixCode}
           />
         </div>
-      )}
+      ) : null}
       {/* Modal de intenção de saída */}
       <AnimatePresence>
         {showExitIntent && (

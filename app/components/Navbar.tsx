@@ -416,7 +416,7 @@ export default function Navbar() {
                           {/* Imagem atual com fade-out quando em transição */}
                           <div className={`absolute inset-0 transition-opacity duration-500 ${imageTransition.isChanging ? 'opacity-0' : 'opacity-100'}`}>
                             <Image 
-                              src={user.profileImage} 
+                              src={user.profileImage.startsWith('http') ? user.profileImage : `${window.location.origin}${user.profileImage}`} 
                               alt={user.username} 
                               width={40} 
                               height={40} 
@@ -443,7 +443,7 @@ export default function Navbar() {
                           {imageTransition.isChanging && (
                             <div className="absolute inset-0 opacity-0 animate-fadeIn">
                               <Image 
-                                src={imageTransition.newImage} 
+                                src={imageTransition.newImage.startsWith('http') ? imageTransition.newImage : `${window.location.origin}${imageTransition.newImage}`} 
                                 alt={user.username} 
                                 width={40} 
                                 height={40} 
@@ -674,7 +674,7 @@ export default function Navbar() {
                       {/* Imagem atual com fade-out quando em transição */}
                       <div className={`absolute inset-0 transition-opacity duration-500 ${imageTransition.isChanging ? 'opacity-0' : 'opacity-100'}`}>
                         <Image 
-                          src={user.profileImage} 
+                          src={user.profileImage.startsWith('http') ? user.profileImage : `${window.location.origin}${user.profileImage}`} 
                           alt={user.username} 
                           width={40} 
                           height={40} 
@@ -701,7 +701,7 @@ export default function Navbar() {
                       {imageTransition.isChanging && (
                         <div className="absolute inset-0 opacity-0 animate-fadeIn">
                           <Image 
-                            src={imageTransition.newImage} 
+                            src={imageTransition.newImage.startsWith('http') ? imageTransition.newImage : `${window.location.origin}${imageTransition.newImage}`} 
                             alt={user.username} 
                             width={40} 
                             height={40} 

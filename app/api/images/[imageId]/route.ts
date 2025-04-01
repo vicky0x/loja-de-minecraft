@@ -59,6 +59,8 @@ export async function GET(
       );
     }
     
+    console.log('Imagem encontrada:', image.filename, 'tipo:', image.contentType);
+    
     // Criar e enviar a resposta com a imagem
     const response = new NextResponse(image.data);
     
@@ -66,6 +68,11 @@ export async function GET(
     response.headers.set('Content-Type', image.contentType);
     response.headers.set('Content-Length', image.data.length.toString());
     response.headers.set('Cache-Control', 'public, max-age=31536000'); // 1 ano
+    
+    // Adicionar cabeçalhos CORS
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
     return response;
   } catch (error) {

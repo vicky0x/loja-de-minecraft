@@ -60,6 +60,26 @@ const syncWithLocalStorage = (userData: User | null) => {
   return userData;
 };
 
+// Função utilitária para garantir que as URLs de perfil sejam absolutas
+const ensureAbsoluteProfileImageUrl = (userData: User | null): User | null => {
+  if (!userData || !userData.profileImage) return userData;
+  
+  // Se a URL já for absoluta, retorna como está
+  if (userData.profileImage.startsWith('http')) return userData;
+  
+  // Caso contrário, converte para absoluta
+  try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return {
+      ...userData,
+      profileImage: `${origin}${userData.profileImage}`
+    };
+  } catch (error) {
+    console.error('Erro ao processar URL da imagem de perfil:', error);
+    return userData;
+  }
+};
+
 // Provedor do contexto que envolve a aplicação
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -96,13 +116,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
+    // Garantir que a URL seja absoluta
+    const absoluteImageUrl = imageUrl.startsWith('http') 
+      ? imageUrl 
+      : typeof window !== 'undefined' ? `${window.location.origin}${imageUrl}` : imageUrl;
+    
     // Salvar a imagem pendente para uso em animações
-    setPendingProfileImage(imageUrl);
+    setPendingProfileImage(absoluteImageUrl);
     
     // Atualizar o usuário atual se ele existir
     if (user) {
       // Criar uma cópia do usuário com a nova imagem
-      const updatedUser = { ...user, profileImage: imageUrl };
+      const updatedUser = { ...user, profileImage: absoluteImageUrl };
       
       // Atualizar o hash do usuário para forçar atualização
       const newUserHash = calculateUserHash(updatedUser);
@@ -167,6 +192,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const data = await response.json();
       
+      // Garantir URL absoluta para imagem de perfil
+      if (data.user && data.user.profileImage) {
+        data.user = ensureAbsoluteProfileImageUrl(data.user);
+      }
+      
       // Verificar se os dados são realmente diferentes dos atuais
       const newUserHash = calculateUserHash(data.user);
       if (newUserHash === userCacheRef.current.hash) {
@@ -181,11 +211,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.user) {
         // Sincronizar com localStorage para obter dados mais completos
         const syncedUser = syncWithLocalStorage(data.user);
-        setUser(syncedUser);
+        
+        // Garantir novamente URL absoluta após sincronização
+        const userWithAbsoluteUrl = ensureAbsoluteProfileImageUrl(syncedUser);
+        
+        setUser(userWithAbsoluteUrl);
         
         // Atualizar cache
         userCacheRef.current = {
-          data: syncedUser,
+          data: userWithAbsoluteUrl,
           timestamp: currentTime,
           hash: newUserHash
         };
@@ -195,7 +229,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         // Atualizar localStorage para manter sincronizado
         try {
-          localStorage.setItem('user', JSON.stringify(syncedUser));
+          localStorage.setItem('user', JSON.stringify(userWithAbsoluteUrl));
           localStorage.setItem('isAuthenticated', 'true');
         } catch (error) {
           console.error('Erro ao salvar dados no localStorage:', error);

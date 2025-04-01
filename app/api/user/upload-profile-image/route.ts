@@ -33,15 +33,28 @@ export async function POST(req: NextRequest) {
   try {
     // Verificar autenticação
     const authResult = await checkAuth(req);
-    console.log('Resultado da autenticação:', authResult);
+    console.log('Resultado da autenticação:', JSON.stringify({
+      isAuthenticated: authResult.isAuthenticated,
+      userAvailable: !!authResult.user,
+      userId: authResult.user?._id || authResult.user?.id || null
+    }, null, 2));
     
     if (!authResult.isAuthenticated) {
       console.log('Usuário não autenticado');
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const userId = authResult.user.id;
+    // Usando a propriedade 'id' que agora está garantida pela função checkAuth
+    const userId = authResult.user._id || authResult.user.id;
     console.log('ID do usuário autenticado:', userId);
+    
+    if (!userId) {
+      console.error('ID do usuário não encontrado no token de autenticação');
+      return NextResponse.json(
+        { error: 'Erro na autenticação: ID do usuário indisponível' },
+        { status: 401 }
+      );
+    }
     
     // Processar o upload de arquivo    
     const formData = await req.formData();
@@ -81,24 +94,39 @@ export async function POST(req: NextRequest) {
     const imageId = uuidv4();
     const filename = `${imageId}.${file.type.split('/')[1]}`;
     
+    console.log('Conectando ao banco de dados...');
     await connectDB();
     
+    // Verificar se o usuário existe no banco de dados
+    const userExists = await User.findById(userId);
+    if (!userExists) {
+      console.error('Usuário não encontrado no banco de dados. ID utilizado:', userId);
+      return NextResponse.json(
+        { error: 'Usuário não encontrado no banco de dados' },
+        { status: 404 }
+      );
+    }
+    
     // Armazenar imagem no MongoDB
+    const userObjectId = new mongoose.Types.ObjectId(userId);
     const newImage = new Image({
       filename: filename,
       contentType: file.type,
       data: buffer,
-      userId: new mongoose.Types.ObjectId(userId)
+      userId: userObjectId
     });
     
     console.log('Salvando imagem no MongoDB...');
     await newImage.save();
-    console.log('Imagem salva com sucesso');
+    console.log('Imagem salva com sucesso no MongoDB, ID:', newImage._id);
     
     // Criar URL para acessar a imagem
     const imageUrl = `/api/images/${imageId}`;
     
     // Atualizar o usuário no banco de dados
+    console.log('Atualizando usuário com ID:', userId);
+    console.log('URL da imagem a ser salva:', imageUrl);
+    
     const updatedUser = await User.findByIdAndUpdate(
       userId, 
       { profileImage: imageUrl },
@@ -106,21 +134,44 @@ export async function POST(req: NextRequest) {
     );
     
     if (!updatedUser) {
-      console.log('Usuário não encontrado no banco de dados');
+      console.log('Falha ao atualizar usuário. ID utilizado:', userId);
+      // Verificar se o ID está em um formato válido
+      const validObjectId = mongoose.isValidObjectId(userId);
+      console.log('O ID é um ObjectId válido?', validObjectId);
+      
       return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
+        { error: 'Erro ao atualizar usuário' },
+        { status: 500 }
       );
     }
     
-    console.log('Perfil atualizado com sucesso');
-    return NextResponse.json(
+    console.log('Perfil atualizado com sucesso. Usuário:', updatedUser._id);
+    
+    // Determinar a URL base para gerar URL absoluta
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const host = req.headers.get('host') || 'localhost:3000';
+    const absoluteImageUrl = `${protocol}://${host}${imageUrl}`;
+    
+    console.log('URL absoluta da imagem:', absoluteImageUrl);
+    
+    // Criar resposta com cabeçalhos para evitar cache
+    const response = NextResponse.json(
       { 
         message: 'Imagem de perfil atualizada com sucesso',
-        imageUrl
+        imageUrl: absoluteImageUrl,  // Retornar URL absoluta em vez de relativa
+        relativeUrl: imageUrl        // Também fornecer URL relativa se o cliente precisar
       },
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
     );
+    
+    return response;
   } catch (error) {
     console.error('Erro ao processar upload de imagem:', error);
     return NextResponse.json(
@@ -138,7 +189,15 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
+    // Usando a propriedade 'id' de forma consistente
     const userId = authResult.user.id;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'ID do usuário não encontrado' },
+        { status: 401 }
+      );
+    }
     
     // Conectar ao banco de dados
     await connectDB();

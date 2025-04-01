@@ -56,6 +56,75 @@ export default function ProfilePage() {
         if (response.ok) {
           const data = await response.json();
           console.log("Dados do usuário recebidos:", data.user);
+          
+          // Se houver imagem de perfil, verificar se o caminho está completo
+          let profileImageUrl = data.user?.profileImage || '';
+          if (profileImageUrl && !profileImageUrl.startsWith('http')) {
+            // Aplicar a URL completa incluindo o origin
+            profileImageUrl = `${window.location.origin}${profileImageUrl}`;
+            console.log("URL da imagem corrigida:", profileImageUrl);
+            
+            // Atualizar também no localStorage e no contexto de autenticação
+            try {
+              // 1. Atualizar no localStorage
+              const storedUser = localStorage.getItem('user');
+              if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                userData.profileImage = profileImageUrl;
+                localStorage.setItem('user', JSON.stringify(userData));
+              }
+              
+              // 2. Usar a função do contexto para atualização global
+              updateProfileImage(profileImageUrl);
+            } catch (error) {
+              console.error("Erro ao atualizar URL da imagem:", error);
+            }
+            
+            // Atualizar data.user para uso abaixo
+            data.user.profileImage = profileImageUrl;
+          }
+          
+          // Garantir que o createdAt seja uma string válida para formatação
+          if (data.user && data.user.createdAt) {
+            console.log("Data de criação original:", data.user.createdAt);
+            
+            // Se for um objeto Date em formato string, garantir que seja uma string
+            if (typeof data.user.createdAt === 'object') {
+              data.user.createdAt = data.user.createdAt.toString();
+            }
+          } else if (data.user) {
+            // Se não tiver data, tentar buscar do localStorage
+            try {
+              const storedUser = localStorage.getItem('user');
+              if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                if (userData.createdAt) {
+                  data.user.createdAt = userData.createdAt;
+                  console.log("Data de criação recuperada do localStorage:", data.user.createdAt);
+                }
+              }
+            } catch (error) {
+              console.error("Erro ao recuperar data do localStorage:", error);
+            }
+          }
+          
+          // Verificar explicitamente o número de membro
+          if (data.user && data.user.memberNumber === null || data.user.memberNumber === undefined) {
+            console.log("Número de membro não encontrado, tentando recuperar do localStorage");
+            try {
+              const storedUser = localStorage.getItem('user');
+              if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                if (userData.memberNumber) {
+                  data.user.memberNumber = userData.memberNumber;
+                  console.log("Número de membro recuperado do localStorage:", data.user.memberNumber);
+                }
+              }
+            } catch (error) {
+              console.error("Erro ao recuperar número de membro do localStorage:", error);
+            }
+          }
+          
           setUser(data.user);
           setFormData({
             name: data.user.name || '',
@@ -78,7 +147,7 @@ export default function ProfilePage() {
     }
 
     fetchUserProfile();
-  }, []);
+  }, [updateProfileImage]);
   
   // Novo useEffect para carregar estatísticas após o usuário ser carregado
   useEffect(() => {
@@ -197,19 +266,23 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append('profileImage', file);
       
+      console.log('Enviando imagem para API...');
       const response = await fetch('/api/user/upload-profile-image', {
         method: 'POST',
         body: formData,
+        cache: 'no-store',
+        headers: {
+          // Não definir Content-Type aqui para que o navegador defina o boundary correto para FormData
+        }
       });
+      
+      console.log('Resposta da API de upload recebida, status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
         
-        // Garantir que a URL da imagem seja absoluta
-        const imageUrl = data.imageUrl.startsWith('http') 
-          ? data.imageUrl 
-          : window.location.origin + data.imageUrl;
-          
+        // Usar a URL absoluta retornada diretamente pela API
+        const imageUrl = data.imageUrl;
         console.log('Nova imagem de perfil (URL absoluta):', imageUrl);
         
         if (user) {
@@ -219,6 +292,9 @@ export default function ProfilePage() {
             profileImage: imageUrl
           });
           
+          // Também atualizar o uploadedImage
+          setUploadedImage(imageUrl);
+          
           // Ordem importante:
           // 1. Atualizar localStorage
           try {
@@ -227,6 +303,7 @@ export default function ProfilePage() {
               const userData = JSON.parse(storedUser);
               userData.profileImage = imageUrl;
               localStorage.setItem('user', JSON.stringify(userData));
+              console.log('localStorage atualizado com nova imagem');
             }
           } catch (storageError) {
             console.error('Erro ao atualizar imagem no localStorage:', storageError);
@@ -234,6 +311,7 @@ export default function ProfilePage() {
           
           // 2. Usar a função do contexto para atualização global
           updateProfileImage(imageUrl);
+          console.log('Contexto atualizado via updateProfileImage()');
           
           // 3. Disparar evento para notificar outros componentes - ÚLTIMO PASSO
           setTimeout(() => {
@@ -248,22 +326,29 @@ export default function ProfilePage() {
             
             // Forçar atualização global após um pequeno delay
             setTimeout(() => {
+              console.log('Forçando refresh dos dados do usuário...');
               forceRefreshUserData();
-            }, 200);
-          }, 100);
+            }, 500);
+          }, 200);
           
           // Informar ao usuário
           setSuccess('Imagem de perfil atualizada com sucesso');
         }
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Erro ao enviar imagem');
+        try {
+          const errorData = await response.json();
+          console.error('Erro na resposta da API:', errorData);
+          setError(errorData.error || errorData.message || 'Erro ao enviar imagem');
+        } catch (parseError) {
+          console.error('Erro ao interpretar resposta:', parseError);
+          setError(`Erro ao enviar imagem (status ${response.status})`);
+        }
         // Reverter a imagem preview
         setUploadedImage(null);
       }
     } catch (error) {
+      console.error('Erro durante o upload da imagem:', error);
       setError('Erro ao fazer upload da imagem');
-      console.error(error);
       setUploadedImage(null);
     } finally {
       setIsUploading(false);
@@ -442,26 +527,42 @@ export default function ProfilePage() {
                 onClick={handleImageClick}
               >
                 {(uploadedImage || user?.profileImage) ? (
-                  <Image 
-                    src={uploadedImage || user?.profileImage || '#'} 
-                    alt={user?.username || 'Avatar'} 
-                    fill
-                    className="object-cover"
-                    onError={(e) => {
-                      console.log('Erro ao carregar imagem de perfil:', uploadedImage || user?.profileImage);
-                      // Usar um fallback diretamente em vez de um arquivo
-                      e.currentTarget.style.display = 'none';
-                      // Mostrar a primeira letra do nome do usuário como fallback
-                      const parent = e.currentTarget.parentElement;
-                      if (parent) {
-                        parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary-dark/30">
-                          <span class="text-white text-2xl font-bold">${user?.username.charAt(0).toUpperCase()}</span>
-                        </div>`;
-                      }
-                    }}
-                    unoptimized={true} // Desativar otimização para todas as imagens de perfil
-                    priority={true} 
-                  />
+                  <>
+                    {/* Condicional para tratar erro de imagem antes mesmo de render */}
+                    {uploadedImage ? (
+                      // Preview de upload usa o uploadedImage (já é base64)
+                      <Image 
+                        src={uploadedImage}
+                        alt={user?.username || 'Avatar'} 
+                        fill
+                        className="object-cover"
+                        unoptimized={true}
+                        priority={true} 
+                      />
+                    ) : (
+                      // Imagem salva do usuário - garantir URL completa
+                      <Image 
+                        src={user?.profileImage || '#'}
+                        alt={user?.username || 'Avatar'} 
+                        fill
+                        className="object-cover"
+                        unoptimized={true}
+                        priority={true}
+                        onError={(e) => {
+                          console.log('Erro ao carregar imagem de perfil:', user?.profileImage);
+                          // Usar um fallback diretamente em vez de um arquivo
+                          e.currentTarget.style.display = 'none';
+                          // Mostrar a primeira letra do nome do usuário como fallback
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary-dark/30">
+                              <span class="text-white text-2xl font-bold">${user?.username.charAt(0).toUpperCase()}</span>
+                            </div>`;
+                          }
+                        }}
+                      />
+                    )}
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-primary text-2xl font-bold bg-gradient-to-br from-primary/30 to-primary-dark/30">
                     {user?.username.charAt(0).toUpperCase()}
@@ -501,16 +602,32 @@ export default function ProfilePage() {
               <div>
                 <p className="text-gray-400 text-sm">Membro desde</p>
                 <p className="font-medium text-white">
-                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  }) : 'N/A'}
+                  {user?.createdAt && user.createdAt !== 'undefined' 
+                    ? (() => {
+                        try {
+                          const date = new Date(user.createdAt);
+                          // Verificar se a data é válida
+                          if (!isNaN(date.getTime())) {
+                            return date.toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            });
+                          } else {
+                            console.error("Data inválida:", user.createdAt);
+                            return 'Data inválida';
+                          }
+                        } catch (e) {
+                          console.error("Erro ao formatar data:", e);
+                          return 'Erro ao processar data';
+                        }
+                      })()
+                    : 'N/A'}
                 </p>
               </div>
               <div>
                 <p className="text-gray-400 text-sm">Número de Membro</p>
-                <p className="font-medium text-white">{user?.memberNumber || 'N/A'}</p>
+                <p className="font-medium text-white">{user?.memberNumber ? user.memberNumber : 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -721,7 +838,7 @@ export default function ProfilePage() {
                 className="w-full flex justify-center items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? (
-                  <div className="mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-r-2 border-white"></div>
+                  <span className="mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-r-2 border-white"></span>
                 ) : (
                   <FiSave className="mr-2" />
                 )}

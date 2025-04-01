@@ -18,4 +18,4 @@ const SettingSchema = new Schema<ISetting>(
   }
 );
 
-'export default mongoose.models.Setting || mongoose.model<ISetting>('Setting', SettingSchema);' 
+export default mongoose.models.Setting || mongoose.model<ISetting>('Setting', SettingSchema); 

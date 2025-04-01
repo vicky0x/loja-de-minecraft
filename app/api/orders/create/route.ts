@@ -142,6 +142,44 @@ export async function POST(request: NextRequest) {
       }
     };
     
+    // Processar cupom se estiver presente nos dados
+    if (data.coupon && data.coupon.code && data.coupon.discountAmount > 0) {
+      try {
+        // Carregar o modelo de Cupom
+        const Coupon = mongoose.models.Coupon || require('@/app/lib/models/coupon').default;
+        
+        // Buscar o cupom no banco de dados
+        const coupon = await Coupon.findOne({ 
+          code: data.coupon.code.trim().toUpperCase(),
+          isActive: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() }
+        });
+        
+        if (coupon) {
+          // Verificar se o cupom atingiu o limite de usos
+          if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) {
+            logger.warn(`Cupom ${data.coupon.code} atingiu limite de usos: ${coupon.usedCount}/${coupon.maxUses}`);
+          } else {
+            // Aplicar o desconto (utilizando o valor enviado ou recalcular com base no cupom)
+            const discountToApply = Math.min(data.coupon.discountAmount, totalAmount);
+            
+            // Atualizar o pedido com as informações do cupom
+            orderData.discountAmount = discountToApply;
+            orderData.totalAmount = totalAmount - discountToApply;
+            orderData.couponApplied = coupon._id;
+            
+            logger.info(`Cupom ${coupon.code} aplicado ao pedido com desconto de ${discountToApply}`);
+          }
+        } else {
+          logger.warn(`Tentativa de usar cupom inválido: ${data.coupon.code}`);
+        }
+      } catch (error) {
+        logger.error('Erro ao processar cupom:', error);
+        // Não falhar a criação do pedido se o processamento do cupom falhar
+      }
+    }
+    
     const newOrder = new Order(orderData);
     await newOrder.save();
     
