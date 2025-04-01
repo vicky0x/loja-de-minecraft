@@ -80,6 +80,44 @@ export default function OrderDetailPage() {
     }
   }, [orderId]);
 
+  // Verificar se o pagamento PIX expirou com base na data de expiração
+  useEffect(() => {
+    if (order && 
+        order.paymentMethod === 'pix' && 
+        order.paymentInfo.status === 'pending' && 
+        order.paymentInfo.expirationDate) {
+      
+      const expirationDate = new Date(order.paymentInfo.expirationDate);
+      const now = new Date();
+      
+      // Se a data de expiração já passou e o status ainda é pendente
+      if (expirationDate < now) {
+        console.log('PIX expirado, atualizando status do pedido localmente');
+        
+        // Atualizar o estado do pedido localmente
+        setOrder({
+          ...order,
+          paymentInfo: {
+            ...order.paymentInfo,
+            status: 'expired'
+          }
+        });
+        
+        // Opcionalmente, pode-se fazer uma chamada para atualizar o status no servidor
+        fetch('/api/payment/check-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId: order._id,
+            paymentId: order.paymentInfo.id
+          })
+        }).catch(err => console.error('Erro ao verificar expiração do PIX:', err));
+      }
+    }
+  }, [order]);
+
   const fetchOrderDetails = async (orderId: string) => {
     try {
       setLoading(true);
@@ -191,6 +229,13 @@ export default function OrderDetailPage() {
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-900/30 text-yellow-400">
             <FiClock className="mr-1" />
             Pendente
+          </span>
+        );
+      case 'expired':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-400">
+            <FiX className="mr-1" />
+            Expirado
           </span>
         );
       case 'failed':
@@ -351,6 +396,23 @@ export default function OrderDetailPage() {
         </div>
       )}
 
+      {/* Status do pagamento expirado */}
+      {order.paymentInfo.status === 'expired' && (
+        <div className="bg-red-900/30 border-l-4 border-red-500 p-4 text-red-400 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <p className="font-medium flex items-center"><FiAlertCircle className="mr-1" /> Pagamento expirado</p>
+            <p className="text-sm">O prazo para pagamento deste pedido expirou. Por favor, crie um novo pedido.</p>
+          </div>
+          <Link
+            href="/cart"
+            className="bg-dark-300 hover:bg-dark-400 py-2 px-4 rounded flex items-center whitespace-nowrap"
+          >
+            <FiArrowLeft className="mr-2" />
+            Ir para o Carrinho
+          </Link>
+        </div>
+      )}
+
       {/* Grid de informações */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Informações Gerais */}
@@ -406,13 +468,15 @@ export default function OrderDetailPage() {
           </div>
           <div className="p-6">
             {/* Exibir QR Code PIX para pagamentos pendentes */}
-            {order.paymentMethod === 'pix' && order.paymentInfo.status === 'pending' && order.paymentInfo.pixQrCodeBase64 && (
+            {order.paymentMethod === 'pix' && 
+             order.paymentInfo.status === 'pending' && 
+             order.paymentInfo.pixQrCodeBase64 && (
               <div className="mb-6">
                 <h4 className="font-medium mb-4">QR Code PIX</h4>
                 <div className="flex flex-col items-center">
                   <div className="bg-white p-4 rounded-lg mb-4">
                     <img 
-                      src={order.paymentInfo.pixQrCodeBase64} 
+                      src={`data:image/png;base64,${order.paymentInfo.pixQrCodeBase64}`} 
                       alt="QR Code PIX" 
                       className="w-48 h-48"
                     />
@@ -459,6 +523,7 @@ export default function OrderDetailPage() {
                   <p className="mt-2 text-sm text-gray-400">
                     {order.paymentInfo.status === 'paid' && 'Seu pagamento foi confirmado. Obrigado pela compra!'}
                     {order.paymentInfo.status === 'pending' && 'Seu pagamento está sendo processado. Aguarde a confirmação.'}
+                    {order.paymentInfo.status === 'expired' && 'O prazo para pagamento expirou. Por favor, faça um novo pedido.'}
                     {order.paymentInfo.status === 'failed' && 'Houve um problema com seu pagamento. Por favor, entre em contato com o suporte.'}
                     {order.paymentInfo.status === 'refunded' && 'Seu pagamento foi reembolsado.'}
                   </p>

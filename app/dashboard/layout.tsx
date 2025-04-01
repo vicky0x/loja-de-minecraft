@@ -56,7 +56,7 @@ const DashboardSidebar = () => {
     { name: 'Anúncios', path: '/dashboard/announcements', icon: <FiMessageSquare size={20} /> },
     { name: 'Meu Perfil', path: '/dashboard/profile', icon: <FiUser size={20} /> },
     { name: 'Meus Pedidos', path: '/dashboard/orders', icon: <FiShoppingCart size={20} /> },
-    { name: 'Downloads', path: '/dashboard/downloads', icon: <FiDownload size={20} /> },
+    { name: 'Meus Produtos', path: '/dashboard/products', icon: <FiDownload size={20} /> },
     { name: 'Suporte', path: '/dashboard/support', icon: <FiHelpCircle size={20} /> },
   ];
 

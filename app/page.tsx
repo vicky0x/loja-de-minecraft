@@ -45,6 +45,38 @@ export default function Home() {
     }
   ];
 
+  // Produtos disponíveis
+  const [availableProducts, setAvailableProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Função para buscar produtos do backend
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/products?limit=9');
+        if (!response.ok) {
+          throw new Error('Falha ao carregar produtos');
+        }
+        const data = await response.json();
+        setAvailableProducts(data.products || []);
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Calcular desconto com base no preço original e atual
+  const calculateDiscount = (price, originalPrice) => {
+    if (!originalPrice || originalPrice <= 0 || !price) return 0;
+    const discount = ((originalPrice - price) / originalPrice) * 100;
+    return Math.round(discount);
+  };
+
   // Features do produto
   const features = [
     {
@@ -230,7 +262,7 @@ export default function Home() {
       </section>
 
       {/* Jogos Disponíveis */}
-      <section id="jogos-disponiveis" className="py-24 relative overflow-hidden">
+      <section className="py-20 bg-dark-100 relative overflow-hidden" id="jogos-disponiveis">
         {/* Background Effects */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-[radial-gradient(#ff6000_1px,transparent_1px)] [background-size:40px_40px]"></div>
@@ -249,62 +281,138 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {popularGames.map((game, index) => (
-              <div 
-                key={index}
-                className="opacity-0 animate-fade-in-up"
-                style={{ animationDelay: `${0.3 + index * 0.1}s`, animationFillMode: 'forwards' }}
-              >
-                <a 
-                  href={`/games/${game.slug}`} 
-                  className="block relative bg-dark-200/50 backdrop-blur-sm rounded-xl overflow-hidden border border-dark-300 hover:border-primary/30 transition-all duration-500 group h-full"
-                >
-                  {/* Game Image */}
-                  <div className="relative aspect-square overflow-hidden">
-                    {/* Background image for all game cards */}
-                    <div className="absolute inset-0 z-0">
-                      <img 
-                        src="https://wallpapercave.com/wp/wp9493309.jpg"
-                        alt="Background"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-dark-100 via-transparent to-transparent z-10"></div>
-                    <div 
-                      className="absolute inset-0 bg-cover bg-center transform group-hover:scale-110 transition-transform duration-700 z-5"
-                      style={{ 
-                        backgroundImage: `url(${game.image})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center'
-                      }}
-                    ></div>
-                    
-                    {/* Fallback for missing images */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-dark-300 text-primary text-4xl font-bold">
-                      {game.name.charAt(0)}
-                    </div>
-                  </div>
-                  
-                  {/* Game Info */}
-                  <div className="p-3 relative">
-                    <h3 className="text-sm font-semibold text-white group-hover:text-primary transition-colors duration-300">{game.name}</h3>
-                    
-                    {/* Animated Arrow */}
-                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                      <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-dark-100/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-                </a>
-              </div>
-            ))}
-          </div>
+          {/* Produtos em destaque */}
+          <h3 className="text-2xl font-bold mb-6 opacity-0 animate-fade-in" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
+            Produtos em Destaque
+          </h3>
           
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-12 opacity-0 animate-fade-in" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
+              {availableProducts.slice(0, 4).map((product) => {
+                // Determinar se o produto tem variantes ou preço direto
+                const hasVariants = product.variants && product.variants.length > 0;
+                const lowestPrice = hasVariants 
+                  ? Math.min(...product.variants.map(v => v.price)) 
+                  : product.price;
+                
+                const stock = hasVariants
+                  ? product.variants.reduce((total, v) => total + (v.stock || 0), 0)
+                  : product.stock || 0;
+                
+                const imageUrl = product.images && product.images.length > 0 
+                  ? product.images[0].startsWith('http') ? product.images[0] : `${product.images[0]}`
+                  : 'https://placehold.co/600x400/222/444?text=Sem+Imagem';
+                
+                // Calcular desconto
+                const discount = product.discountPercentage
+                  ? product.discountPercentage
+                  : calculateDiscount(lowestPrice, product.originalPrice);
+                
+                return (
+                  <div key={product._id} className="bg-dark-200 rounded-lg overflow-hidden shadow-md transition-transform duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg group h-full">
+                    <div className="relative">
+                      {/* Badge de estoque */}
+                      <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-md z-20 ${
+                        stock <= 0 ? 'bg-red-900/30 text-red-400' :
+                        stock <= 5 ? 'bg-yellow-900/30 text-yellow-400' :
+                        'bg-green-900/30 text-green-400'
+                      }`}>
+                        {stock <= 0 ? 'Esgotado' :
+                         stock <= 5 ? 'Últimas unidades' :
+                         stock <= 10 ? 'Estoque baixo' :
+                         'Disponível'}
+                      </div>
+                      
+                      {/* Imagem */}
+                      <div className="h-48 bg-dark-300 relative">
+                        <div className="absolute inset-0 z-0 overflow-hidden">
+                          <div className="bg-gradient-to-br from-dark-400 to-dark-500 h-full w-full"></div>
+                        </div>
+                        
+                        <img 
+                          src={imageUrl}
+                          alt={product.name}
+                          className="w-full h-full object-cover relative z-10"
+                          onError={(e) => {
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.src = 'https://placehold.co/600x400/222/444?text=Imagem+Indisponível';
+                          }}
+                        />
+                      </div>
+                      
+                      {/* Badge de destaque */}
+                      {product.featured && (
+                        <div className="absolute top-2 left-2 bg-primary text-white text-xs font-bold px-2 py-1 rounded">
+                          Destaque
+                        </div>
+                      )}
+                      
+                      {/* Badge de status */}
+                      {product.status === 'indetectavel' && (
+                        <div className="absolute bottom-2 left-2 bg-green-900/40 text-green-400 border border-green-500 text-xs px-2 py-1 rounded-md flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                          Indetectável
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="p-4 flex flex-col justify-between h-44">
+                      <h3 className="text-white font-medium text-base mb-2 group-hover:text-primary transition-colors">{product.name}</h3>
+                      
+                      <div>
+                        <div className="flex items-baseline mb-2">
+                          {hasVariants ? (
+                            <span className="text-primary font-bold text-xl">R$ {lowestPrice.toFixed(2).replace('.', ',')}</span>
+                          ) : (
+                            <span className="text-primary font-bold text-xl">R$ {lowestPrice.toFixed(2).replace('.', ',')}</span>
+                          )}
+                          
+                          {product.originalPrice && product.originalPrice > 0 && (
+                            <span className="text-gray-400 line-through text-sm ml-2">
+                              R$ {product.originalPrice.toFixed(2).replace('.', ',')}
+                            </span>
+                          )}
+                          
+                          {discount > 0 && (
+                            <span className="ml-auto bg-primary/20 text-primary text-xs px-2 py-1 rounded">
+                              -{Math.round(discount)}%
+                            </span>
+                          )}
+                        </div>
+                        
+                        <Link href={`/product/${product.slug}`} className="block mt-3">
+                          <button 
+                            disabled={stock <= 0}
+                            className={`w-full py-2 px-4 rounded-lg text-center font-medium transition-all duration-300 relative overflow-hidden ${
+                              stock <= 0 
+                              ? 'bg-dark-300 text-gray-500 cursor-not-allowed' 
+                              : 'bg-primary text-white hover:bg-primary-dark group'
+                            }`}
+                          >
+                            {stock <= 0 ? 'Esgotado' : (
+                              <>
+                                <span className="relative z-10 group-hover:tracking-wider transition-all duration-300 group-hover:translate-y-px">Ver detalhes</span>
+                                <span className="absolute inset-0 bg-gradient-to-r from-primary-dark to-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left opacity-80"></span>
+                                <span className="absolute inset-0 bg-gradient-to-tr from-primary/50 to-primary-dark/50 scale-y-0 group-hover:scale-y-100 transition-transform duration-700 origin-bottom"></span>
+                                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 delay-200 origin-left"></span>
+                              </>
+                            )}
+                          </button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="text-center mt-12 opacity-0 animate-fade-in" style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}>
             <a 
               href="/games" 
@@ -358,7 +466,7 @@ export default function Home() {
                       <span className="text-primary text-2xl group-hover:text-white transition-colors duration-300">
                         {stat.icon === 'star' && (
                           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.07-3.292z" />
                           </svg>
                         )}
                         {stat.icon === 'support' && (
@@ -443,7 +551,7 @@ export default function Home() {
                     <div className="flex text-yellow-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.176 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
                       ))}
                     </div>

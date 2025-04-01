@@ -13,7 +13,8 @@ import {
   FiRefreshCw, 
   FiChevronRight,
   FiFilter,
-  FiSearch
+  FiSearch,
+  FiCopy
 } from 'react-icons/fi';
 
 interface ProductItem {
@@ -38,26 +39,23 @@ export default function ProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filteredProducts, setFilteredProducts] = useState<ProductItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
   useEffect(() => {
-    // Filtrar produtos com base na pesquisa e status
+    // Filtrar produtos com base na pesquisa
     const filtered = products.filter(product => {
       const matchesSearch = searchTerm.trim() === '' || 
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.variant.name.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
-      
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
     
     setFilteredProducts(filtered);
-  }, [products, searchTerm, statusFilter]);
+  }, [products, searchTerm]);
 
   const fetchProducts = async () => {
     try {
@@ -121,12 +119,17 @@ export default function ProductsPage() {
           </span>
         );
       default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-400">
-            Desconhecido
-          </span>
-        );
+        return null;
     }
+  };
+
+  const copyToClipboard = (text: string) => {
+    const tempInput = document.createElement('input');
+    tempInput.value = text;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
   };
 
   return (
@@ -155,23 +158,6 @@ export default function ProductsPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-        </div>
-        
-        <div className="relative min-w-48">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FiFilter className="text-gray-400" />
-          </div>
-          <select
-            className="bg-dark-300 border border-dark-400 rounded-md pl-10 pr-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">Todos os status</option>
-            <option value="Ativo">Ativo</option>
-            <option value="Em Manutenção">Em Manutenção</option>
-            <option value="Beta">Beta</option>
-            <option value="Detectável">Detectável</option>
-          </select>
         </div>
       </div>
 
@@ -206,7 +192,7 @@ export default function ProductsPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
             {filteredProducts.map((product, index) => (
               <div key={product._id} className="bg-dark-300 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="relative h-48">
@@ -215,7 +201,8 @@ export default function ProductsPage() {
                       src={product.image}
                       alt={product.name}
                       fill
-                      className="object-cover"
+                      className="object-cover w-full"
+                      style={{ objectPosition: 'center' }}
                       unoptimized={true}
                       priority={index < 6}
                     />
@@ -226,17 +213,13 @@ export default function ProductsPage() {
                   )}
                 </div>
                 
-                <div className="p-4">
+                <div className="p-3">
                   <div className="flex justify-between items-start">
-                    <h4 className="text-lg font-medium text-white">{product.name}</h4>
+                    <h4 className="text-base font-medium text-white">{product.name}</h4>
                     {getStatusBadge(product.status)}
                   </div>
                   
-                  <p className="text-sm text-gray-400 mt-2 line-clamp-2">
-                    {product.shortDescription || 'Sem descrição disponível'}
-                  </p>
-                  
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-2 space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400">Variante:</span>
                       <span className="text-white">{product.variant?.name || 'Padrão'}</span>
@@ -246,12 +229,30 @@ export default function ProductsPage() {
                       <span className="text-gray-400">Adquirido em:</span>
                       <span className="text-white">{formatDate(product.assignedAt)}</span>
                     </div>
+
+                    {product.code && (
+                      <div className="mt-2 pt-2 border-t border-dark-400">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-400">Informações da conta:</span>
+                          <button
+                            onClick={() => copyToClipboard(product.code)}
+                            className="text-primary hover:text-primary/80 text-sm flex items-center"
+                          >
+                            <span className="mr-1">Copiar</span>
+                            <FiCopy size={14} />
+                          </button>
+                        </div>
+                        <div className="mt-1 p-2 bg-dark-400 rounded text-sm font-mono break-all">
+                          {product.code}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="mt-4 flex justify-end">
+                  <div className="mt-3 flex justify-end">
                     <Link 
                       href={`/dashboard/products/${product._id}`} 
-                      className="text-primary hover:text-primary/80 flex items-center"
+                      className="text-primary hover:text-primary/80 flex items-center text-sm"
                     >
                       <span>Ver detalhes</span>
                       <FiChevronRight className="ml-1" />

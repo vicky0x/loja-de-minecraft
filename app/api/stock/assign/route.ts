@@ -263,6 +263,12 @@ export async function GET(request: NextRequest) {
     const groupedItems = {};
     
     items.forEach(item => {
+      // Verificar se item.product existe antes de acessar propriedades
+      if (!item.product) {
+        console.error('Item com produto nulo encontrado:', item);
+        return; // Pular este item
+      }
+      
       const productId = item.product._id.toString();
       const variantId = item.variant;
       

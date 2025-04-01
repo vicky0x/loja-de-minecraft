@@ -237,7 +237,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                 </div>
                 
                 <div>
-                  <h3 className="text-lg font-medium text-gray-300">Código de Acesso:</h3>
+                  <h3 className="text-lg font-medium text-gray-300">Informações da conta:</h3>
                   <div className="bg-dark-300 rounded-md p-3 flex justify-between items-center mt-1">
                     <code className="text-primary font-mono text-sm lg:text-base">{product.code}</code>
                     <button
@@ -258,17 +258,6 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                     </button>
                   </div>
                 </div>
-              </div>
-              
-              {/* Botão de download */}
-              <div className="mt-6">
-                <Link 
-                  href={`/dashboard/downloads?product=${product._id}`}
-                  className="inline-flex items-center bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md transition-colors"
-                >
-                  <FiDownload className="mr-2" />
-                  Download do Produto
-                </Link>
               </div>
             </div>
           </div>

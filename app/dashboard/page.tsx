@@ -205,7 +205,7 @@ export default function Dashboard() {
         </div>
 
         {/* Downloads */}
-        <div className="bg-dark-200 rounded-lg p-6 shadow-md">
+        <Link href="/dashboard/products" className="bg-dark-200 rounded-lg p-6 shadow-md">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Downloads</p>
@@ -216,7 +216,7 @@ export default function Dashboard() {
               <FiDownload className="w-8 h-8" />
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Assinaturas Ativas */}
         <div className="bg-dark-200 rounded-lg p-6 shadow-md">
