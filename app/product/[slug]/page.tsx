@@ -40,6 +40,9 @@ interface Product {
   status: 'indetectavel' | 'detectavel' | 'manutencao' | 'beta';
 }
 
+// Cor primária mais clara para efeitos de luz
+const primaryLight = "#6c63ff";  // Ajuste para a cor primária da sua aplicação
+
 export default function ProductPage({ params }: { params: { slug: string } }) {
   const { slug } = use(params);
   const router = useRouter();
@@ -60,6 +63,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const [salesCount, setSalesCount] = useState(0);
   const [displayedCount, setDisplayedCount] = useState(0);
   const cart = useCart();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   // Ref para o elemento da imagem
   const imageRef = useRef<HTMLDivElement>(null);
@@ -244,7 +248,17 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   };
   
   const handleAddToCart = () => {
-    if (!product || !variant) return;
+    if (!product || !variant || variant.stock <= 0 || isAddingToCart) return;
+    
+    // Prevenir múltiplos cliques
+    setIsAddingToCart(true);
+    
+    // Verificar estoque antes de adicionar
+    if (quantity > variant.stock) {
+      toast.error(`Apenas ${variant.stock} unidades disponíveis.`);
+      setIsAddingToCart(false);
+      return;
+    }
     
     // Lógica para adicionar ao carrinho
     const item = {
@@ -262,7 +276,17 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     cart.addItem(item);
     
     // Feedback visual para o usuário
-    toast.success(`${product.name} - ${variant.name} foi adicionado ao seu carrinho.`);
+    toast.success(`${product.name} - ${variant.name} foi adicionado ao seu carrinho.`, {
+      icon: '🛒',
+      style: {
+        borderLeft: '4px solid #6c63ff',
+      },
+    });
+    
+    // Resetar o estado de adição ao carrinho após um curto período
+    setTimeout(() => {
+      setIsAddingToCart(false);
+    }, 1000);
   };
   
   const getStockClass = (stock: number) => {
@@ -388,24 +412,55 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-12 px-4">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-pulse text-white">Carregando produto...</div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200 flex items-center justify-center">
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          <motion.div 
+            className="w-20 h-20 mx-auto mb-6 relative"
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+          >
+            <div className="absolute inset-0 rounded-full border-t-2 border-l-2 border-primary"></div>
+            <div className="absolute inset-2 rounded-full border-t-2 border-r-2 border-primary/70"></div>
+            <div className="absolute inset-4 rounded-full border-b-2 border-r-2 border-primary/40"></div>
+          </motion.div>
+          <p className="text-white text-lg font-medium">Carregando seu produto</p>
+          <p className="text-gray-400 text-sm mt-2">Preparando uma experiência incrível...</p>
+        </motion.div>
       </div>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="container mx-auto py-12 px-4">
-        <div className="bg-dark-200 rounded-lg p-6 text-center">
-          <div className="text-red-400 mb-4">Erro ao carregar o produto</div>
-          <div className="text-gray-300">{error || 'Produto não encontrado'}</div>
-          <Link href="/" className="mt-6 inline-block px-4 py-2 bg-primary text-white rounded-md">
-            Voltar para a Página Inicial
+      <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200 flex items-center justify-center p-4">
+        <motion.div 
+          className="max-w-md w-full bg-dark-300/50 backdrop-blur-md rounded-2xl p-8 border border-dark-400/20 shadow-xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <motion.div 
+            className="w-20 h-20 mx-auto mb-6 text-red-400 flex items-center justify-center bg-red-500/10 rounded-full"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", damping: 10, stiffness: 200, delay: 0.2 }}
+          >
+            <FiX size={36} />
+          </motion.div>
+          <h2 className="text-2xl font-bold text-white text-center mb-2">Produto não encontrado</h2>
+          <p className="text-gray-300 text-center mb-8">{error || 'Este produto pode ter sido removido ou está temporariamente indisponível.'}</p>
+          <Link 
+            href="/" 
+            className="block w-full py-3 px-4 bg-primary hover:bg-primary/90 text-white font-medium rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/20"
+          >
+            Voltar para a loja
           </Link>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -413,443 +468,1020 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const formattedLastUpdate = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="bg-dark-100">
-      <div className="container mx-auto py-8">
-        {/* Breadcrumb */}
-        <div className="mb-6 flex items-center text-sm text-gray-400">
-          <Link href="/" className="hover:text-primary">Início</Link>
-          <span className="mx-2">/</span>
-          {product.category && (
-            <>
-              <Link 
-                href={`/category/${product.category.slug}`} 
-                className="hover:text-primary"
-              >
-                {product.category.name}
-              </Link>
-              <span className="mx-2">/</span>
-            </>
-          )}
-          <span className="text-gray-200">{product.name}</span>
-        </div>
-        
-        <div className="bg-dark-200 rounded-xl p-4 md:p-6 lg:p-8 shadow-lg">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Galeria de imagens */}
-            <div className="lg:col-span-2">
-              <div className="relative">
-                <div 
-                  ref={imageRef}
-                  className="aspect-video bg-dark-300 rounded-lg mb-4 overflow-hidden relative"
+    <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200">
+      <div className="container mx-auto px-4 py-10 max-w-7xl">
+        {/* Navegação e Breadcrumb */}
+        <motion.div 
+          className="flex items-center mb-8 text-sm"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <Link 
+            href="/" 
+            className="flex items-center text-gray-400 hover:text-primary transition-colors group"
+          >
+            <FiArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
+            <span>Voltar à loja</span>
+          </Link>
+          <div className="ml-auto flex items-center space-x-2 text-gray-400">
+            <Link href="/" className="hover:text-primary transition-colors">Início</Link>
+            <span>/</span>
+            {product.category && (
+              <>
+                <Link 
+                  href={`/category/${product.category.slug}`} 
+                  className="hover:text-primary transition-colors"
                 >
-                  <div className="relative h-full">
-                    <img
-                      src={product.images[currentImageIndex]}
-                      alt={product.name}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  
-                  {product.status && (
-                    <div 
-                      className={`absolute top-3 left-3 px-3 py-1 rounded-full text-sm font-medium ${getStatusConfig(product.status).bgColor} ${getStatusConfig(product.status).color}`}
-                    >
-                      <div className="flex items-center">
-                        {getStatusConfig(product.status).icon}
-                        <span>{getStatusConfig(product.status).text}</span>
-                      </div>
+                  {product.category.name}
+                </Link>
+                <span>/</span>
+              </>
+            )}
+            <span className="text-white">{product.name}</span>
+          </div>
+        </motion.div>
+
+        {/* Aviso de estoque limitado no topo */}
+        <motion.div 
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ 
+            opacity: 1, 
+            y: 0,
+            transition: {
+              duration: 0.4,
+              delay: 0.6
+            }
+          }}
+          className="bg-dark-400/40 text-amber-300 mb-6 px-4 py-2.5 rounded-lg border border-amber-500/20 flex items-center justify-center relative overflow-hidden group"
+        >
+          {/* Efeito de pulsar borda - mantida fixa, sem desaparecer no hover */}
+          <motion.div 
+            className="absolute inset-0 border border-amber-500/40 rounded-lg"
+            animate={{ 
+              boxShadow: ["0 0 0px rgba(217, 119, 6, 0)", "0 0 8px rgba(217, 119, 6, 0.3)", "0 0 0px rgba(217, 119, 6, 0)"]
+            }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity
+            }}
+          />
+          
+          {/* Efeito de brilho radial - modificado para ser sempre visível */}
+          <motion.div 
+            className="absolute inset-0"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: [0, 0.2, 0] }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity
+            }}
+            style={{
+              background: "radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0) 70%)"
+            }}
+          />
+          
+          {/* Efeito de brilho deslizante */}
+          <motion.div 
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity,
+              repeatDelay: 1
+            }}
+          />
+          
+          <motion.div 
+            className="flex items-center space-x-2 relative z-10"
+            whileHover={{ scale: 1.02 }}
+          >
+            <motion.div 
+              className="text-amber-300"
+              animate={{ 
+                scale: [1, 1.2, 1],
+                rotate: [0, 5, 0, -5, 0]
+              }}
+              transition={{ 
+                duration: 1.5,
+                repeat: Infinity
+              }}
+            >
+              <FiClock size={16} />
+            </motion.div>
+            <motion.span 
+              className="font-medium text-sm"
+              animate={{ 
+                textShadow: ["0 0 0px rgba(251, 191, 36, 0)", "0 0 3px rgba(251, 191, 36, 0.5)", "0 0 0px rgba(251, 191, 36, 0)"]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity
+              }}
+            >
+              Estoque limitado! Apenas 2 unidades disponíveis.
+            </motion.span>
+          </motion.div>
+        </motion.div>
+
+        {/* Corpo do produto */}
+        <div className="flex flex-col lg:flex-row gap-10">
+          {/* Coluna Esquerda - Imagens */}
+          <motion.div 
+            className="w-full lg:w-3/5"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="bg-dark-300/30 rounded-2xl p-6 backdrop-blur-sm border border-dark-400/10 shadow-xl">
+              {/* Imagem principal */}
+              <motion.div 
+                className="aspect-auto relative overflow-hidden rounded-xl mb-4 bg-dark-400/20"
+                layoutId="productImage"
+              >
+                <motion.img
+                  key={currentImageIndex}
+                  src={product.images[currentImageIndex]}
+                  alt={product.name}
+                  className="w-full h-full object-contain transition-all duration-500"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                />
+                
+                {/* Badge de status */}
+                {product.status && (
+                  <motion.div 
+                    className={`absolute top-4 left-4 px-4 py-2 rounded-full text-sm font-medium ${getStatusConfig(product.status).bgColor} ${getStatusConfig(product.status).color} backdrop-blur-md shadow-lg border border-current/20`}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                  >
+                    <div className="flex items-center">
+                      {getStatusConfig(product.status).icon}
+                      <span className="ml-1.5">{getStatusConfig(product.status).text}</span>
                     </div>
+                  </motion.div>
+                )}
+              </motion.div>
+              
+              {/* Galeria de miniaturas */}
+              <div className="relative">
+                <motion.div 
+                  className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-dark-300/20 scrollbar-thumb-dark-400/50"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                >
+                  {product.images.map((image, index) => (
+                    <motion.div
+                      key={index}
+                      className={`relative cursor-pointer rounded-lg overflow-hidden flex-shrink-0 transition-all duration-200 ${
+                        currentImageIndex === index 
+                          ? 'ring-2 ring-primary shadow-lg shadow-primary/20 scale-105' 
+                          : 'ring-1 ring-dark-400/30 hover:ring-primary/50'
+                      }`}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setCurrentImageIndex(index)}
+                    >
+                      <div className="w-20 h-20">
+                        <img 
+                          src={image} 
+                          alt={`${product.name} - Visualização ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        {currentImageIndex === index && (
+                          <motion.div 
+                            className="absolute inset-0 bg-primary/10"
+                            layoutId="thumbnailHighlight"
+                            transition={{ duration: 0.2 }}
+                          />
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </div>
+            </div>
+            
+            {/* Detalhes do produto */}
+            <motion.div 
+              className="mt-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              {/* Seção com abas */}
+              <div className="bg-dark-300/30 rounded-2xl overflow-hidden backdrop-blur-sm border border-dark-400/10 shadow-xl">
+                <div className="flex border-b border-dark-400/30">
+                  <motion.button
+                    className={`py-4 px-6 font-medium text-sm transition-all relative ${
+                      activeTab === 'description' 
+                        ? 'text-white' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                    onClick={() => setActiveTab('description')}
+                    whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                    whileTap={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                  >
+                    Descrição
+                    {activeTab === 'description' && (
+                      <motion.div 
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                        layoutId="activeTabIndicator"
+                      />
+                    )}
+                  </motion.button>
+                  <motion.button
+                    className={`py-4 px-6 font-medium text-sm transition-all relative ${
+                      activeTab === 'requirements' 
+                        ? 'text-white' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                    onClick={() => setActiveTab('requirements')}
+                    whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                    whileTap={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                  >
+                    Requisitos
+                    {activeTab === 'requirements' && (
+                      <motion.div 
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                        layoutId="activeTabIndicator"
+                      />
+                    )}
+                  </motion.button>
+                  <motion.button
+                    className={`py-4 px-6 font-medium text-sm transition-all relative ${
+                      activeTab === 'warranty' 
+                        ? 'text-white' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                    onClick={() => setActiveTab('warranty')}
+                    whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                    whileTap={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                  >
+                    Garantia
+                    {activeTab === 'warranty' && (
+                      <motion.div 
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                        layoutId="activeTabIndicator"
+                      />
+                    )}
+                  </motion.button>
+                </div>
+                
+                <div className="p-6">
+                  <AnimatePresence mode="wait">
+                    {activeTab === 'description' && (
+                      <motion.div 
+                        className="text-gray-300"
+                        key="description"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div 
+                          className="product-description prose prose-invert max-w-none 
+                                    prose-headings:text-primary prose-headings:font-semibold prose-headings:mt-6 prose-headings:mb-3
+                                    prose-p:mb-3 prose-p:leading-relaxed
+                                    prose-strong:text-white prose-strong:font-semibold 
+                                    prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+                                    prose-ul:my-3 prose-ul:space-y-1 prose-ol:my-3 prose-ol:space-y-1 
+                                    prose-li:text-gray-300 prose-li:my-0.5
+                                    prose-blockquote:border-primary prose-blockquote:bg-dark-300/50 prose-blockquote:py-1 prose-blockquote:px-4
+                                    whitespace-pre-line"
+                          dangerouslySetInnerHTML={{ __html: product.description }}
+                        />
+                      </motion.div>
+                    )}
+                    
+                    {activeTab === 'requirements' && (
+                      <motion.div
+                        key="requirements"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <h3 className="text-xl font-medium text-white mb-4">Requisitos do Sistema</h3>
+                        {product.requirements && product.requirements.length > 0 ? (
+                          <div className="space-y-3">
+                            {product.requirements.map((req, index) => (
+                              <motion.div 
+                                key={index} 
+                                className="flex items-start bg-dark-400/20 p-4 rounded-xl"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.3, delay: index * 0.1 }}
+                              >
+                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-3 flex-shrink-0">
+                                  <FiCheck className="text-primary" />
+                                </div>
+                                <div className="text-gray-300">{req}</div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-gray-400">Sem requisitos específicos para este produto.</p>
+                        )}
+                      </motion.div>
+                    )}
+                    
+                    {activeTab === 'warranty' && (
+                      <motion.div
+                        key="warranty"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <h3 className="text-xl font-medium text-white mb-4">Nossa Garantia</h3>
+                        <p className="text-gray-300 mb-6 leading-relaxed">
+                          Oferecemos garantia de 30 dias em todos os nossos produtos. Se você encontrar qualquer problema durante este período,
+                          nossa equipe de suporte estará disponível para ajudar 24 horas por dia, 7 dias por semana.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <motion.div 
+                            className="bg-dark-400/20 rounded-xl p-5 flex flex-col items-center text-center"
+                            whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2)" }}
+                          >
+                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
+                              <FiShield className="text-primary" size={22} />
+                            </div>
+                            <h4 className="font-medium text-white mb-2">Garantia de 30 dias</h4>
+                            <p className="text-sm text-gray-400">Garantimos que nossos produtos funcionem exatamente como descrito por 30 dias.</p>
+                          </motion.div>
+                          <motion.div 
+                            className="bg-dark-400/20 rounded-xl p-5 flex flex-col items-center text-center"
+                            whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2)" }}
+                          >
+                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
+                              <FiUser className="text-primary" size={22} />
+                            </div>
+                            <h4 className="font-medium text-white mb-2">Suporte técnico 24/7</h4>
+                            <p className="text-sm text-gray-400">Nossa equipe está sempre disponível para resolver qualquer problema.</p>
+                          </motion.div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+          
+          {/* Coluna Direita - Informações de compra */}
+          <motion.div 
+            className="w-full lg:w-2/5"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <div className="sticky top-6">
+              {/* Card principal */}
+              <div className="bg-dark-300/50 backdrop-blur-xl rounded-2xl border border-dark-400/20 shadow-2xl overflow-hidden max-w-[600px] mx-auto">
+                {/* Cabeçalho do produto */}
+                <div className="p-6 pb-4">
+                  {product.category && (
+                    <Link 
+                      href={`/products/category/${product.category.slug}`}
+                      className="inline-block text-xs uppercase tracking-wider font-medium text-primary/90 hover:text-primary transition-colors mb-2 bg-primary/5 px-3 py-1 rounded-full"
+                    >
+                      {product.category.name}
+                    </Link>
+                  )}
+                  <motion.h1 
+                    className="text-2xl lg:text-3xl font-bold text-white mb-2"
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                  >
+                    {product.name}
+                  </motion.h1>
+                  
+                  {product.shortDescription && (
+                    <motion.p 
+                      className="text-gray-300 text-sm leading-relaxed"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.4 }}
+                    >
+                      {product.shortDescription}
+                    </motion.p>
                   )}
                 </div>
                 
-                {/* Miniaturas */}
-                <div className="flex overflow-x-auto gap-2 pb-2">
-                  {product.images.map((image, index) => (
-                    <motion.button
-                      key={index}
-                      onClick={() => setCurrentImageIndex(index)}
-                      className={`aspect-square rounded-md overflow-hidden border-2 ${
-                        currentImageIndex === index ? 'border-primary' : 'border-transparent'
-                      }`}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                {/* Indicador de popularidade */}
+                <motion.div 
+                  className="px-6 pb-4" 
+                  ref={countRef}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.5 }}
+                >
+                  <div className="bg-gradient-to-r from-dark-400/50 to-dark-400/30 rounded-xl overflow-hidden relative group hover:shadow-xl transition-all duration-500">
+                    {/* Efeito de brilho animado */}
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-green-500/0 via-green-500/10 to-green-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+                    
+                    {/* Efeito de onda animada */}
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-primary/0 via-primary/5 to-primary/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1500 ease-in-out"></div>
+                    
+                    {/* Borda brilhante */}
+                    <div className="absolute inset-0 rounded-xl border border-green-500/0 group-hover:border-green-500/30 transition-all duration-500"></div>
+                    
+                    <div className="p-4 backdrop-blur-sm relative z-10 rounded-xl">
+                      <div className="flex items-center">
+                        <div className="w-12 h-12 bg-green-900/30 rounded-full mr-4 flex items-center justify-center backdrop-blur-sm border border-green-500/30 shadow-lg shadow-green-500/10 group-hover:shadow-green-500/20 transition-all duration-500">
+                          <motion.div
+                            animate={{ 
+                              y: [0, -3, 0],
+                              scale: [1, 1.1, 1] 
+                            }}
+                            transition={{ 
+                              duration: 2,
+                              repeat: Infinity,
+                              repeatType: "reverse" 
+                            }}
+                          >
+                            <FiTrendingUp className="text-green-400 group-hover:text-green-300 transition-colors duration-300" size={22} />
+                          </motion.div>
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-baseline">
+                            <motion.span 
+                              className="text-green-400 text-2xl font-bold group-hover:text-green-300 transition-colors duration-300"
+                              animate={{ 
+                                scale: [1, 1.05, 1],
+                                textShadow: [
+                                  "0 0 0px rgba(74, 222, 128, 0)",
+                                  "0 0 4px rgba(74, 222, 128, 0.3)",
+                                  "0 0 0px rgba(74, 222, 128, 0)"
+                                ]
+                              }}
+                              transition={{ 
+                                duration: 2, 
+                                repeat: Infinity, 
+                                repeatType: "reverse" 
+                              }}
+                            >
+                              {displayedCount}
+                            </motion.span>
+                            <span className="ml-2 text-white font-medium group-hover:text-white/90 transition-colors duration-300">clientes satisfeitos</span>
+                          </div>
+                          <div className="mt-1 text-xs text-gray-400 group-hover:text-gray-300 transition-colors duration-300 flex items-center">
+                            <motion.span 
+                              className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"
+                              animate={{
+                                scale: [1, 1.5, 1],
+                                opacity: [0.7, 1, 0.7],
+                                boxShadow: [
+                                  "0 0 0px rgba(74, 222, 128, 0)",
+                                  "0 0 4px rgba(74, 222, 128, 0.5)",
+                                  "0 0 0px rgba(74, 222, 128, 0)"
+                                ]
+                              }}
+                              transition={{
+                                duration: 2,
+                                repeat: Infinity,
+                                repeatType: "loop"
+                              }}
+                            ></motion.span>
+                            Alta taxa de satisfação • Produto muito procurado
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                {/* Área de preço e seleção */}
+                <div className="border-t border-dark-400/30">
+                  <div className="p-6">
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.6 }}
                     >
-                      <img 
-                        src={image} 
-                        alt={`${product.name} - Imagem ${index + 1}`}
-                        className="w-16 h-16 object-cover"
-                      />
-                    </motion.button>
-                  ))}
+                      {!hasVariants ? (
+                        <div>
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-medium text-white">Preço:</h3>
+                            <div className="flex flex-col items-end">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span className="text-gray-400 text-sm line-through">R$ 370,00</span>
+                                <span className="bg-green-900/30 text-green-400 text-xs font-medium py-0.5 px-2 rounded-full">-87%</span>
+                              </div>
+                              <div className="text-primary text-2xl font-bold">
+                                R$ {product.price?.toFixed(2).replace('.', ',')}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-dark-400/20 rounded-xl p-4 mb-6">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-300">Disponibilidade:</span>
+                              <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                                product.stock > 10 ? 'bg-green-900/30 text-green-400 border border-green-500/30' :
+                                product.stock > 0 ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30' :
+                                'bg-red-900/30 text-red-400 border border-red-500/30'
+                              }`}>
+                                <span>{getStockText(product.stock || 0)}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center mb-5">
+                            <h3 className="text-lg font-medium text-white">
+                              Escolha seu plano:
+                            </h3>
+                          </div>
+                          
+                          <div className="space-y-3 mb-6">
+                            {product.variants.map((variantItem, index) => (
+                              <motion.div 
+                                key={variantItem._id}
+                                onClick={() => handleVariantChange(variantItem._id)}
+                                className={`cursor-pointer rounded-xl overflow-hidden transition-all duration-300 ${
+                                  selectedVariant === variantItem._id 
+                                    ? 'ring-2 ring-primary bg-primary/5' 
+                                    : 'ring-1 ring-dark-400/50 bg-dark-400/20 hover:ring-primary/50'
+                                }`}
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: 0.7 + (index * 0.1) }}
+                              >
+                                <div className="p-4">
+                                  <div className="flex justify-between items-center">
+                                    <div className="font-semibold text-white flex items-center">
+                                      {selectedVariant === variantItem._id && (
+                                        <motion.div 
+                                          initial={{ scale: 0 }}
+                                          animate={{ scale: 1 }}
+                                          transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                                          className="mr-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center"
+                                        >
+                                          <FiCheck className="text-white text-sm" />
+                                        </motion.div>
+                                      )}
+                                      {variantItem.name}
+                                    </div>
+                                    
+                                    <div className="flex flex-col items-end">
+                                      <div className="flex items-center space-x-2 mb-1">
+                                        <span className="text-gray-400 text-xs line-through">R$ 370,00</span>
+                                        <span className="bg-green-900/30 text-green-400 text-xs font-medium py-0.5 px-1.5 rounded-full">-87%</span>
+                                      </div>
+                                      <div className="text-primary font-medium">
+                                        R$ {variantItem.price.toFixed(2).replace('.', ',')}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {variantItem.features && variantItem.features.length > 0 && (
+                                    <motion.ul 
+                                      className="text-xs text-gray-400 mt-2 space-y-1.5"
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      transition={{ duration: 0.4 }}
+                                    >
+                                      {variantItem.features.map((feature, idx) => (
+                                        <li key={idx} className="flex items-start">
+                                          <span className="w-1 h-1 rounded-full bg-primary/70 mt-1.5 mr-2 flex-shrink-0"></span>
+                                          <span>{feature}</span>
+                                        </li>
+                                      ))}
+                                    </motion.ul>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </motion.div>
+                    
+                    {/* Seletor de quantidade */}
+                    {variant && variant.stock > 0 && (
+                      <motion.div 
+                        className="mb-6"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.8 }}
+                      >
+                        <h3 className="text-base font-medium text-white mb-3">Quantidade:</h3>
+                        <div className="flex items-center">
+                          <motion.button
+                            onClick={decreaseQuantity}
+                            disabled={quantity <= 1}
+                            className={`w-12 h-12 flex items-center justify-center rounded-l-xl ${
+                              quantity <= 1 
+                                ? 'bg-dark-300/50 text-gray-500 cursor-not-allowed' 
+                                : 'bg-dark-300/70 text-white hover:bg-dark-400/80'
+                            } relative overflow-hidden group transition-all duration-300`}
+                            whileHover={quantity > 1 ? { scale: 1.03 } : {}}
+                            whileTap={quantity > 1 ? { scale: 0.95 } : {}}
+                          >
+                            {quantity > 1 && (
+                              <span className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            )}
+                            <motion.span 
+                              className="text-2xl font-light"
+                              animate={quantity > 1 ? { 
+                                y: [0, -2, 0],
+                                opacity: [0.8, 1, 0.8] 
+                              } : {}}
+                              transition={{ 
+                                duration: 1.5, 
+                                repeat: Infinity,
+                                repeatType: "mirror" 
+                              }}
+                            >
+                              −
+                            </motion.span>
+                          </motion.button>
+                          
+                          <motion.div 
+                            className="w-16 h-12 flex items-center justify-center bg-dark-300/60 text-white font-medium text-lg border-x border-dark-400/50"
+                            whileTap={{ scale: 0.97 }}
+                          >
+                            <motion.span
+                              key={quantity}
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                            >
+                              {quantity}
+                            </motion.span>
+                          </motion.div>
+                          
+                          <motion.button
+                            onClick={increaseQuantity}
+                            disabled={quantity >= variant.stock}
+                            className={`w-12 h-12 flex items-center justify-center rounded-r-xl ${
+                              quantity >= variant.stock 
+                                ? 'bg-dark-300/50 text-gray-500 cursor-not-allowed' 
+                                : 'bg-dark-300/70 text-white hover:bg-dark-400/80'
+                            } relative overflow-hidden group transition-all duration-300`}
+                            whileHover={quantity < variant.stock ? { scale: 1.03 } : {}}
+                            whileTap={quantity < variant.stock ? { scale: 0.95 } : {}}
+                          >
+                            {quantity < variant.stock && (
+                              <span className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            )}
+                            <motion.span 
+                              className="text-xl"
+                              animate={quantity < variant.stock ? { 
+                                y: [0, -2, 0],
+                                opacity: [0.8, 1, 0.8] 
+                              } : {}}
+                              transition={{ 
+                                duration: 1.5, 
+                                repeat: Infinity,
+                                repeatType: "mirror" 
+                              }}
+                            >
+                              +
+                            </motion.span>
+                          </motion.button>
+                          
+                          <div className="ml-4 text-gray-400 text-sm flex items-center space-x-1.5">
+                            <motion.div 
+                              className={`w-3 h-3 rounded-full ${
+                                variant.stock > 10 ? 'bg-green-500' : 
+                                variant.stock > 0 ? 'bg-yellow-500' : 
+                                'bg-red-500'
+                              }`}
+                              animate={{ 
+                                scale: [1, 1.2, 1],
+                                opacity: [0.7, 1, 0.7],
+                                boxShadow: [
+                                  `0 0 0px ${variant.stock > 10 ? '#22c55e' : variant.stock > 0 ? '#eab308' : '#ef4444'}`,
+                                  `0 0 8px ${variant.stock > 10 ? '#22c55e' : variant.stock > 0 ? '#eab308' : '#ef4444'}`,
+                                  `0 0 0px ${variant.stock > 10 ? '#22c55e' : variant.stock > 0 ? '#eab308' : '#ef4444'}`
+                                ]
+                              }}
+                              transition={{ 
+                                duration: 2, 
+                                repeat: Infinity,
+                                repeatType: "loop" 
+                              }}
+                            />
+                            <motion.span
+                              initial={{ opacity: 0.8 }}
+                              whileHover={{ opacity: 1, x: 2 }}
+                            >
+                              {variant.stock} disponíveis
+                            </motion.span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                    
+                    {/* Total e botões de ação */}
+                    {variant && (
+                      <>
+                        <motion.div 
+                          className="bg-dark-400/30 rounded-xl p-4 mb-6"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: 0.9 }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-300">Total:</span>
+                            <motion.span 
+                              className="text-2xl font-bold text-primary"
+                              key={getTotalPrice()}
+                              initial={{ scale: 1.1 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 10 }}
+                            >
+                              R$ {getTotalPrice().toFixed(2).replace('.', ',')}
+                            </motion.span>
+                          </div>
+                          
+                          {variant.stock <= 5 && variant.stock > 0 && (
+                            <motion.div 
+                              className="mt-3 text-yellow-400 text-xs flex items-center bg-yellow-900/20 p-2.5 rounded-lg border border-yellow-500/20 relative overflow-hidden"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              transition={{ duration: 0.3, delay: 1 }}
+                            >
+                              {/* Efeito de pulsar com borda fixa */}
+                              <motion.div 
+                                className="absolute inset-0 bg-yellow-500/10 rounded-lg border border-yellow-500/30"
+                                animate={{ 
+                                  scale: [1, 1.02, 1],
+                                  opacity: [0.3, 0.6, 0.3],
+                                  boxShadow: ["0 0 0px rgba(250, 204, 21, 0)", "0 0 5px rgba(250, 204, 21, 0.2)", "0 0 0px rgba(250, 204, 21, 0)"]
+                                }}
+                                transition={{ 
+                                  duration: 2,
+                                  repeat: Infinity,
+                                  repeatType: "reverse"
+                                }}
+                              />
+                              
+                              {/* Efeito de brilho deslizante */}
+                              <motion.div 
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-500/20 to-transparent rounded-lg"
+                                initial={{ x: "-100%" }}
+                                animate={{ x: "100%" }}
+                                transition={{ 
+                                  duration: 1.5,
+                                  repeat: Infinity,
+                                  repeatDelay: 0.5
+                                }}
+                              />
+                              
+                              <motion.div 
+                                className="mr-1.5 flex-shrink-0 relative z-10"
+                                animate={{ 
+                                  rotateZ: [0, 10, 0, -10, 0],
+                                  scale: [1, 1.1, 1]
+                                }}
+                                transition={{ 
+                                  duration: 1.5,
+                                  repeat: Infinity
+                                }}
+                              >
+                                <FiClock />
+                              </motion.div>
+                              <span className="relative z-10">
+                                <motion.span 
+                                  className="font-semibold"
+                                  animate={{ 
+                                    textShadow: ["0 0 0px rgba(250, 204, 21, 0)", "0 0 3px rgba(250, 204, 21, 0.5)", "0 0 0px rgba(250, 204, 21, 0)"]
+                                  }}
+                                  transition={{ 
+                                    duration: 1.5,
+                                    repeat: Infinity
+                                  }}
+                                >
+                                  Estoque limitado!
+                                </motion.span> Apenas {variant.stock} unidades disponíveis.
+                              </span>
+                            </motion.div>
+                          )}
+                        </motion.div>
+                        
+                        <motion.div 
+                          className="grid grid-cols-2 gap-4"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: 1 }}
+                        >
+                          <motion.button
+                            onClick={handleAddToCart}
+                            disabled={!variant || variant.stock <= 0 || isAddingToCart}
+                            className={`relative py-3.5 px-5 rounded-xl flex items-center justify-center font-medium group overflow-hidden ${
+                              !variant || variant.stock <= 0 || isAddingToCart
+                                ? 'bg-gray-600/30 text-gray-400 cursor-not-allowed'
+                                : 'bg-dark-300/70 text-white shadow-lg'
+                            }`}
+                            whileHover={variant && variant.stock > 0 && !isAddingToCart ? { y: -2 } : {}}
+                            whileTap={variant && variant.stock > 0 && !isAddingToCart ? { y: 0 } : {}}
+                          >
+                            {variant && variant.stock > 0 && !isAddingToCart && (
+                              <>
+                                <span className="absolute inset-0 w-full h-full bg-gradient-to-br from-dark-400/0 via-dark-400/40 to-dark-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <span className="absolute inset-0 w-0 h-full bg-dark-400/30 group-hover:w-full transition-all duration-500 ease-out z-0" />
+                                <motion.span 
+                                  className="absolute inset-0 w-full h-full border border-white/10 rounded-xl"
+                                  whileHover={{ 
+                                    boxShadow: ["0 0 0 rgba(255,255,255,0)", "0 0 8px rgba(255,255,255,0.15)"]
+                                  }}
+                                  transition={{ duration: 0.3 }}
+                                />
+                              </>
+                            )}
+                            <motion.div 
+                              className="flex items-center justify-center relative z-10 whitespace-nowrap"
+                              whileHover={variant && variant.stock > 0 && !isAddingToCart ? { scale: 1.03 } : {}}
+                              whileTap={variant && variant.stock > 0 && !isAddingToCart ? { scale: 0.97 } : {}}
+                            >
+                              {isAddingToCart ? (
+                                <motion.div
+                                  animate={{ 
+                                    rotate: 360,
+                                  }}
+                                  transition={{ 
+                                    duration: 1, 
+                                    repeat: Infinity,
+                                    ease: "linear" 
+                                  }}
+                                  className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"
+                                />
+                              ) : null}
+                              <span>{isAddingToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}</span>
+                            </motion.div>
+                          </motion.button>
+                          
+                          <motion.button
+                            onClick={() => {
+                              if (variant && variant.stock > 0 && !isAddingToCart) {
+                                handleAddToCart();
+                                setTimeout(() => {
+                                  router.push('/cart');
+                                }, 500);
+                              }
+                            }}
+                            disabled={!variant || variant.stock <= 0 || isAddingToCart}
+                            className={`relative py-3.5 px-5 rounded-xl flex items-center justify-center font-medium group overflow-hidden ${
+                              !variant || variant.stock <= 0 || isAddingToCart
+                                ? 'bg-gray-600/30 text-gray-400 cursor-not-allowed'
+                                : 'bg-primary text-white shadow-lg'
+                            }`}
+                            whileHover={variant && variant.stock > 0 && !isAddingToCart ? { y: -2 } : {}}
+                            whileTap={variant && variant.stock > 0 && !isAddingToCart ? { y: 0 } : {}}
+                          >
+                            {variant && variant.stock > 0 && !isAddingToCart && (
+                              <>
+                                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-primary/0 via-primary-light/30 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                <motion.span 
+                                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20"
+                                  initial={{ scaleX: 0 }}
+                                  whileHover={{ scaleX: 1 }}
+                                  transition={{ duration: 0.5 }}
+                                />
+                                <motion.div
+                                  className="absolute inset-0 opacity-0 group-hover:opacity-100"
+                                  initial={{ opacity: 0 }}
+                                  whileHover={{ opacity: 1 }}
+                                  transition={{ duration: 0.3 }}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-r from-primary-light/0 via-primary-light/30 to-primary-light/0 animate-shimmer" />
+                                </motion.div>
+                                <motion.span
+                                  className="absolute -inset-1 rounded-xl blur-sm group-hover:blur-md bg-primary/40 opacity-0 group-hover:opacity-70 transition-all duration-500"
+                                  animate={variant && variant.stock > 0 ? {
+                                    opacity: [0, 0.4, 0]
+                                  } : {}}
+                                  transition={{ duration: 2, repeat: Infinity }}
+                                />
+                              </>
+                            )}
+                            <motion.div 
+                              className="flex items-center justify-center relative z-10 font-medium whitespace-nowrap"
+                              whileHover={variant && variant.stock > 0 && !isAddingToCart ? { scale: 1.03 } : {}}
+                              whileTap={variant && variant.stock > 0 && !isAddingToCart ? { scale: 0.97 } : {}}
+                            >
+                              {isAddingToCart ? (
+                                <motion.div
+                                  animate={{ 
+                                    rotate: 360,
+                                  }}
+                                  transition={{ 
+                                    duration: 1, 
+                                    repeat: Infinity,
+                                    ease: "linear" 
+                                  }}
+                                  className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"
+                                />
+                              ) : null}
+                              <span>{isAddingToCart ? 'Processando...' : 'Comprar Agora'}</span>
+                            </motion.div>
+                          </motion.button>
+                        </motion.div>
+                      </>
+                    )}
+                  </div>
                 </div>
+                
+                {/* Footer com benefícios */}
+                <motion.div 
+                  className="border-t border-dark-400/30 p-5 bg-dark-400/10"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 1.1 }}
+                >
+                  <div className="grid grid-cols-2 gap-y-4">
+                    <motion.div 
+                      className="flex items-center text-sm text-gray-400 group"
+                      whileHover={{ x: 2, color: "#fff" }}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 group-hover:bg-primary/20 transition-colors">
+                        <FiPackage className="text-primary" />
+                      </div>
+                      <span>Entrega garantida</span>
+                    </motion.div>
+                    <motion.div 
+                      className="flex items-center text-sm text-gray-400 group"
+                      whileHover={{ x: 2, color: "#fff" }}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 group-hover:bg-primary/20 transition-colors">
+                        <FiShield className="text-primary" />
+                      </div>
+                      <span>Garantia de 30 dias</span>
+                    </motion.div>
+                    <motion.div 
+                      className="flex items-center text-sm text-gray-400 group"
+                      whileHover={{ x: 2, color: "#fff" }}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 group-hover:bg-primary/20 transition-colors">
+                        <FiUser className="text-primary" />
+                      </div>
+                      <span>Suporte 24/7</span>
+                    </motion.div>
+                    <motion.div 
+                      className="flex items-center text-sm text-gray-400 group"
+                      whileHover={{ x: 2, color: "#fff" }}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 group-hover:bg-primary/20 transition-colors">
+                        <FiLock className="text-primary" />
+                      </div>
+                      <span>Pagamento seguro</span>
+                    </motion.div>
+                  </div>
+                </motion.div>
               </div>
               
-              {/* Status do produto - detalhes */}
+              {/* Status detail card (se tiver status) */}
               {product.status && (
-                <div className={`mt-6 p-4 rounded-lg ${getStatusConfig(product.status).bgColor} border ${getStatusConfig(product.status).color}`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`flex-shrink-0 p-2 rounded-full ${getStatusConfig(product.status).bgColor} ${getStatusConfig(product.status).color}`}>
-                      {getStatusConfig(product.status).icon}
+                <motion.div 
+                  className={`mt-6 rounded-xl overflow-hidden backdrop-blur-sm shadow-lg ${getStatusConfig(product.status).bgColor} border border-opacity-20 ${getStatusConfig(product.status).color}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 1.2 }}
+                >
+                  <div className="p-4 flex items-start gap-4">
+                    <div className={`p-3 rounded-xl ${getStatusConfig(product.status).bgColor} bg-opacity-30 shadow-inner flex-shrink-0`}>
+                      <motion.div
+                        animate={{ rotate: [0, 5, 0, -5, 0] }}
+                        transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                      >
+                        {getStatusConfig(product.status).icon}
+                      </motion.div>
                     </div>
                     <div>
-                      <h3 className={`font-semibold ${getStatusConfig(product.status).color}`}>
+                      <h3 className={`font-medium ${getStatusConfig(product.status).color}`}>
                         Status: {getStatusConfig(product.status).text}
                       </h3>
-                      <p className="text-sm text-gray-300 mt-1">
+                      <p className="text-xs mt-1 text-white/80">
                         {getStatusConfig(product.status).text === 'Indetectável' ? 'Nosso sistema anti-detecção está ativo e funcionando perfeitamente.' :
                          getStatusConfig(product.status).text === 'Detectável' ? 'Use com cautela, estamos trabalhando para melhorar a proteção.' :
                          getStatusConfig(product.status).text === 'Em Manutenção' ? 'Temporariamente indisponível enquanto realizamos atualizações.' :
                          getStatusConfig(product.status).text === 'Beta' ? 'Versão prévia com recursos experimentais. Use por sua conta e risco.' : ''}
                       </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Abas de navegação - Descrição/Requisitos/Garantia */}
-              <div className="bg-dark-200 rounded-lg shadow-lg mt-8">
-                <div className="flex border-b border-dark-300">
-                  <button
-                    className={`py-3 px-4 font-medium text-sm transition-colors ${
-                      activeTab === 'description' ? 'text-primary border-b-2 border-primary' : 'text-gray-400 hover:text-white'
-                    }`}
-                    onClick={() => setActiveTab('description')}
-                  >
-                    Descrição
-                  </button>
-                  <button
-                    className={`py-3 px-4 font-medium text-sm transition-colors ${
-                      activeTab === 'requirements' ? 'text-primary border-b-2 border-primary' : 'text-gray-400 hover:text-white'
-                    }`}
-                    onClick={() => setActiveTab('requirements')}
-                  >
-                    Requisitos
-                  </button>
-                  <button
-                    className={`py-3 px-4 font-medium text-sm transition-colors ${
-                      activeTab === 'warranty' ? 'text-primary border-b-2 border-primary' : 'text-gray-400 hover:text-white'
-                    }`}
-                    onClick={() => setActiveTab('warranty')}
-                  >
-                    Garantia
-                  </button>
-                </div>
-                
-                <div className="p-6">
-                  {activeTab === 'description' && (
-                    <div className="text-gray-300">
-                      {/* Conteúdo HTML do editor rico */}
-                      <div 
-                        className="product-description prose prose-invert max-w-none 
-                                  prose-headings:text-primary prose-headings:font-semibold prose-headings:mt-6 prose-headings:mb-3
-                                  prose-p:mb-3 prose-p:leading-relaxed
-                                  prose-strong:text-white prose-strong:font-semibold 
-                                  prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-                                  prose-ul:my-3 prose-ul:space-y-1 prose-ol:my-3 prose-ol:space-y-1 
-                                  prose-li:text-gray-300 prose-li:my-0.5
-                                  prose-blockquote:border-primary prose-blockquote:bg-dark-300/50 prose-blockquote:py-1 prose-blockquote:px-4
-                                  whitespace-pre-line"
-                        dangerouslySetInnerHTML={{ __html: product.description }}
-                      />
-                    </div>
-                  )}
-                  
-                  {activeTab === 'requirements' && (
-                    <div>
-                      <h3 className="text-lg font-medium text-white mb-4">Requisitos do Sistema</h3>
-                      {product.requirements && product.requirements.length > 0 ? (
-                        <div className="bg-dark-300/50 p-4 rounded-lg">
-                          <ul className="space-y-3 divide-y divide-dark-400">
-                            {product.requirements.map((req, index) => (
-                              <li key={index} className="flex items-start text-gray-300 pt-3 first:pt-0">
-                                <FiCheck className="text-primary mt-1 mr-2 flex-shrink-0" />
-                                <span className="flex-1">{req}</span>
-                              </li>
-                            ))}
-                          </ul>
+                      {lastStockUpdate && (
+                        <div className="flex items-center text-xs mt-2 text-white/60">
+                          <FiClock className="mr-1.5" size={12} />
+                          <span>Atualizado: {formattedLastUpdate}</span>
                         </div>
-                      ) : (
-                        <p className="text-gray-400">Sem requisitos específicos.</p>
                       )}
                     </div>
-                  )}
-                  
-                  {activeTab === 'warranty' && (
-                    <div>
-                      <h3 className="text-lg font-medium text-white mb-4">Nossa Garantia</h3>
-                      <p className="text-gray-300 mb-4">
-                        Oferecemos garantia de funcionamento em todos os nossos produtos. Se você tiver qualquer problema,
-                        nossa equipe de suporte estará disponível para ajudar 24/7.
-                      </p>
-                      <ul className="space-y-3">
-                        <li className="flex items-start text-gray-300">
-                          <FiShield className="text-primary mt-1 mr-2 flex-shrink-0" />
-                          Garantia de funcionamento
-                        </li>
-                        <li className="flex items-start text-gray-300">
-                          <FiUser className="text-primary mt-1 mr-2 flex-shrink-0" />
-                          Suporte técnico 24/7
-                        </li>
-                        <li className="flex items-start text-gray-300">
-                          <FiDownload className="text-primary mt-1 mr-2 flex-shrink-0" />
-                          Atualizações gratuitas
-                        </li>
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
-            
-            <div className="lg:col-span-1">
-              <div className="bg-dark-200 rounded-lg p-6 shadow-lg sticky top-24">
-                <div className="mb-4">
-                  {product.category && (
-                    <Link 
-                      href={`/products/category/${product.category.slug}`}
-                      className="text-xs text-primary hover:underline uppercase tracking-wider"
-                    >
-                      {product.category.name}
-                    </Link>
-                  )}
-                  <h1 className="text-2xl font-bold text-white mt-1">{product.name}</h1>
-                  
-                  {product.shortDescription && (
-                    <p className="text-gray-300 mt-2 text-sm">{product.shortDescription}</p>
-                  )}
-                </div>
-                
-                <div className="flex items-center justify-between mb-6 text-sm">
-                  {product.status && getStatusConfig(product.status) ? (
-                    <div className={`flex items-center ${getStatusConfig(product.status).textColor}`}>
-                      <span className="mr-2">{getStatusConfig(product.status).icon}</span>
-                      <span>{getStatusConfig(product.status).text}</span>
-                    </div>
-                  ) : (
-                    <div></div> /* Espaço reservado quando não há status */
-                  )}
-                  {product.status && getStatusConfig(product.status) ? (
-                    <div className="flex items-center text-gray-400">
-                      <FiClock className="mr-1" />
-                      <span>Atualizado: {formattedLastUpdate}</span>
-                    </div>
-                  ) : (
-                    <div></div> /* Não exibir "Atualizado" quando não há status */
-                  )}
-                </div>
-                
-                <div className="mb-6 overflow-hidden" ref={countRef}>
-                  <div className="bg-gradient-to-r from-dark-300/80 via-dark-400/60 to-dark-300/80 backdrop-blur-sm rounded-lg p-3 border border-dark-300/80 relative group">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-green-500/30 to-primary/0 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity duration-1000 group-hover:duration-700 animate-gradient-x"></div>
-                    
-                    <div className="relative flex items-center">
-                      <div className="flex items-center justify-center w-10 h-10 bg-green-900/30 rounded-full mr-3 overflow-hidden">
-                        <div className="w-full h-full flex items-center justify-center z-10">
-                          <FiTrendingUp className="text-green-400 animate-subtle-bounce" size={18} />
-                        </div>
-                        <div className="absolute w-full h-full bg-green-500/20 rounded-full animate-pulse"></div>
-                      </div>
-                      
-                      <div className="flex-1">
-                        <div className="flex items-baseline">
-                          <span className="text-green-400 text-xl font-bold tracking-tight">{displayedCount}</span>
-                          <span className="ml-2 text-gray-300 font-medium">clientes satisfeitos</span>
-                        </div>
-                        <div className="flex items-center text-xs text-gray-400 mt-0.5 group-hover:text-gray-300 transition-colors">
-                          <span className="inline-block mr-1 w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                          Produto muito procurado com alta taxa de satisfação
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="h-0.5 w-full bg-dark-500 mt-2 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-green-500 to-primary w-0 group-hover:w-full transition-all duration-1000 ease-out"></div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mb-6">
-                  {!hasVariants ? (
-                    <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium text-white">Preço:</h3>
-                        <div className="text-primary text-xl font-bold">
-                          R$ {product.price?.toFixed(2).replace('.', ',')}
-                        </div>
-                      </div>
-                      
-                      <div className="bg-dark-300/50 rounded-lg p-4 border border-dark-400 mb-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-300">Disponibilidade:</span>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            product.stock > 10 ? 'bg-green-900/30 text-green-400' :
-                            product.stock > 0 ? 'bg-yellow-900/30 text-yellow-400' :
-                            'bg-red-900/30 text-red-400'
-                          }`}>
-                            <span>{getStockText(product.stock || 0)}</span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-md font-medium text-white">
-                          Escolha seu plano:
-                        </h3>
-                        <button
-                          onClick={() => setIsStockModalOpen(true)}
-                          className="text-xs text-primary flex items-center"
-                        >
-                          <FiPackage className="mr-1" />
-                          Ver todos os planos
-                        </button>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        {product.variants.map((variant) => (
-                          <motion.div 
-                            key={variant._id}
-                            onClick={() => handleVariantChange(variant._id)}
-                            className={`cursor-pointer border rounded-lg p-4 transition-all ${
-                              selectedVariant === variant._id 
-                                ? 'border-primary bg-dark-300/50 shadow-lg shadow-primary/10' 
-                                : 'border-dark-400 bg-dark-300/30 hover:border-gray-400'
-                            }`}
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.99 }}
-                          >
-                            <div className="flex justify-between items-center">
-                              <div className="font-semibold text-white flex items-center">
-                                {selectedVariant === variant._id && (
-                                  <FiCheck className="text-primary mr-2" />
-                                )}
-                                {variant.name}
-                              </div>
-                              <div className="text-primary font-medium">
-                                R$ {variant.price.toFixed(2).replace('.', ',')}
-                              </div>
-                            </div>
-                            
-                            {variant.features && variant.features.length > 0 && (
-                              <ul className="text-xs text-gray-300 space-y-1 mt-2">
-                                {variant.features.map((feature, index) => (
-                                  <li key={index}>
-                                    {feature}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                {variant && variant.stock > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-md font-medium text-white mb-3">Quantidade:</h3>
-                    <div className="flex items-center">
-                      <button
-                        onClick={decreaseQuantity}
-                        disabled={quantity <= 1}
-                        className="w-10 h-10 flex items-center justify-center bg-dark-300 text-white hover:bg-dark-400 disabled:opacity-50 rounded-l-md"
-                      >
-                        -
-                      </button>
-                      <div className="w-14 h-10 flex items-center justify-center bg-dark-300 text-white font-medium border-x border-dark-400">
-                        {quantity}
-                      </div>
-                      <button
-                        onClick={increaseQuantity}
-                        disabled={quantity >= variant.stock}
-                        className="w-10 h-10 flex items-center justify-center bg-dark-300 text-white hover:bg-dark-400 disabled:opacity-50 rounded-r-md"
-                      >
-                        +
-                      </button>
-                      
-                      <div className="ml-4 text-sm text-gray-400">
-                        {variant.stock} disponíveis
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {variant && (
-                  <div className="bg-dark-300 p-4 rounded-lg mb-6">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Total:</span>
-                      <span className="text-xl font-bold text-primary">
-                        R$ {getTotalPrice().toFixed(2).replace('.', ',')}
-                      </span>
-                    </div>
-                    
-                    {variant.stock <= 5 && variant.stock > 0 && (
-                      <div className="mt-2 text-yellow-400 text-xs flex items-center">
-                        <FiClock className="mr-1" />
-                        Estoque limitado! Apenas {variant.stock} unidades disponíveis.
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <motion.button
-                    onClick={handleAddToCart}
-                    disabled={!variant || variant.stock <= 0}
-                    className={`py-3 rounded-md flex items-center justify-center font-medium ${
-                      !variant || variant.stock <= 0
-                        ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                        : 'bg-dark-300 hover:bg-dark-400 text-white'
-                    }`}
-                    whileHover={variant && variant.stock > 0 ? { scale: 1.02 } : {}}
-                    whileTap={variant && variant.stock > 0 ? { scale: 0.98 } : {}}
-                  >
-                    <FiShoppingCart className="mr-2" />
-                    Adicionar ao Carrinho
-                  </motion.button>
-                  
-                  <motion.button
-                    onClick={() => {
-                      if (variant && variant.stock > 0) {
-                        console.log(`Compra imediata: ${product.name} - ${variant.name} - Qtd: ${quantity}`);
-                      }
-                    }}
-                    disabled={!variant || variant.stock <= 0}
-                    className={`py-3 rounded-md flex items-center justify-center font-medium ${
-                      !variant || variant.stock <= 0
-                        ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                        : 'bg-primary hover:bg-primary/90 text-white'
-                    }`}
-                    whileHover={variant && variant.stock > 0 ? { scale: 1.02 } : {}}
-                    whileTap={variant && variant.stock > 0 ? { scale: 0.98 } : {}}
-                  >
-                    Comprar Agora
-                  </motion.button>
-                </div>
-                
-                <div className="mt-6 grid grid-cols-2 gap-3 text-sm text-gray-300">
-                  <div className="flex items-center">
-                    <FiDownload className="text-primary mr-2" />
-                    Entrega imediata
-                  </div>
-                  <div className="flex items-center">
-                    <FiShield className="text-primary mr-2" />
-                    Garantia vitalícia
-                  </div>
-                  <div className="flex items-center">
-                    <FiUser className="text-primary mr-2" />
-                    Suporte 24/7
-                  </div>
-                  <div className="flex items-center">
-                    <FiLock className="text-primary mr-2" />
-                    Pagamento seguro
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          </motion.div>
         </div>
       </div>
       

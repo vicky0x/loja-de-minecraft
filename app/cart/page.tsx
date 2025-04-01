@@ -1151,7 +1151,6 @@ export default function CartPage() {
                       <span>Itens do Carrinho ({items.length})</span>
                     </h2>
                     <div className="flex items-center text-sm">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
                       <span className="text-green-400">Estoque disponível</span>
                     </div>
                   </div>

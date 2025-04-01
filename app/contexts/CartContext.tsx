@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import toast from 'react-hot-toast';
 
 // Interface para o item no carrinho
 interface CartItem {
@@ -102,6 +103,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Verificar se o item já existe no carrinho (baseado no variantId)
       const existingItemIndex = prevItems.findIndex(i => i.variantId === item.variantId);
       
+      // Verificar se o item tem estoque disponível
+      if (item.stock !== undefined && item.stock <= 0) {
+        toast.error('Este produto está fora de estoque', {
+          icon: '⚠️',
+        });
+        return prevItems;
+      }
+      
       // Se o item existir, atualizar a quantidade
       if (existingItemIndex !== -1) {
         // Criar uma cópia do array para não mutar o estado diretamente
@@ -116,23 +125,38 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // Atualizar para o estoque máximo disponível
           updatedItems[existingItemIndex] = {
             ...existingItem,
-            quantity: existingItem.stock
+            quantity: existingItem.stock,
+            hasStockIssue: true
           };
           
-          // Notificar o usuário (poderia ser feito com um toast)
-          console.warn(`Quantidade ajustada para o estoque máximo: ${existingItem.stock}`);
+          // Notificar o usuário com toast
+          toast.error(`Quantidade limitada ao estoque disponível: ${existingItem.stock}`, {
+            icon: '⚠️',
+            style: {
+              borderLeft: '4px solid #FF5A5A',
+            },
+          });
         } else {
           // Atualizar a quantidade normalmente
           updatedItems[existingItemIndex] = {
             ...existingItem,
-            quantity: newQuantity
+            quantity: newQuantity,
+            hasStockIssue: false
           };
+          
+          // Notificar o usuário que adicionou mais itens
+          toast.success(`Quantidade atualizada: ${newQuantity} ${existingItem.productName}`, {
+            icon: '🛒',
+            style: {
+              borderLeft: '4px solid #6c63ff',
+            },
+          });
         }
         
         return updatedItems;
       } else {
         // Se o item não existir, adicionar ao carrinho
-        return [...prevItems, item];
+        return [...prevItems, { ...item, hasStockIssue: false }];
       }
     });
   };

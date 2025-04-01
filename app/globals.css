@@ -198,6 +198,20 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
     background-color: var(--background-dark-300);
   }
   
+  /* Animação de brilho para botões */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+  }
+  
   /* Cards com visual premium */
   .card {
     background-color: var(--background-dark-200);
@@ -1160,4 +1174,13 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
     );
   background-size: 100% 100%;
   opacity: 0.4;
+}
+
+/* Disables orange bullets or orange dots that might appear in plan selectors */
+.plan-bullet,
+.plan-dot,
+.dot-indicator,
+*[class*="bullet"],
+*[class*="dot"] {
+  display: none !important;
 }
