@@ -40,6 +40,18 @@ fantasy-cheats/
 - **Painel do Cliente**: Visualização dos produtos adquiridos, histórico
 - **Painel Administrativo**: Dashboard com estatísticas, gestão de produtos, usuários, pedidos, cupons e categorias
 
+## Sistema de Recuperação de Senha
+
+O projeto inclui um sistema completo de recuperação de senha:
+
+1. **Solicitação de Redefinição**: Usuários podem solicitar a redefinição através da página `/auth/forgot-password`
+2. **Email de Recuperação**: Um email contendo um link seguro com token é enviado ao usuário
+3. **Verificação de Token**: O token é validado antes de permitir a redefinição da senha
+4. **Página de Redefinição**: Interface intuitiva para criar uma nova senha
+5. **Segurança**: Tokens expiram após 1 hora e são utilizados apenas uma vez
+
+Para configurar o envio de emails, preencha as variáveis de ambiente `SMTP_*` no arquivo `.env`.
+
 ## Como Executar
 
 1. Clone o repositório

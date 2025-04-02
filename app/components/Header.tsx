@@ -65,11 +65,21 @@ export default function Header() {
 
           {/* Botões de Ação */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/auth/login" className="btn btn-outline">
-              Login
+            <Link 
+              href="/auth/login" 
+              className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+            >
+              <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-dark-300 group-hover:bg-dark-400"></span>
+              <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-dark-400 group-hover:bg-transparent group-hover:skew-x-6"></span>
+              <span className="relative z-10">Login</span>
             </Link>
-            <Link href="/auth/register" className="btn btn-primary">
-              Cadastrar
+            <Link 
+              href="/auth/register" 
+              className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+            >
+              <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-primary group-hover:bg-primary-light"></span>
+              <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-primary-dark opacity-70 group-hover:bg-transparent group-hover:skew-x-6"></span>
+              <span className="relative z-10">Cadastrar</span>
             </Link>
           </div>
 
@@ -117,11 +127,21 @@ export default function Header() {
             </Link>
           ))}
           <div className="flex flex-col space-y-2 pt-2">
-            <Link href="/auth/login" className="btn btn-outline text-center">
-              Login
+            <Link 
+              href="/auth/login" 
+              className="relative overflow-hidden group py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 text-center"
+            >
+              <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-dark-300 group-hover:bg-dark-400"></span>
+              <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-dark-400 group-hover:bg-transparent group-hover:skew-x-6"></span>
+              <span className="relative z-10">Login</span>
             </Link>
-            <Link href="/auth/register" className="btn btn-primary text-center">
-              Cadastrar
+            <Link 
+              href="/auth/register" 
+              className="relative overflow-hidden group py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 text-center"
+            >
+              <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-primary group-hover:bg-primary-light"></span>
+              <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-primary-dark opacity-70 group-hover:bg-transparent group-hover:skew-x-6"></span>
+              <span className="relative z-10">Cadastrar</span>
             </Link>
           </div>
         </div>

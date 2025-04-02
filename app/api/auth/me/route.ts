@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkAuth } from '@/app/lib/auth';
 import connectDB from '@/app/lib/db/mongodb';
+import { cookies } from 'next/headers';
 
 // Função para recuperar informações do usuário atual
 export async function GET(request: NextRequest) {
@@ -79,6 +80,32 @@ export async function GET(request: NextRequest) {
     console.error('Erro ao obter dados do usuário:', error);
     return NextResponse.json(
       { message: 'Erro ao obter dados do usuário', error: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+// Método para logout (remover a sessão)
+export async function DELETE() {
+  try {
+    console.log('API ME: Processando logout via DELETE...');
+    
+    // Limpar todos os cookies relevantes
+    const cookieStore = cookies();
+    cookieStore.delete('auth_token');
+    cookieStore.delete('isAuthenticated');
+    cookieStore.delete('userId');
+    cookieStore.delete('username');
+    cookieStore.delete('userEmail');
+    cookieStore.delete('userRole');
+    
+    console.log('API ME: Cookies limpos com sucesso');
+    
+    return NextResponse.json({ success: true, message: 'Logout realizado com sucesso' });
+  } catch (error) {
+    console.error('API ME: Erro ao processar logout:', error);
+    return NextResponse.json(
+      { success: false, message: 'Erro ao processar logout' },
       { status: 500 }
     );
   }

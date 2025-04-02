@@ -133,12 +133,8 @@ export default function Home() {
   // Perguntas frequentes
   const faqs = [
     { 
-      question: 'O que são cheats para jogos?', 
-      answer: 'Cheats são ferramentas que proporcionam vantagens no jogo, como mira assistida, ESP (ver através de paredes), e outras funcionalidades que melhoram sua performance.' 
-    },
-    { 
-      question: 'Os cheats são seguros para usar?', 
-      answer: 'Nossos cheats são desenvolvidos com tecnologia anti-detecção avançada, minimizando os riscos. No entanto, sempre existe um pequeno risco ao usar qualquer tipo de cheat em jogos online.' 
+      question: 'O que são contas de Minecraft?', 
+      answer: 'Contas de Minecraft são acessos a contas originais com acesso completo ao jogo, permitindo acesso a recursos premium e evitando restrições de acesso.' 
     },
     { 
       question: 'Como funciona o processo de compra?', 
@@ -150,7 +146,7 @@ export default function Home() {
     }
   ];
 
-  const [openFaqs, setOpenFaqs] = useState<number[]>([]);
+  const [openFaqs, setOpenFaqs] = useState([]);
 
   const toggleFaq = (index: number) => {
     if (openFaqs.includes(index)) {
@@ -177,15 +173,41 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center">
             {/* Main Title */}
             <div className="mb-8 opacity-0 animate-fade-in" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
+              {/* Badge premium */}
+              <div className="inline-flex items-center px-4 py-2 mb-4 rounded-full bg-gradient-to-r from-primary/10 to-primary/20 backdrop-blur-md border border-primary/30 text-white text-sm font-medium group relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_15px_rgba(255,96,0,0.25)] hover:scale-[1.01] shadow-[0_0_10px_rgba(0,0,0,0.1)]">
+                {/* Brilho de fundo */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-primary/10 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-md"></div>
+                
+                {/* Partículas mais sutis */}
+                <div className="absolute inset-0 overflow-hidden">
+                  <div className="absolute top-1 left-3 w-1 h-1 rounded-full bg-white/30 animate-float-medium"></div>
+                  <div className="absolute bottom-2 right-10 w-1 h-1 rounded-full bg-primary/30 animate-float-slow"></div>
+                </div>
+                
+                {/* Ícone #1 com estilo consistente */}
+                <div className="flex items-center justify-center mr-2 relative">
+                  <span className="relative z-10 text-primary font-bold text-sm flex items-center justify-center bg-primary/10 h-5 w-5 rounded-full">
+                    1
+                  </span>
+                </div>
+                
+                {/* Texto principal */}
+                <span className="relative z-10 font-medium text-white/90 tracking-wide group-hover:text-white transition-all duration-300 ml-1">
+                  A Maior Loja de Minecraft da América Latina
+                </span>
+                
+                {/* Efeito sutil no hover */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+              </div>
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
                 Fantasy Store
               </h1>
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold mb-6 tracking-wide">
-                DOMINE CADA <span className="text-primary">PARTIDA</span>
+                Minecraft <span className="text-primary">Premium</span>
               </h2>
               <p className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-                Eleve seu desempenho nos jogos com nossa tecnologia avançada. 
-                Segurança garantida, suporte 24/7 e interface intuitiva.
+                Compre contas originais Minecraft Java e Bedrock com acesso completo.
+                Entrega automática e garantia permanente pelo menor preço do Brasil.
               </p>
             </div>
             
@@ -206,10 +228,22 @@ export default function Home() {
               </Link>
               <Link 
                 href="/auth/register" 
-                className="relative py-4 px-8 font-medium text-lg rounded-lg border-2 border-primary/30 text-primary hover:text-white group overflow-hidden"
+                className="relative py-4 px-8 font-medium text-lg rounded-xl border-2 border-dark-400/50 text-white hover:text-primary group overflow-hidden transform transition-all duration-500 hover:scale-105 shadow-lg shadow-transparent hover:shadow-dark-300/20 backdrop-blur-sm"
               >
-                <span className="relative z-10">CRIAR CONTA</span>
-                <span className="absolute inset-0 bg-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                <span className="relative z-10 flex items-center justify-center tracking-wide transition-colors duration-300">
+                  CRIAR CONTA
+                  <svg className="w-5 h-5 ml-2 opacity-0 transform transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                </span>
+                <span className="absolute inset-0 bg-dark-300/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></span>
+                {/* Efeito de hover simplificado */}
+                <span className="absolute inset-0 opacity-0 group-hover:opacity-20">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.1),transparent_70%)]"></div>
+                </span>
+                {/* Bordas simplificadas */}
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-dark-400 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></span>
+                <span className="absolute top-0 left-0 right-0 h-0.5 bg-dark-400 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></span>
               </Link>
             </div>
             
@@ -624,7 +658,7 @@ export default function Home() {
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
                       ))}
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                       </svg>
                     </div>

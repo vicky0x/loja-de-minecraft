@@ -119,6 +119,7 @@ const Header = () => {
           <button 
             onClick={(e) => {
               e.preventDefault();
+              console.log('Header: Iniciando logout...');
               logout();
             }}
             className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"

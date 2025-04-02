@@ -123,11 +123,7 @@ export async function logout() {
         credentials: 'include',
       });
       
-      if (!response.ok) {
-        console.warn('Resposta da API de logout não foi OK:', response.status);
-      } else {
-        console.log('Resposta da API de logout OK');
-      }
+      console.log('Resposta da API de logout:', response.status);
     } catch (apiError) {
       // Se a requisição para a API falhar, apenas logar o erro mas continuar o processo local
       console.error('Erro ao fazer requisição para API de logout:', apiError);
@@ -166,15 +162,16 @@ export async function logout() {
     
     console.log('Logout concluído, redirecionando para login...');
     
-    // Recarregar a página para limpar o estado
-    window.location.href = '/auth/login';
+    // Utilizar setTimeout para garantir que o redirecionamento ocorra
+    setTimeout(() => {
+      window.location.href = '/auth/login';
+    }, 100);
+    
   } catch (error) {
     console.error("Erro ao fazer logout:", error);
     // Em caso de erro, tentar redirecionar de qualquer forma
-    try {
+    setTimeout(() => {
       window.location.href = '/auth/login?error=logout_failed';
-    } catch (redirectError) {
-      console.error("Erro ao redirecionar após logout falhar:", redirectError);
-    }
+    }, 100);
   }
 } 

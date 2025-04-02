@@ -549,11 +549,23 @@ export default function Navbar() {
             ) : (
               // Botões para usuários não logados - Enhanced
               <div className="flex space-x-3">
-                <Link href="/auth/login" className="px-4 py-2 text-sm font-medium text-white hover:text-primary border border-dark-300 hover:border-primary/50 rounded-lg transition-all duration-300" style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-                  Login
+                <Link 
+                  href="/auth/login" 
+                  className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                >
+                  <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-dark-300 group-hover:bg-dark-400"></span>
+                  <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-dark-400 group-hover:bg-transparent group-hover:skew-x-6"></span>
+                  <span className="relative z-10">Login</span>
                 </Link>
-                <Link href="/auth/register" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary to-primary-dark hover:from-primary-light hover:to-primary rounded-lg transition-all duration-300 shadow-md hover:shadow-primary/20" style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-                  Cadastrar
+                <Link 
+                  href="/auth/register" 
+                  className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                >
+                  <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-primary group-hover:bg-primary-light"></span>
+                  <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-primary-dark opacity-70 group-hover:bg-transparent group-hover:skew-x-6"></span>
+                  <span className="relative z-10">Cadastrar</span>
                 </Link>
               </div>
             )}
@@ -792,19 +804,23 @@ export default function Navbar() {
             <div className="flex flex-col space-y-3 pt-2 border-t border-dark-300/50">
               <Link 
                 href="/auth/login" 
-                className="py-2.5 text-sm font-medium text-white hover:text-primary border border-dark-300 hover:border-primary/50 rounded-lg transition-all duration-300 text-center"
+                className="relative overflow-hidden group py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 text-center"
                 onClick={() => setIsMenuOpen(false)}
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
               >
-                Login
+                <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-dark-300 group-hover:bg-dark-400"></span>
+                <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-dark-400 group-hover:bg-transparent group-hover:skew-x-6"></span>
+                <span className="relative z-10">Login</span>
               </Link>
               <Link 
                 href="/auth/register" 
-                className="py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary to-primary-dark hover:from-primary-light hover:to-primary rounded-lg transition-all duration-300 text-center shadow-md"
+                className="relative overflow-hidden group py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 text-center"
                 onClick={() => setIsMenuOpen(false)}
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
               >
-                Cadastrar
+                <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-primary group-hover:bg-primary-light"></span>
+                <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-primary-dark opacity-70 group-hover:bg-transparent group-hover:skew-x-6"></span>
+                <span className="relative z-10">Cadastrar</span>
               </Link>
             </div>
           )}

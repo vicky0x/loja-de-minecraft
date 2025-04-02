@@ -181,7 +181,7 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
           
           {/* Imagem do produto com fallback */}
-          <div className="aspect-w-16 aspect-h-9 bg-dark-300 relative">
+          <div className="aspect-w-4 aspect-h-10 bg-dark-300 relative">
             {/* Background pattern with wavy lines */}
             <div className="absolute inset-0 z-0 overflow-hidden">
               <div className="wavy-pattern h-full w-full"></div>

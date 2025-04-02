@@ -14,9 +14,13 @@ const DashboardSidebar = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('Dashboard: Iniciando logout...');
       await logout();
+      // Não é necessário redirecionar aqui, pois a função logout já faz isso
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+      // Em caso de erro, tentar redirecionar manualmente
+      window.location.href = '/auth/login';
     }
   };
 
@@ -92,7 +96,10 @@ const DashboardSidebar = () => {
         </div>
         <div className="p-4 border-t border-dark-400">
           <button
-            onClick={handleLogout}
+            onClick={(e) => {
+              e.preventDefault();
+              handleLogout();
+            }}
             className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-dark-300 hover:text-white rounded-lg transition-colors"
           >
             <FiLogOut size={20} className="mr-3" />

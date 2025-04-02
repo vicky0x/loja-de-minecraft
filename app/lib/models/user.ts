@@ -13,6 +13,8 @@ export interface IUser extends Document {
   cpf?: string;
   address?: string;
   phone?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpiry?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -102,6 +104,14 @@ const userSchema = new Schema<IUser>(
       type: Schema.Types.ObjectId,
       ref: 'Product',
     }],
+    resetPasswordToken: {
+      type: String,
+      default: undefined,
+    },
+    resetPasswordExpiry: {
+      type: Date,
+      default: undefined,
+    }
   },
   {
     timestamps: true,
