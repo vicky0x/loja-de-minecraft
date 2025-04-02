@@ -5,11 +5,12 @@ import { use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiArrowLeft, FiShoppingCart, FiPackage, FiCheck, FiClock, FiShield, FiDownload, FiAward, FiStar, FiLock, FiUser, FiTrendingUp, FiX, FiInfo, FiAlertOctagon, FiTool, FiCode } from 'react-icons/fi';
+import { FiArrowLeft, FiShoppingCart, FiPackage, FiCheck, FiClock, FiShield, FiDownload, FiAward, FiStar, FiLock, FiUser, FiTrendingUp, FiX, FiInfo, FiAlertOctagon, FiTool, FiCode, FiEye, FiHeart } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import VariantStockModal from '@/app/components/VariantStockModal';
 import { useCart } from '@/app/contexts/CartContext';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/app/hooks/useAuth';
 
 interface Variant {
   _id: string;
@@ -64,6 +65,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const [displayedCount, setDisplayedCount] = useState(0);
   const cart = useCart();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const { isAuthenticated, isLoading, checkAuth } = useAuth();
 
   // Ref para o elemento da imagem
   const imageRef = useRef<HTMLDivElement>(null);
@@ -116,6 +118,21 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     
     return () => clearInterval(intervalId);
   }, [slug]);
+
+  // Fazer verificação de autenticação ao montar o componente
+  useEffect(() => {
+    // Verificação de cookies do cliente
+    if (typeof window !== 'undefined') {
+      const hasAuthToken = document.cookie
+        .split('; ')
+        .some(row => row.startsWith('auth_token='));
+      
+      console.log('[PRODUTO] Estado de autenticação:', 
+        isAuthenticated ? 'Autenticado' : 'Não autenticado',
+        'Token presente:', hasAuthToken
+      );
+    }
+  }, [isAuthenticated]);
 
   async function fetchProduct() {
     try {
@@ -247,46 +264,46 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     return variant.price * quantity;
   };
   
-  const handleAddToCart = () => {
-    if (!product || !variant || variant.stock <= 0 || isAddingToCart) return;
-    
-    // Prevenir múltiplos cliques
-    setIsAddingToCart(true);
-    
-    // Verificar estoque antes de adicionar
-    if (quantity > variant.stock) {
-      toast.error(`Apenas ${variant.stock} unidades disponíveis.`);
+  const handleAddToCart = async () => {
+    try {
+      if (!variant) return false;
+      
+      setIsAddingToCart(true);
+      
+      // Criar um identificador único para evitar duplicatas rápidas
+      const requestId = `${product?._id}-${variant._id}-${Date.now()}`;
+      
+      // Verificar se foi uma requisição duplicada dentro de 2 segundos
+      const lastRequestTime = localStorage.getItem(`lastAddToCart-${product?._id}-${variant._id}`);
+      if (lastRequestTime && Date.now() - parseInt(lastRequestTime) < 2000) {
+        console.log('Ignorando requisição duplicada de adicionar ao carrinho');
+        setIsAddingToCart(false);
+        return false;
+      }
+      
+      // Registrar esta requisição
+      localStorage.setItem(`lastAddToCart-${product?._id}-${variant._id}`, Date.now().toString());
+      
+      // Adicionar item ao carrinho através do contexto
+      cart.addItem({
+        productId: product?._id ?? '',
+        productName: product?.name ?? '',
+        productImage: product?.images?.[0] ?? '',
+        variantId: variant._id,
+        variantName: variant.name,
+        price: variant.price,
+        quantity: quantity,
+        stock: variant.stock,
+        hasVariants: hasVariants
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao adicionar ao carrinho:', error);
+      return false;
+    } finally {
       setIsAddingToCart(false);
-      return;
     }
-    
-    // Lógica para adicionar ao carrinho
-    const item = {
-      productId: product._id,
-      productName: product.name,
-      productImage: product.images && product.images.length > 0 ? product.images[0] : '',
-      variantId: variant._id,
-      variantName: variant.name,
-      price: variant.price,
-      quantity: quantity,
-      stock: variant.stock,
-    };
-    
-    // Adicionar ao carrinho usando o contexto
-    cart.addItem(item);
-    
-    // Feedback visual para o usuário
-    toast.success(`${product.name} - ${variant.name} foi adicionado ao seu carrinho.`, {
-      icon: '🛒',
-      style: {
-        borderLeft: '4px solid #6c63ff',
-      },
-    });
-    
-    // Resetar o estado de adição ao carrinho após um curto período
-    setTimeout(() => {
-      setIsAddingToCart(false);
-    }, 1000);
   };
   
   const getStockClass = (stock: number) => {
@@ -1278,59 +1295,88 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: 1 }}
                         >
+                          {/* Botão Adicionar ao Carrinho */}
                           <motion.button
-                            onClick={handleAddToCart}
+                            onClick={() => {
+                              if (!isAuthenticated) {
+                                try {
+                                  localStorage.setItem('redirectAfterLogin', '/cart');
+                                } catch (error) {
+                                  console.error('[PRODUTO] Erro ao salvar redirecionamento:', error);
+                                }
+                                toast.success('É necessário fazer login para adicionar ao carrinho');
+                                router.push('/auth/login');
+                                return;
+                              }
+                              
+                              if (variant && variant.stock > 0 && !isAddingToCart) {
+                                handleAddToCart();
+                              }
+                            }}
                             disabled={!variant || variant.stock <= 0 || isAddingToCart}
                             className={`relative py-3.5 px-5 rounded-xl flex items-center justify-center font-medium group overflow-hidden ${
                               !variant || variant.stock <= 0 || isAddingToCart
                                 ? 'bg-gray-600/30 text-gray-400 cursor-not-allowed'
-                                : 'bg-dark-300/70 text-white shadow-lg'
+                                : 'bg-dark-400 text-white hover:bg-dark-500 shadow-lg'
                             }`}
                             whileHover={variant && variant.stock > 0 && !isAddingToCart ? { y: -2 } : {}}
                             whileTap={variant && variant.stock > 0 && !isAddingToCart ? { y: 0 } : {}}
                           >
                             {variant && variant.stock > 0 && !isAddingToCart && (
                               <>
-                                <span className="absolute inset-0 w-full h-full bg-gradient-to-br from-dark-400/0 via-dark-400/40 to-dark-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <span className="absolute inset-0 w-0 h-full bg-dark-400/30 group-hover:w-full transition-all duration-500 ease-out z-0" />
+                                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-dark-400/0 via-dark-300/30 to-dark-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                 <motion.span 
-                                  className="absolute inset-0 w-full h-full border border-white/10 rounded-xl"
-                                  whileHover={{ 
-                                    boxShadow: ["0 0 0 rgba(255,255,255,0)", "0 0 8px rgba(255,255,255,0.15)"]
-                                  }}
-                                  transition={{ duration: 0.3 }}
+                                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20"
+                                  initial={{ scaleX: 0 }}
+                                  whileHover={{ scaleX: 1 }}
+                                  transition={{ duration: 0.5 }}
                                 />
                               </>
                             )}
                             <motion.div 
-                              className="flex items-center justify-center relative z-10 whitespace-nowrap"
+                              className="flex items-center justify-center relative z-10 font-medium whitespace-nowrap"
                               whileHover={variant && variant.stock > 0 && !isAddingToCart ? { scale: 1.03 } : {}}
                               whileTap={variant && variant.stock > 0 && !isAddingToCart ? { scale: 0.97 } : {}}
                             >
-                              {isAddingToCart ? (
-                                <motion.div
-                                  animate={{ 
-                                    rotate: 360,
-                                  }}
-                                  transition={{ 
-                                    duration: 1, 
-                                    repeat: Infinity,
-                                    ease: "linear" 
-                                  }}
-                                  className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"
-                                />
-                              ) : null}
-                              <span>{isAddingToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}</span>
+                              <FiShoppingCart className="mr-2" />
+                              <span>Adicionar ao Carrinho</span>
                             </motion.div>
                           </motion.button>
-                          
+
+                          {/* Botão Comprar Agora */}
                           <motion.button
-                            onClick={() => {
+                            onClick={async () => {
                               if (variant && variant.stock > 0 && !isAddingToCart) {
-                                handleAddToCart();
-                                setTimeout(() => {
-                                  router.push('/cart');
-                                }, 500);
+                                try {
+                                  console.log('Clicou em Comprar Agora');
+                                  // Se não estiver autenticado, salvar URL do carrinho e redirecionar
+                                  if (!isAuthenticated) {
+                                    console.log('[PRODUTO] Comprar agora: usuário não autenticado');
+                                    try {
+                                      localStorage.setItem('redirectAfterLogin', '/cart');
+                                      console.log('[PRODUTO] URL do carrinho salva para redirecionamento');
+                                    } catch (error) {
+                                      console.error('[PRODUTO] Erro ao salvar redirecionamento para o carrinho:', error);
+                                    }
+                                    
+                                    toast.success('É necessário fazer login para finalizar a compra');
+                                    router.push('/auth/login');
+                                    return;
+                                  }
+                                  
+                                  console.log('[PRODUTO] Comprar agora: usuário autenticado, adicionando ao carrinho');
+                                  // Se estiver autenticado, adicionar ao carrinho e redirecionar
+                                  const addedToCart = await handleAddToCart();
+                                  
+                                  if (addedToCart === true) {
+                                    console.log('Redirecionando para o carrinho...');
+                                    setTimeout(() => {
+                                      router.push('/cart');
+                                    }, 500);
+                                  }
+                                } catch (error) {
+                                  console.error('Erro ao processar compra:', error);
+                                }
                               }
                             }}
                             disabled={!variant || variant.stock <= 0 || isAddingToCart}

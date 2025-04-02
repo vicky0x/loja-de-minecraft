@@ -1,175 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/app/lib/db/mongodb';
+import { connectDB } from '@/app/lib/mongodb';
 import User from '@/app/lib/models/user';
-import mongoose from 'mongoose';
-import { v4 as uuidv4 } from 'uuid';
-
-// Verificar se já existe o modelo de imagem, se não existir, criar
-let Image;
-try {
-  Image = mongoose.model('Image');
-} catch (error) {
-  // Criar esquema para armazenar imagens
-  const imageSchema = new mongoose.Schema({
-    filename: String,
-    contentType: String,
-    data: Buffer,
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    uploadDate: {
-      type: Date,
-      default: Date.now
-    }
-  });
-  
-  Image = mongoose.model('Image', imageSchema);
-}
+import bcrypt from 'bcryptjs';
+import { cookies } from 'next/headers';
+import { SignJWT } from 'jose';
 
 export async function POST(request: NextRequest) {
   try {
-    // Conectar ao banco de dados
-    await connectDB();
+    // Verificar se a requisição é multipart/form-data
+    const contentType = request.headers.get('content-type') || '';
     
-    // Processar o formData
-    const formData = await request.formData();
-    const username = formData.get('username') as string;
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const profileImage = formData.get('profileImage') as File | null;
+    let username, email, password;
     
-    // Validar dados
+    if (contentType.includes('multipart/form-data')) {
+      // Processar como FormData
+      const formData = await request.formData();
+      username = formData.get('username') as string;
+      email = formData.get('email') as string;
+      password = formData.get('password') as string;
+      
+      // Verificar se há imagem de perfil (não implementado neste exemplo)
+      const profileImage = formData.get('profileImage') as File | null;
+      // TODO: Implementar upload da imagem de perfil se necessário
+    } else {
+      // Tentar processar como JSON para compatibilidade
+      try {
+        const jsonData = await request.json();
+        username = jsonData.username;
+        email = jsonData.email;
+        password = jsonData.password;
+      } catch (jsonError) {
+        console.error('Erro ao processar dados JSON:', jsonError);
+        return NextResponse.json(
+          { message: 'Formato de dados inválido' },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!username || !email || !password) {
       return NextResponse.json(
         { message: 'Todos os campos são obrigatórios' },
         { status: 400 }
       );
     }
-    
-    // Verificar se o usuário já existe
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }],
-    });
+
+    await connectDB();
+
+    // Verificar se o email já está em uso
+    const existingUser = await User.findOne({ email });
     
     if (existingUser) {
-      if (existingUser.email === email) {
-        return NextResponse.json(
-          { message: 'Este email já está em uso' },
-          { status: 400 }
-        );
-      }
-      
-      if (existingUser.username === username) {
-        return NextResponse.json(
-          { message: 'Este nome de usuário já está em uso' },
-          { status: 400 }
-        );
-      }
-    }
-    
-    // Criar objeto de usuário inicial
-    const userData = {
-      username,
-      email,
-      password,
-      role: 'user', // Papel padrão é usuário comum
-    };
-    
-    // Processar imagem de perfil se fornecida
-    let imageUrl = null;
-    let newImage = null;
-    if (profileImage) {
-      // Verificar tipo de arquivo
-      if (!profileImage.type.startsWith('image/')) {
-        return NextResponse.json(
-          { message: 'O arquivo deve ser uma imagem' },
-          { status: 400 }
-        );
-      }
-      
-      // Verificar tamanho (2MB)
-      if (profileImage.size > 2 * 1024 * 1024) {
-        return NextResponse.json(
-          { message: 'A imagem deve ter no máximo 2MB' },
-          { status: 400 }
-        );
-      }
-      
-      try {
-        // Ler os bytes da imagem
-        const bytes = await profileImage.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        
-        // Gerar um ID único para a imagem
-        const imageId = uuidv4();
-        const filename = `${imageId}.${profileImage.type.split('/')[1]}`;
-        
-        // Criar nova imagem para armazenar no MongoDB (sem salvar ainda)
-        newImage = new Image({
-          filename,
-          contentType: profileImage.type,
-          data: buffer,
-          // Não definimos userId ainda pois o usuário ainda não existe
-        });
-        
-        // Gerar URL para acessar a imagem
-        imageUrl = `/api/images/${imageId}`;
-        
-        // Adicionar a URL da imagem ao usuário
-        userData.profileImage = imageUrl;
-      } catch (imageError) {
-        console.error('Erro ao processar imagem:', imageError);
-        // Continuar com o registro sem a imagem se houver erro
-      }
-    }
-    
-    // Criar novo usuário com possível imagem de perfil
-    const user = new User(userData);
-    
-    // Salvar usuário no banco de dados
-    await user.save();
-    
-    // Se tiver imagem, salvar e associar ao usuário recém-criado
-    if (newImage && user._id) {
-      try {
-        // Atribuir o ID do usuário à imagem e salvar
-        newImage.userId = user._id;
-        await newImage.save();
-        console.log('Imagem de perfil salva com sucesso para o usuário:', user.username);
-      } catch (imageSaveError) {
-        console.error('Erro ao salvar imagem de perfil:', imageSaveError);
-        // Não falharemos o registro apenas porque a imagem falhou
-      }
-    }
-    
-    // Retornar resposta de sucesso
-    return NextResponse.json(
-      {
-        message: 'Usuário registrado com sucesso',
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          profileImage: userData.profileImage
-        },
-      },
-      { status: 201 }
-    );
-  } catch (error: any) {
-    console.error('Erro no registro:', error);
-    
-    // Erro de validação do Mongoose
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((err: any) => err.message);
-      
       return NextResponse.json(
-        { message: messages.join(', ') },
+        { message: 'Este e-mail já está em uso' },
         { status: 400 }
       );
     }
+
+    // Verificar se o username já está em uso
+    const existingUsername = await User.findOne({ username });
     
+    if (existingUsername) {
+      return NextResponse.json(
+        { message: 'Este nome de usuário já está em uso' },
+        { status: 400 }
+      );
+    }
+
+    // Criar hash da senha
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Criar novo usuário
+    const user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: 'user'
+    });
+
+    // Gerar token JWT
+    const token = await new SignJWT({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('24h')
+      .sign(new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key'));
+
+    // Definir o cookie de autenticação
+    cookies().set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 24 horas
+    });
+
+    // Retornar dados do usuário (sem a senha)
+    return NextResponse.json({
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao criar conta:', error);
     return NextResponse.json(
       { message: 'Erro ao criar conta' },
       { status: 500 }

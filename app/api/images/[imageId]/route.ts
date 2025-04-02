@@ -30,13 +30,14 @@ export async function GET(
   { params }: { params: { imageId: string } }
 ) {
   try {
-    console.log('Buscando imagem:', params.imageId);
+    const imageParams = await params;
+    console.log('Buscando imagem:', imageParams.imageId);
     
     // Conectar ao banco de dados
     await connectDB();
     
     // Extrair o ID da imagem da URL
-    const imageId = params.imageId;
+    const imageId = imageParams.imageId;
     
     if (!imageId) {
       return NextResponse.json(

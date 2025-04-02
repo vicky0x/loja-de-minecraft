@@ -131,8 +131,13 @@ export default function SearchPage() {
               {products.length} {products.length === 1 ? 'produto encontrado' : 'produtos encontrados'}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <ProductCard key={product._id} product={product} />
+              {products.map((product, index) => (
+                <div 
+                  key={product._id} 
+                  style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: 'forwards' }}
+                >
+                  <ProductCard key={product._id} product={product} />
+                </div>
               ))}
             </div>
           </div>

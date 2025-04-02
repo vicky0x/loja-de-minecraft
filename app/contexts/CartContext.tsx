@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from './AuthContext';
+import { useRouter } from 'next/navigation';
 
 // Interface para o item no carrinho
 interface CartItem {
@@ -15,6 +17,7 @@ interface CartItem {
   stock?: number;
   hasStockIssue?: boolean;
   hasVariants?: boolean; // Indica se o produto tem variantes
+  _id?: string; // ID do MongoDB para itens persistentes
 }
 
 // Interface para o contexto do carrinho
@@ -26,17 +29,27 @@ interface CartContextType {
   clearCart: () => void;
   getCartItemCount: () => number;
   getCartTotal: () => number;
+  isLoading: boolean;
 }
 
-// Criar o contexto
-const CartContext = createContext<CartContextType | undefined>(undefined);
+// Valor inicial do contexto
+const defaultCartContext: CartContextType = {
+  items: [],
+  addItem: () => {},
+  removeItem: () => {},
+  updateQuantity: () => {},
+  clearCart: () => {},
+  getCartItemCount: () => 0,
+  getCartTotal: () => 0,
+  isLoading: false
+};
 
-// Hook personalizado para usar o contexto do carrinho
+// Criação do contexto com valor padrão
+const CartContext = createContext<CartContextType>(defaultCartContext);
+
+// Hook personalizado para facilitar o acesso ao contexto
 export const useCart = () => {
   const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
   return context;
 };
 
@@ -46,30 +59,145 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [items, setItems] = useState<CartItem[]>([]);
   // Ref para controlar se o componente está montado
   const isMounted = useRef(false);
+  // Estado para indicar carregamento
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Carregar itens do localStorage quando o componente é montado
-  useEffect(() => {
-    isMounted.current = true;
+  // Obter contexto de autenticação
+  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
+  
+  // Função para buscar carrinho do servidor
+  const fetchCartFromServer = async () => {
+    if (!isAuthenticated || !user?.id) return;
     
     try {
-      const savedItems = localStorage.getItem('cart');
-      if (savedItems && isMounted.current) {
-        const parsedItems = JSON.parse(savedItems);
-        if (Array.isArray(parsedItems)) {
-          setItems(parsedItems);
+      setIsLoading(true);
+      const response = await fetch('/api/cart');
+      
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar carrinho: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && Array.isArray(data.items)) {
+        if (isMounted.current) {
+          setItems(data.items);
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar carrinho do localStorage:', error);
+      console.error('Erro ao buscar carrinho do servidor:', error);
+      // Não mostrar toast para não incomodar o usuário
+    } finally {
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
+  };
+  
+  // Função para salvar carrinho no servidor
+  const saveCartToServer = async (cartItems: CartItem[]) => {
+    if (!isAuthenticated || !user?.id) return;
+    
+    try {
+      setIsLoading(true);
+      
+      // Converter itens para o formato aceito pela API
+      const itemsToSave = cartItems.map(item => ({
+        ...item,
+        // Garantir que todos os campos necessários estejam presentes
+        productId: item.productId || '',
+        productName: item.productName || '',
+        productImage: item.productImage || '',
+        variantId: item.variantId || '',
+        variantName: item.variantName || '',
+        price: item.price || 0,
+        quantity: item.quantity || 1,
+        stock: item.stock || null,
+        hasVariants: item.hasVariants || false
+      }));
+      
+      const response = await fetch('/api/cart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items: itemsToSave }),
+      });
+      
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          console.error('Erro na resposta do servidor:', errorData);
+          throw new Error(`Erro ao salvar carrinho: ${response.status} - ${errorData.error || 'Erro desconhecido'}`);
+        } catch (jsonError) {
+          throw new Error(`Erro ao salvar carrinho: ${response.status}`);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao salvar carrinho no servidor:', error);
+      // Não mostrar toast para não incomodar o usuário
+    } finally {
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
+    }
+  };
+  
+  // Carregar itens iniciais
+  useEffect(() => {
+    isMounted.current = true;
+    
+    const loadCart = async () => {
+      try {
+        if (isAuthenticated && user?.id) {
+          // Se autenticado, buscar do servidor
+          await fetchCartFromServer();
+        } else {
+          // Se não autenticado, usar localStorage
+          try {
+            if (typeof window !== 'undefined') {
+              try {
+                const savedItems = window.localStorage.getItem('cart');
+                if (savedItems && isMounted.current) {
+                  try {
+                    const parsedItems = JSON.parse(savedItems);
+                    if (Array.isArray(parsedItems)) {
+                      setItems(parsedItems);
+                    } else {
+                      console.warn('Dados do carrinho no localStorage não são um array válido');
+                      window.localStorage.removeItem('cart');
+                    }
+                  } catch (parseError) {
+                    console.error('Erro ao analisar JSON do carrinho:', parseError);
+                    // Limpar o localStorage se o JSON estiver corrompido
+                    window.localStorage.removeItem('cart');
+                  }
+                }
+              } catch (storageAccessError) {
+                console.error('Erro ao acessar localStorage:', storageAccessError);
+              }
+            }
+          } catch (storageError) {
+            console.error('Erro ao carregar carrinho do localStorage:', storageError);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar carrinho:', error);
+      }
+    };
+    
+    loadCart();
     
     // Função para atualizar o carrinho quando o armazenamento muda em outra aba
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'cart' && e.newValue && isMounted.current) {
+      if (e.key === 'cart' && e.newValue && isMounted.current && !isAuthenticated) {
         try {
           const parsedItems = JSON.parse(e.newValue);
           if (Array.isArray(parsedItems)) {
             setItems(parsedItems);
+          } else {
+            console.warn('Dados recebidos do evento storage não são um array válido');
           }
         } catch (error) {
           console.error('Erro ao processar alteração de carrinho:', error);
@@ -78,150 +206,358 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     
     // Adicionar listener para mudanças no storage (para sincronização entre abas)
-    window.addEventListener('storage', handleStorageChange);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+    }
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageChange);
+      }
       isMounted.current = false;
     };
-  }, []);
+  }, [isAuthenticated, user?.id]);
   
-  // Salvar itens no localStorage quando os itens mudam
+  // Quando o status de autenticação muda, atualizar o carrinho
   useEffect(() => {
     if (!isMounted.current) return;
     
     try {
-      localStorage.setItem('cart', JSON.stringify(items));
+      if (isAuthenticated) {
+        // Quando o usuário faz login, buscar carrinho do servidor
+        fetchCartFromServer();
+      } else {
+        // Quando o usuário faz logout, manter apenas o localStorage
+        try {
+          if (typeof window !== 'undefined') {
+            try {
+              const savedItems = window.localStorage.getItem('cart');
+              if (savedItems) {
+                try {
+                  const parsedItems = JSON.parse(savedItems);
+                  if (Array.isArray(parsedItems)) {
+                    setItems(parsedItems);
+                  } else {
+                    console.warn('Dados do carrinho no localStorage não são um array válido');
+                    // Limpar valores inválidos
+                    window.localStorage.removeItem('cart');
+                    setItems([]);
+                  }
+                } catch (parseError) {
+                  console.error('Erro ao analisar JSON do carrinho após logout:', parseError);
+                  // Limpar localStorage se o JSON estiver corrompido
+                  window.localStorage.removeItem('cart');
+                  setItems([]);
+                }
+              } else {
+                // Se não tiver dados no localStorage, garantir que o carrinho esteja vazio
+                setItems([]);
+              }
+            } catch (storageAccessError) {
+              console.error('Erro ao acessar localStorage após logout:', storageAccessError);
+              // Em caso de erro de acesso, garantir que o estado do carrinho esteja vazio
+              setItems([]);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao carregar carrinho do localStorage após logout:', error);
+          setItems([]);
+        }
+      }
     } catch (error) {
-      console.error('Erro ao salvar carrinho no localStorage:', error);
+      console.error('Erro ao atualizar carrinho após mudança de autenticação:', error);
+      // Garantir que o carrinho fique em um estado seguro
+      setItems([]);
     }
-  }, [items]);
+  }, [isAuthenticated]);
+  
+  // Salvar itens quando os itens são atualizados
+  useEffect(() => {
+    if (!isMounted.current) return;
+    
+    try {
+      // Sempre salvar no localStorage como backup
+      if (typeof window !== 'undefined') {
+        try {
+          const itemsToStore = Array.isArray(items) ? items : [];
+          const serializedItems = JSON.stringify(itemsToStore);
+          window.localStorage.setItem('cart', serializedItems);
+        } catch (storageError) {
+          console.error('Erro ao salvar carrinho no localStorage:', storageError);
+          // Tentar limpar o localStorage para resolver possíveis problemas
+          try {
+            window.localStorage.removeItem('cart');
+          } catch (e) {
+            // Ignorar erro se não conseguir limpar
+          }
+        }
+      }
+      
+      // Se estiver autenticado, também salvar no servidor
+      if (isAuthenticated && user?.id) {
+        // Usar timeout para evitar muitas requisições em alterações rápidas
+        const timeoutId = setTimeout(() => {
+          saveCartToServer(items);
+        }, 500);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar carrinho:', error);
+    }
+  }, [items, isAuthenticated, user?.id]);
+  
+  // Função segura para mostrar toast sem causar erros
+  const safeToast = (message: string, type: 'success' | 'error', options = {}) => {
+    try {
+      if (typeof window !== 'undefined' && isMounted.current) {
+        // Verificar se já existe um toast com esta mesma mensagem recentemente
+        const toastKey = `${type}-${message}`;
+        let lastToastTime = null;
+        
+        try {
+          lastToastTime = window.localStorage.getItem(toastKey);
+        } catch (storageError) {
+          console.error('Erro ao ler timestamp do toast do localStorage:', storageError);
+        }
+        
+        const now = Date.now();
+        
+        // Evitar exibir o mesmo toast em menos de 2 segundos
+        if (lastToastTime && now - parseInt(lastToastTime) < 2000) {
+          console.log('Evitando toast duplicado:', message);
+          return;
+        }
+        
+        // Registrar este toast no localStorage com timestamp atual
+        try {
+          window.localStorage.setItem(toastKey, now.toString());
+          // Limpar este registro após 2 segundos
+          setTimeout(() => {
+            try {
+              window.localStorage.removeItem(toastKey);
+            } catch (error) {
+              // Ignorar erro ao limpar
+            }
+          }, 2000);
+        } catch (storageError) {
+          console.error('Erro ao gerenciar registro de toast no localStorage:', storageError);
+        }
+        
+        if (type === 'success') {
+          toast.success(message, options);
+        } else {
+          toast.error(message, options);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao mostrar toast:', error);
+    }
+  };
   
   // Função para adicionar um item ao carrinho
   const addItem = (item: CartItem) => {
-    setItems(prevItems => {
-      // Verificar se o item já existe no carrinho (baseado no variantId)
-      const existingItemIndex = prevItems.findIndex(i => i.variantId === item.variantId);
-      
-      // Verificar se o item tem estoque disponível
-      if (item.stock !== undefined && item.stock <= 0) {
-        toast.error('Este produto está fora de estoque', {
-          icon: '⚠️',
-        });
-        return prevItems;
+    if (!item) return;
+    
+    try {
+      // Verificar login se necessário
+      if (!isAuthenticated) {
+        console.log('Tentativa de adicionar item ao carrinho sem autenticação');
+        // (A verificação de login agora é feita no componente de produto)
       }
       
-      // Se o item existir, atualizar a quantidade
-      if (existingItemIndex !== -1) {
-        // Criar uma cópia do array para não mutar o estado diretamente
-        const updatedItems = [...prevItems];
-        const existingItem = updatedItems[existingItemIndex];
-        
-        // Verificar se tem estoque suficiente
-        const newQuantity = existingItem.quantity + item.quantity;
-        
-        // Se o estoque for definido, não permitir quantidade maior que o estoque
-        if (existingItem.stock !== undefined && newQuantity > existingItem.stock) {
-          // Atualizar para o estoque máximo disponível
-          updatedItems[existingItemIndex] = {
-            ...existingItem,
-            quantity: existingItem.stock,
-            hasStockIssue: true
-          };
+      // Validar o item antes de processar
+      if (!item.variantId || !item.productId) {
+        console.error('Item inválido tentando ser adicionado ao carrinho', item);
+        return;
+      }
+      
+      setItems(prevItems => {
+        try {
+          // Clonar o array anterior para evitar mutações
+          const prevItemsCopy = Array.isArray(prevItems) ? [...prevItems] : [];
           
-          // Notificar o usuário com toast
-          toast.error(`Quantidade limitada ao estoque disponível: ${existingItem.stock}`, {
-            icon: '⚠️',
-            style: {
-              borderLeft: '4px solid #FF5A5A',
-            },
-          });
-        } else {
-          // Atualizar a quantidade normalmente
-          updatedItems[existingItemIndex] = {
-            ...existingItem,
-            quantity: newQuantity,
-            hasStockIssue: false
-          };
+          // Verificar se o item já existe no carrinho (baseado no variantId)
+          const existingItemIndex = prevItemsCopy.findIndex(i => i && i.variantId === item.variantId);
           
-          // Notificar o usuário que adicionou mais itens
-          toast.success(`Quantidade atualizada: ${newQuantity} ${existingItem.productName}`, {
-            icon: '🛒',
-            style: {
-              borderLeft: '4px solid #6c63ff',
-            },
-          });
+          // Verificar se o item tem estoque disponível
+          if (item.stock !== undefined && item.stock <= 0) {
+            safeToast('Este produto está fora de estoque', 'error', {
+              icon: '⚠️',
+            });
+            return prevItemsCopy;
+          }
+          
+          if (existingItemIndex !== -1) {
+            // Item já existe no carrinho, vamos atualizar
+            const existingItem = prevItemsCopy[existingItemIndex];
+            const newQuantity = existingItem.quantity + item.quantity;
+            
+            // Verificar se a nova quantidade excede o estoque
+            if (existingItem.stock !== undefined && newQuantity > existingItem.stock) {
+              safeToast(`Quantidade limitada ao estoque disponível (${existingItem.stock})`, 'error', {
+                icon: '⚠️',
+              });
+              
+              // Atualizar para o máximo disponível
+              prevItemsCopy[existingItemIndex] = {
+                ...existingItem,
+                quantity: existingItem.stock,
+                hasStockIssue: true,
+              };
+            } else {
+              // Atualizar quantidade normalmente
+              prevItemsCopy[existingItemIndex] = {
+                ...existingItem,
+                quantity: newQuantity,
+                hasStockIssue: false,
+              };
+              
+              safeToast(`${item.productName} (${item.quantity}x) adicionado ao carrinho`, 'success');
+            }
+          } else {
+            // Novo item
+            prevItemsCopy.push({
+              ...item,
+              hasStockIssue: false,
+            });
+            
+            safeToast(`${item.productName} adicionado ao carrinho`, 'success');
+          }
+          
+          return prevItemsCopy;
+        } catch (innerError) {
+          console.error('Erro ao processar adição de item:', innerError);
+          return prevItems; // Retornar os itens anteriores em caso de erro
         }
-        
-        return updatedItems;
-      } else {
-        // Se o item não existir, adicionar ao carrinho
-        return [...prevItems, { ...item, hasStockIssue: false }];
-      }
-    });
+      });
+    } catch (outerError) {
+      console.error('Erro externo ao adicionar item:', outerError);
+    }
   };
   
   // Função para remover um item do carrinho
   const removeItem = (variantId: string) => {
-    setItems(prevItems => prevItems.filter(item => item.variantId !== variantId));
+    if (!variantId) return;
+    
+    try {
+      setItems(prevItems => {
+        try {
+          // Verificar se prevItems é um array
+          if (!Array.isArray(prevItems)) return [];
+          
+          // Filtrar o item pelo variantId
+          return prevItems.filter(item => item && item.variantId !== variantId);
+        } catch (innerError) {
+          console.error('Erro ao filtrar itens para remoção:', innerError);
+          return prevItems; // Retornar os itens anteriores em caso de erro
+        }
+      });
+    } catch (outerError) {
+      console.error('Erro externo ao remover item:', outerError);
+    }
   };
   
   // Função para atualizar a quantidade de um item
   const updateQuantity = (variantId: string, newQuantity: number) => {
-    if (newQuantity < 1) {
-      // Se a quantidade for menor que 1, remover o item
-      removeItem(variantId);
-      return;
-    }
+    if (!variantId) return;
     
-    setItems(prevItems => {
-      // Encontrar o item no carrinho
-      const existingItemIndex = prevItems.findIndex(item => item.variantId === variantId);
-      
-      if (existingItemIndex === -1) {
-        // Se o item não existir, não fazer nada
-        return prevItems;
+    try {
+      if (newQuantity < 1) {
+        // Se a quantidade for menor que 1, remover o item
+        removeItem(variantId);
+        return;
       }
       
-      // Verificar limitações de estoque
-      const item = prevItems[existingItemIndex];
-      const safeQuantity = item.stock !== undefined ? Math.min(newQuantity, item.stock) : newQuantity;
-      
-      // Criar uma cópia do array para não mutar o estado diretamente
-      const updatedItems = [...prevItems];
-      updatedItems[existingItemIndex] = {
-        ...item,
-        quantity: safeQuantity
-      };
-      
-      return updatedItems;
-    });
+      setItems(prevItems => {
+        try {
+          // Verificar se prevItems é um array
+          if (!Array.isArray(prevItems)) return [];
+          
+          // Clonar o array anterior para evitar mutações
+          const prevItemsCopy = [...prevItems];
+          
+          // Encontrar o item no carrinho
+          const existingItemIndex = prevItemsCopy.findIndex(item => item && item.variantId === variantId);
+          
+          if (existingItemIndex === -1) {
+            // Se o item não existir, não fazer nada
+            return prevItemsCopy;
+          }
+          
+          // Verificar limitações de estoque
+          const item = prevItemsCopy[existingItemIndex];
+          const safeQuantity = item.stock !== undefined ? Math.min(newQuantity, item.stock) : newQuantity;
+          
+          prevItemsCopy[existingItemIndex] = {
+            ...item,
+            quantity: safeQuantity
+          };
+          
+          return prevItemsCopy;
+        } catch (innerError) {
+          console.error('Erro ao processar atualização de quantidade:', innerError);
+          return prevItems; // Retornar os itens anteriores em caso de erro
+        }
+      });
+    } catch (outerError) {
+      console.error('Erro externo ao atualizar quantidade:', outerError);
+    }
   };
   
   // Função para limpar o carrinho
   const clearCart = () => {
-    setItems([]);
+    try {
+      setItems([]);
+      
+      // Se estiver autenticado, também limpar no servidor
+      if (isAuthenticated && user?.id) {
+        fetch('/api/cart?clearCart=true', { method: 'DELETE' })
+          .catch(error => console.error('Erro ao limpar carrinho no servidor:', error));
+      }
+    } catch (error) {
+      console.error('Erro ao limpar carrinho:', error);
+    }
   };
   
   // Função para obter o número total de itens no carrinho
   const getCartItemCount = () => {
-    return items.reduce((total, item) => total + item.quantity, 0);
+    try {
+      if (!Array.isArray(items)) return 0;
+      return items.reduce((total, item) => {
+        if (!item) return total;
+        return total + (item.quantity || 0);
+      }, 0);
+    } catch (error) {
+      console.error('Erro ao calcular quantidade de itens:', error);
+      return 0;
+    }
   };
   
   // Função para obter o valor total do carrinho
   const getCartTotal = () => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    try {
+      if (!Array.isArray(items)) return 0;
+      return items.reduce((total, item) => {
+        if (!item) return total;
+        return total + ((item.price || 0) * (item.quantity || 0));
+      }, 0);
+    } catch (error) {
+      console.error('Erro ao calcular total do carrinho:', error);
+      return 0;
+    }
   };
   
   // Valor a ser fornecido pelo contexto
   const contextValue: CartContextType = {
-    items,
+    items: Array.isArray(items) ? items : [],
     addItem,
     removeItem,
     updateQuantity,
     clearCart,
     getCartItemCount,
-    getCartTotal
+    getCartTotal,
+    isLoading
   };
   
   return (

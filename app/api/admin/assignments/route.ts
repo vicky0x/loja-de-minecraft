@@ -80,8 +80,14 @@ export async function GET(request: NextRequest) {
     // Buscar informações das variantes dos produtos
     // Como as variantes são armazenadas dentro do documento do produto,
     // precisamos buscar os produtos completos
-    const productIds = [...new Set(assignments.map(item => item.product._id))];
-    const products = await Product.find({ _id: { $in: productIds } }).lean();
+    const productIds = [...new Set(assignments
+      .filter(item => item.product && item.product._id) // Filtrar itens sem produto
+      .map(item => item.product._id))];
+    
+    // Verificar se há IDs de produtos para buscar
+    const products = productIds.length > 0 
+      ? await Product.find({ _id: { $in: productIds } }).lean()
+      : [];
     
     // Mapeamento de ID de produto para o documento completo
     const productMap = products.reduce((map, product) => {
@@ -91,67 +97,102 @@ export async function GET(request: NextRequest) {
     
     // Formatar os resultados para incluir detalhes da variante e do admin que atribuiu
     const formattedAssignments = assignments.map(assignment => {
-      const productDoc = productMap[assignment.product._id.toString()];
-      const variant = productDoc?.variants?.find(v => v._id.toString() === assignment.variant);
+      // Verificações de segurança para evitar erros
+      if (!assignment) {
+        console.warn('Encontrada uma atribuição inválida/nula na lista');
+        return null; // Será filtrado depois
+      }
+
+      // Verificar se o produto existe
+      const hasProduct = assignment.product && assignment.product._id;
+      const productId = hasProduct ? assignment.product._id.toString() : null;
+      const productDoc = productId ? productMap[productId] : null;
       
-      // Determinar o administrador que fez a atribuição
+      // Verificar se a variante existe de forma segura
+      let variant = null;
+      try {
+        if (productDoc?.variants && Array.isArray(productDoc.variants) && assignment.variant) {
+          variant = productDoc.variants.find(v => 
+            v && v._id && v._id.toString() === assignment.variant
+          );
+        }
+      } catch (error) {
+        console.warn('Erro ao processar variante:', error);
+      }
+
+      // Determinar o administrador que fez a atribuição com verificações de segurança
       let assignedBy = { username: 'Sistema' };
       
-      if (assignment.metadata?.assignedBy) {
-        if (typeof assignment.metadata.assignedBy === 'string') {
-          // É um ID de administrador, buscar no mapa
-          const adminId = assignment.metadata.assignedBy;
-          const admin = adminMap[adminId];
-          
-          if (admin) {
+      try {
+        if (assignment.metadata?.assignedBy) {
+          if (typeof assignment.metadata.assignedBy === 'string') {
+            // É um ID de administrador, buscar no mapa
+            const adminId = assignment.metadata.assignedBy;
+            if (adminId && adminMap[adminId]) {
+              const admin = adminMap[adminId];
+              if (admin) {
+                assignedBy = {
+                  _id: admin._id,
+                  username: admin.username || 'Desconhecido',
+                  email: admin.email || ''
+                };
+              }
+            }
+          } else if (typeof assignment.metadata.assignedBy === 'object' && assignment.metadata.assignedBy !== null) {
+            // Já é um objeto preenchido
+            const adminObj = assignment.metadata.assignedBy;
             assignedBy = {
-              _id: admin._id,
-              username: admin.username,
-              email: admin.email
+              _id: adminObj._id,
+              username: adminObj.username || 'Desconhecido',
+              email: adminObj.email || ''
             };
           }
-        } else if (typeof assignment.metadata.assignedBy === 'object') {
-          // Já é um objeto preenchido
-          assignedBy = {
-            _id: assignment.metadata.assignedBy._id,
-            username: assignment.metadata.assignedBy.username,
-            email: assignment.metadata.assignedBy.email
-          };
         }
+      } catch (error) {
+        console.warn('Erro ao processar administrador:', error);
       }
       
       return {
-        _id: assignment._id,
-        code: assignment.code,
-        assignedAt: assignment.assignedAt,
-        product: {
+        _id: assignment._id || 'id-desconhecido',
+        code: assignment.code || 'sem-codigo',
+        assignedAt: assignment.assignedAt || new Date().toISOString(),
+        product: hasProduct ? {
           _id: assignment.product._id,
-          name: assignment.product.name,
-          slug: assignment.product.slug
+          name: assignment.product.name || 'Sem nome',
+          slug: assignment.product.slug || ''
+        } : {
+          _id: 'produto-removido',
+          name: 'Produto removido',
+          slug: ''
         },
         variant: variant ? {
           _id: variant._id,
-          name: variant.name,
-          price: variant.price
-        } : { name: 'Variante não encontrada' },
+          name: variant.name || 'Sem nome',
+          price: variant.price || 0
+        } : { 
+          name: assignment.variant ? 'Variante não encontrada' : 'Padrão'
+        },
         user: assignment.assignedTo ? {
-          _id: assignment.assignedTo._id,
-          username: assignment.assignedTo.username,
-          email: assignment.assignedTo.email,
-          name: assignment.assignedTo.name
+          _id: assignment.assignedTo._id || 'usuario-desconhecido',
+          username: assignment.assignedTo.username || 'Usuário desconhecido',
+          email: assignment.assignedTo.email || '',
+          name: assignment.assignedTo.name || ''
         } : null,
         assignedBy: assignedBy,
         metadata: assignment.metadata || {}
       };
     });
     
+    // Filtrar resultados nulos
+    const filteredAssignments = formattedAssignments.filter(a => a !== null);
+    
     return NextResponse.json({
-      assignments: formattedAssignments,
+      assignments: filteredAssignments,
       pagination: {
-        total,
+        total: Math.max(total, filteredAssignments.length), // Garantir que total não seja menor que o número de itens
         page,
         limit,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limit) || 1 // Garantir pelo menos 1 página
       }
     });
   } catch (error) {

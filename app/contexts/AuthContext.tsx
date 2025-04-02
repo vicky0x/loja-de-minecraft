@@ -165,11 +165,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const cacheAge = currentTime - userCacheRef.current.timestamp;
       const maxCacheAge = 5 * 60 * 1000; // 5 minutos em milissegundos
       
+      // Evitar chamadas muito frequentes - limitar a no máximo uma a cada 3 segundos
+      const minUpdateInterval = 3000; // 3 segundos
+      if (cacheAge < minUpdateInterval) {
+        console.log('Chamada muito frequente, ignorando. Última atualização há', Math.round(cacheAge/1000), 'segundos');
+        return;
+      }
+      
       // Se o cache for recente e não forçamos atualização, usar o cache
       if (!force && cacheAge < maxCacheAge && userCacheRef.current.data) {
         console.log('Usando dados em cache, última atualização há', Math.round(cacheAge/1000), 'segundos');
         return;
       }
+      
+      // Atualizar o timestamp antes de fazer a chamada para evitar chamadas simultâneas
+      userCacheRef.current.timestamp = currentTime;
       
       console.log('Buscando dados atualizados do usuário da API...');
       setLoading(true);
@@ -202,7 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (newUserHash === userCacheRef.current.hash) {
         console.log('Dados do usuário não mudaram, mantendo estado atual');
         setLoading(false);
-        userCacheRef.current.timestamp = currentTime; // Atualizar timestamp do cache
+        // Não atualizamos timestamp aqui, pois já foi atualizado no início da função
         return;
       }
       
@@ -256,37 +266,135 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Verificar autenticação quando o componente é montado
   useEffect(() => {
-    // Primeiro, tenta recuperar do localStorage para resposta imediata
-    try {
-      const storedUser = localStorage.getItem('user');
-      const isAuthenticated = localStorage.getItem('isAuthenticated');
-      
-      if (storedUser && isAuthenticated === 'true') {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        
-        // Inicializar o cache com dados do localStorage
-        userCacheRef.current = {
-          data: parsedUser,
-          timestamp: Date.now() - 60000, // Considerar cache de 1 minuto atrás para garantir atualização
-          hash: calculateUserHash(parsedUser)
-        };
-      }
-    } catch (error) {
-      console.error('Erro ao ler localStorage:', error);
-    }
+    // Flag para controlar se a primeira atualização já foi feita
+    let didInitialUpdate = false;
     
-    // Em seguida, busca dados atualizados da API, mas apenas se necessário
-    refreshUserData();
+    // Função para inicialização
+    const initAuth = async () => {
+      // Primeiro, tenta recuperar do localStorage para resposta imediata
+      try {
+        const storedUser = localStorage.getItem('user');
+        const isAuthenticated = localStorage.getItem('isAuthenticated');
+        
+        if (storedUser && isAuthenticated === 'true') {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            
+            // Inicializar o cache com dados do localStorage
+            userCacheRef.current = {
+              data: parsedUser,
+              timestamp: Date.now() - 60000, // Considerar cache de 1 minuto atrás
+              hash: calculateUserHash(parsedUser)
+            };
+            
+            // Atualizar timestamp para evitar chamadas duplicadas
+            lastFullUpdateRef.current = Date.now();
+            
+            console.log('Usuário recuperado do localStorage:', parsedUser.username);
+          } catch (error) {
+            console.error('Erro ao processar usuário do localStorage:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao ler localStorage:', error);
+      }
+      
+      // Se já houver um usuário no localStorage, usar ele temporariamente
+      // e depois buscar da API em segundo plano com um delay
+      if (user) {
+        // Definir que já atualizamos pela primeira vez
+        didInitialUpdate = true;
+        
+        // Depois de um breve delay, buscar dados atualizados da API
+        setTimeout(() => {
+          refreshUserData(false);
+        }, 2000);
+      } else {
+        // Se não houver usuário, buscar dados da API imediatamente
+        console.log('Buscando dados iniciais do usuário da API');
+        await refreshUserData(false);
+        didInitialUpdate = true;
+      }
+    };
     
     // Adicionar evento para atualizar o estado após login ou alterações
     const handleAuthChanged = () => {
-      // Forçar atualização em caso de evento explícito
-      refreshUserData(true);
+      try {
+        // Evitar chamadas muito frequentes
+        const currentTime = Date.now();
+        const timeSinceLastUpdate = currentTime - lastFullUpdateRef.current;
+        const minUpdateInterval = 2000; // 2 segundos
+        
+        if (timeSinceLastUpdate < minUpdateInterval) {
+          console.log('Evento auth-state-changed ignorado - atualização muito recente');
+          return;
+        }
+        
+        console.log('Evento auth-state-changed recebido, verificando autenticação...');
+        lastFullUpdateRef.current = currentTime;
+        
+        // Verificar localStorage primeiro para resposta rápida
+        try {
+          const storedUser = localStorage.getItem('user');
+          const isAuthenticated = localStorage.getItem('isAuthenticated');
+          
+          // Verificar discrepância entre o estado atual e localStorage
+          const shouldUpdate = 
+            (isAuthenticated === 'true' && !user) || 
+            (isAuthenticated !== 'true' && user) ||
+            (isAuthenticated === 'true' && storedUser && user && 
+             storedUser && JSON.stringify(user) !== storedUser);
+          
+          if (shouldUpdate) {
+            console.log('Discrepância detectada, atualizando estado...');
+            
+            if (isAuthenticated === 'true' && storedUser) {
+              // Atualizar com dados do localStorage
+              try {
+                const parsedUser = JSON.parse(storedUser);
+                if (JSON.stringify(user) !== JSON.stringify(parsedUser)) {
+                  // Só atualizar se os dados forem diferentes
+                  console.log('Atualizando usuário a partir do localStorage');
+                  setUser(parsedUser);
+                  
+                  // Atualizar cache
+                  userCacheRef.current = {
+                    data: parsedUser,
+                    timestamp: currentTime,
+                    hash: calculateUserHash(parsedUser)
+                  };
+                }
+              } catch (error) {
+                console.error('Erro ao processar dados do localStorage:', error);
+              }
+            } else if (isAuthenticated !== 'true' && user) {
+              // Limpar o usuário se não estiver mais autenticado
+              console.log('Usuário não está mais autenticado, limpando estado');
+              setUser(null);
+              userCacheRef.current = { data: null, timestamp: currentTime, hash: '' };
+            }
+          }
+          
+          // Se houver discrepâncias significativas, atualize da API depois
+          if (shouldUpdate) {
+            setTimeout(() => refreshUserData(false), 500);
+          }
+        } catch (error) {
+          console.error('Erro ao verificar localStorage no evento auth-state-changed:', error);
+        }
+      } catch (error) {
+        console.error('Erro ao processar evento de autenticação:', error);
+      }
     };
     
+    // Iniciar o processo de autenticação
+    initAuth();
+    
+    // Configurar o listener de eventos de autenticação
     window.addEventListener('auth-state-changed', handleAuthChanged);
     
+    // Cleanup ao desmontar
     return () => {
       window.removeEventListener('auth-state-changed', handleAuthChanged);
     };

@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import PixPaymentModal from '../components/PixPaymentModal';
 import toast from 'react-hot-toast';
+import { useAuth } from '../hooks/useAuth';
+import { HiOutlineShoppingCart } from 'react-icons/hi';
 
 // Componentes de ícone com tipagem correta
 interface IconProps extends IconBaseProps {
@@ -72,7 +74,15 @@ interface CustomerData {
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeItem, clearCart, updateQuantity } = useCart();
+  const { 
+    items, 
+    removeItem, 
+    clearCart, 
+    updateQuantity,
+    getCartTotal,
+    isLoading: cartIsLoading
+  } = useCart();
+  const { isAuthenticated, requireAuth } = useAuth();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'pix' | 'card'>('pix');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,12 +112,14 @@ export default function CartPage() {
     phone: '',
   });
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   
   // Estado para controlar se o componente está montado
   const isMounted = useRef(false);
+
+  // Estado para indicar se está carregando
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // Efeito para recuperar dados de PIX do localStorage
   useEffect(() => {
@@ -238,7 +250,7 @@ export default function CartPage() {
   };
 
   // Calcular o total do carrinho
-  const cartSubtotal = items.reduce((total: number, item: CartItem) => total + (item.price * item.quantity), 0);
+  const cartSubtotal = items.reduce((total, item) => total + (item.price * item.quantity), 0);
   const cartTotal = cartSubtotal - couponDiscount;
   const isCartEmpty = items.length === 0;
   
@@ -593,6 +605,21 @@ export default function CartPage() {
   // Função para lidar com o checkout
   const handleCheckout = () => {
     if (!isMounted.current || isCartEmpty) return;
+    
+    // Verificar se o usuário está autenticado
+    if (!isAuthenticated) {
+      // Salvar o estado atual do carrinho no localStorage para que possa ser recuperado após o login
+      try {
+        localStorage.setItem('redirectAfterLogin', '/cart');
+      } catch (error) {
+        console.error('Erro ao salvar informações de redirecionamento:', error);
+      }
+      
+      // Redirecionar para a página de login
+      toast.success('É necessário fazer login para finalizar a compra');
+      router.push('/auth/login');
+      return;
+    }
     
     if (!showCheckoutForm) {
       // Se o formulário de checkout não estiver visível, mostrar
@@ -1056,34 +1083,22 @@ export default function CartPage() {
       {/* Barra de progresso */}
       {!isCartEmpty && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-dark-300 h-1">
-        <motion.div 
-          className="h-full bg-gradient-to-r from-primary to-primary-light"
-          initial={{ width: '0%' }}
-          animate={{ width: showCheckoutForm ? '66%' : '33%' }}
-          transition={{ duration: 0.5, ease: 'easeInOut' }}
-        />
-      </div>
+          <div 
+            className="h-full bg-gradient-to-r from-primary to-primary-light"
+            style={{ width: showCheckoutForm ? '66%' : '33%' }}
+          />
+        </div>
       )}
       
       <div className="container mx-auto max-w-6xl px-4 py-12">
         {/* Cabeçalho */}
         <div className="mb-8 text-center">
-          <motion.h1 
-            className="text-3xl md:text-4xl font-bold text-white mb-2"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
             Seu Carrinho
-          </motion.h1>
+          </h1>
           
           {!isCartEmpty && (
-            <motion.div 
-              className="flex items-center justify-center space-x-8 mt-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-            >
+            <div className="flex items-center justify-center space-x-8 mt-6">
               <div className={`flex flex-col items-center ${activeStep >= 1 ? 'text-primary' : 'text-gray-500'}`}>
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${activeStep >= 1 ? 'bg-primary text-white' : 'bg-dark-300 text-gray-500'}`}>1</div>
                 <span className="text-sm font-medium">Carrinho</span>
@@ -1102,46 +1117,34 @@ export default function CartPage() {
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${activeStep >= 3 ? 'bg-primary text-white' : 'bg-dark-300 text-gray-500'}`}>3</div>
                 <span className="text-sm font-medium">Pagamento</span>
               </div>
-            </motion.div>
+            </div>
           )}
         </div>
         
-        {isCartEmpty ? (
-          <motion.div 
-            className="bg-dark-200 rounded-2xl p-12 text-center shadow-xl border border-dark-300"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="flex flex-col items-center max-w-md mx-auto">
-              <div className="w-24 h-24 bg-dark-300 rounded-full flex items-center justify-center flex-shrink-0 shadow-md transition-transform duration-300">
-                <IconFiShoppingBag size={32} color="#FF5722" />
-              </div>
-              <h2 className="text-2xl text-white font-bold mb-3 mt-4">Seu carrinho está vazio</h2>
-              <p className="text-gray-400 mb-8">Adicione produtos ao carrinho para continuar com sua compra.</p>
-              <Link 
-                href="/products" 
-                className="relative overflow-hidden group bg-transparent border-2 border-primary text-primary hover:text-white text-center text-lg px-8 py-3 rounded-xl font-medium transition-all duration-300 ease-in-out"
-              >
-                <span className="relative z-10 flex items-center justify-center">
-                  Explorar Produtos
-                  <svg className="w-5 h-5 ml-2 transform transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </span>
-                <span className="absolute inset-0 bg-gradient-to-r from-primary to-primary-dark transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500"></span>
-              </Link>
+        {cartIsLoading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-gray-400 text-lg">Carregando seu carrinho...</p>
+          </div>
+        ) : isCartEmpty ? (
+          <div className="text-center py-20">
+            <div className="text-8xl text-gray-300 mb-6 flex justify-center">
+              <HiOutlineShoppingCart />
             </div>
-          </motion.div>
+            <h2 className="text-2xl font-semibold text-gray-300 mb-4">Seu carrinho está vazio</h2>
+            <p className="text-gray-400 mb-8 max-w-md mx-auto">
+              Parece que você ainda não adicionou nenhum produto ao seu carrinho. Continue comprando para encontrar produtos incríveis.
+            </p>
+            <Link href="/products">
+              <button className="bg-primary text-white py-3 px-8 rounded-lg font-medium hover:bg-primary-600 transition-colors">
+                Continuar Comprando
+              </button>
+            </Link>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Coluna do carrinho ou formulário de checkout */}
-            <motion.div 
-              className="lg:col-span-2"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
+            <div className="lg:col-span-2">
               {!showCheckoutForm ? (
                 // Card de itens do carrinho
                 <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
@@ -1156,111 +1159,97 @@ export default function CartPage() {
                   </div>
                   
                   <div className="divide-y divide-dark-300">
-                    <AnimatePresence>
-                      {items.map((item: CartItem, index: number) => (
-                        <motion.div 
-                          key={`${item.productId}-${item.variantId}`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, x: -100 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                          className="relative"
-                        >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center p-6 group hover:bg-dark-300/30 transition-colors duration-300">
-                            <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
-                              {/* Imagem do produto */}
-                              <div className="w-24 h-24 rounded-lg overflow-hidden bg-dark-300 flex-shrink-0 shadow-md transition-transform duration-300 group-hover:scale-105">
-                                {item.productImage ? (
-                                  <Image 
-                                    src={item.productImage} 
-                                    alt={item.productName}
-                                    width={96}
-                                    height={96}
-                                    className="w-full h-full object-cover"
-                                    unoptimized={true}
-                                    priority={index < 2}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-dark-300 text-dark-100">
-                                    <IconFiShoppingBag size={24} />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="mt-4 sm:mt-0 sm:ml-4 flex-grow">
-                                <h3 className="text-white font-medium text-lg group-hover:text-primary transition-colors duration-300">{item.productName}</h3>
-                                <p className="text-gray-400 text-sm mt-1">Variante: {item.variantName}</p>
-                                <div className="flex items-center mt-2">
-                                  <p className="text-primary font-bold text-lg">R$ {item.price.toFixed(2)}</p>
+                    {items.map((item: CartItem, index: number) => (
+                      <div key={`${item.productId}-${item.variantId}`} className="relative">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center p-6 group hover:bg-dark-300/30 transition-colors duration-300">
+                          <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
+                            {/* Imagem do produto */}
+                            <div className="w-24 h-24 rounded-lg overflow-hidden bg-dark-300 flex-shrink-0 shadow-md transition-transform duration-300 group-hover:scale-105">
+                              {item.productImage ? (
+                                <Image 
+                                  src={item.productImage} 
+                                  alt={item.productName}
+                                  width={96}
+                                  height={96}
+                                  className="w-full h-full object-cover"
+                                  unoptimized={true}
+                                  priority={index < 2}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-dark-300 text-dark-100">
+                                  <IconFiShoppingBag size={24} />
                                 </div>
-                              </div>
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center mt-4 sm:mt-0 space-y-3 sm:space-y-0 sm:space-x-4 self-start sm:self-center">
-                                {/* Botão de incremento/decremento de quantidade */}
-                                <div className="flex items-center bg-dark-300 border border-dark-400 rounded-full shadow-inner overflow-hidden">
-                                  <button 
-                                    onClick={() => handleUpdateQuantity(item.variantId, Math.max(1, item.quantity - 1))}
-                                    className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-white hover:bg-dark-400 transition-colors"
-                                    aria-label="Diminuir quantidade"
-                                  >
-                                    <div className="flex items-center justify-center">
-                                      <IconFiMinus size={16} />
-                                    </div>
-                                  </button>
-                                  <span className="w-10 text-center py-1 font-medium text-white">{item.quantity}</span>
-                                  <button 
-                                    onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1)}
-                                    className={`w-9 h-9 flex items-center justify-center ${!!item.stock && item.quantity >= item.stock ? 'text-gray-600 cursor-not-allowed' : 'text-gray-300 hover:text-white hover:bg-dark-400'} transition-colors`}
-                                    disabled={!!item.stock && item.quantity >= item.stock}
-                                    aria-label="Aumentar quantidade"
-                                  >
-                                    <div className="flex items-center justify-center">
-                                      <IconFiPlus size={16} />
-                                    </div>
-                                  </button>
-                                </div>
-                                {/* Botão de remover item */}
-                                <button 
-                                  onClick={() => setShowDeleteConfirm(item.variantId)}
-                                  className="group/trash w-9 h-9 rounded-full bg-red-500/10 hover:bg-red-500 flex items-center justify-center transition-colors duration-300"
-                                  aria-label="Remover item"
-                                >
-                                  <IconFiTrash2 size={16} className="text-red-500 group-hover/trash:text-white transition-colors duration-300" />
-                                </button>
+                              )}
+                            </div>
+                            <div className="mt-4 sm:mt-0 sm:ml-4 flex-grow">
+                              <h3 className="text-white font-medium text-lg group-hover:text-primary transition-colors duration-300">{item.productName}</h3>
+                              <p className="text-gray-400 text-sm mt-1">Variante: {item.variantName}</p>
+                              <div className="flex items-center mt-2">
+                                <p className="text-primary font-bold text-lg">R$ {item.price.toFixed(2)}</p>
                               </div>
                             </div>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center mt-4 sm:mt-0 space-y-3 sm:space-y-0 sm:space-x-4 self-start sm:self-center">
+                              {/* Botão de incremento/decremento de quantidade */}
+                              <div className="flex items-center bg-dark-300 border border-dark-400 rounded-full shadow-inner overflow-hidden">
+                                <button 
+                                  onClick={() => handleUpdateQuantity(item.variantId, Math.max(1, item.quantity - 1))}
+                                  className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-white hover:bg-dark-400 transition-colors"
+                                  aria-label="Diminuir quantidade"
+                                >
+                                  <div className="flex items-center justify-center">
+                                    <IconFiMinus size={16} />
+                                  </div>
+                                </button>
+                                <span className="w-10 text-center py-1 font-medium text-white">{item.quantity}</span>
+                                <button 
+                                  onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1)}
+                                  className={`w-9 h-9 flex items-center justify-center ${!!item.stock && item.quantity >= item.stock ? 'text-gray-600 cursor-not-allowed' : 'text-gray-300 hover:text-white hover:bg-dark-400'} transition-colors`}
+                                  disabled={!!item.stock && item.quantity >= item.stock}
+                                  aria-label="Aumentar quantidade"
+                                >
+                                  <div className="flex items-center justify-center">
+                                    <IconFiPlus size={16} />
+                                  </div>
+                                </button>
+                              </div>
+                              {/* Botão de remover item */}
+                              <button 
+                                onClick={() => setShowDeleteConfirm(item.variantId)}
+                                className="group/trash w-9 h-9 rounded-full bg-red-500/10 hover:bg-red-500 flex items-center justify-center transition-colors duration-300"
+                                aria-label="Remover item"
+                              >
+                                <IconFiTrash2 size={16} className="text-red-500 group-hover/trash:text-white transition-colors duration-300" />
+                              </button>
+                            </div>
                           </div>
-                          {/* Confirmação de exclusão */}
-                          {showDeleteConfirm === item.variantId && (
-                            <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="bg-dark-300/80 backdrop-blur-sm p-5 flex flex-col sm:flex-row items-center justify-between border-t border-dark-400"
-                            >
-                              <div className="flex items-center mb-4 sm:mb-0">
-                                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center mr-3">
-                                  <IconFiAlertTriangle size={16} className="text-red-500" />
-                                </div>
-                                <p className="text-white font-medium">Remover este item do carrinho?</p>
+                        </div>
+                        {/* Confirmação de exclusão */}
+                        {showDeleteConfirm === item.variantId && (
+                          <div className="bg-dark-300/80 backdrop-blur-sm p-5 flex flex-col sm:flex-row items-center justify-between border-t border-dark-400">
+                            <div className="flex items-center mb-4 sm:mb-0">
+                              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center mr-3">
+                                <IconFiAlertTriangle size={16} className="text-red-500" />
                               </div>
-                              <div className="flex space-x-3">
-                                <button 
-                                  onClick={() => handleRemoveItem(item.variantId)}
-                                  className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-300 flex items-center"
-                                >
-                                  <IconFiCheck size={16} className="mr-1" /> Sim, remover
-                                </button>
-                                <button 
-                                  onClick={() => setShowDeleteConfirm(null)}
-                                  className="px-4 py-2 bg-dark-400 text-white rounded-full hover:bg-dark-500 transition-colors duration-300"
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                            </motion.div>
-                          )}
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                              <p className="text-white font-medium">Remover este item do carrinho?</p>
+                            </div>
+                            <div className="flex space-x-3">
+                              <button 
+                                onClick={() => handleRemoveItem(item.variantId)}
+                                className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-300 flex items-center"
+                              >
+                                <IconFiCheck size={16} className="mr-1" /> Sim, remover
+                              </button>
+                              <button 
+                                onClick={() => setShowDeleteConfirm(null)}
+                                className="px-4 py-2 bg-dark-400 text-white rounded-full hover:bg-dark-500 transition-colors duration-300"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                   <div className="p-6 border-t border-dark-300 flex justify-between items-center">
                     <button
@@ -1409,14 +1398,9 @@ export default function CartPage() {
                   </div>
                 </div>
               )}
-            </motion.div>
+            </div>
             {/* Resumo do pedido */}
-            <motion.div 
-              className="lg:col-span-1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
+            <div className="lg:col-span-1">
               <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
                 <div className="p-6 border-b border-dark-300">
                   <h2 className="text-xl font-bold text-white flex items-center">
@@ -1505,11 +1489,9 @@ export default function CartPage() {
                     </div>
                   </div>
                   {/* Botão de checkout */}
-                  <motion.button
+                  <button
                     onClick={handleCheckout}
                     disabled={isLoading || isCartEmpty}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     className={`w-full py-3.5 px-6 rounded-xl font-medium text-white flex items-center justify-center transition-all duration-300 ${
                       isLoading || isCartEmpty
                         ? 'bg-gray-600 cursor-not-allowed'
@@ -1527,7 +1509,7 @@ export default function CartPage() {
                         <span>{showCheckoutForm ? 'Finalizar Compra' : 'Continuar'}</span>
                       </span>
                     )}
-                  </motion.button>
+                  </button>
                   {/* Mensagens de segurança */}
                   <div className="mt-6 space-y-3">
                     <div className="flex items-center text-gray-400 text-sm">
@@ -1553,7 +1535,7 @@ export default function CartPage() {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
       </div>
@@ -1595,18 +1577,11 @@ export default function CartPage() {
         </div>
       ) : null}
       {/* Modal de intenção de saída */}
-      <AnimatePresence>
-        {showExitIntent && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4"
-          >
-            {/* Conteúdo do modal aqui */}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showExitIntent && (
+        <div className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4">
+          {/* Conteúdo do modal aqui */}
+        </div>
+      )}
     </div>
   );
 }

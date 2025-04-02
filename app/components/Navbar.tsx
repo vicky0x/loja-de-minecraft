@@ -178,8 +178,12 @@ export default function Navbar() {
   // Efeito para monitorar eventos de autenticação e imagem de perfil
   useEffect(() => {
     const handleAuthEvent = () => {
-      console.log('Evento de autenticação detectado, atualizando dados...');
-      refreshUserData();
+      console.log('Evento de autenticação detectado na Navbar, atualizando dados...');
+      // Atualizar apenas após delay para evitar loops
+      setTimeout(() => {
+        // Não forçar atualização para evitar loops (true → false)
+        refreshUserData(false);
+      }, 100);
     };
     
     const handleProfileImageUpdate = (event: Event) => {
@@ -232,14 +236,53 @@ export default function Navbar() {
       }
     };
     
+    const handlePageFocus = () => {
+      // Adicionamos uma flag no localStorage para controlar atualizações e evitar loops
+      try {
+        const lastUpdate = localStorage.getItem('lastAuthCheck');
+        const currentTime = Date.now();
+        
+        // Só atualizar se não houver registro ou se passou mais de 5 segundos
+        if (!lastUpdate || (currentTime - parseInt(lastUpdate)) > 5000) {
+          // Verificar cookies para ver se o estado da autenticação mudou
+          const hasAuthCookie = document.cookie.split(';').some(c => c.trim().startsWith('auth_token='));
+          const isLocalStorageAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+          
+          // Se houver discrepância entre o cookie e o estado atual, atualizar
+          if ((hasAuthCookie && !user) || (!hasAuthCookie && user) || 
+              (isLocalStorageAuthenticated && !user) || (!isLocalStorageAuthenticated && user)) {
+            console.log('Estado de autenticação alterado, atualizando Navbar...');
+            // Atualizar timestamp para evitar loops
+            localStorage.setItem('lastAuthCheck', currentTime.toString());
+            // Não forçar atualização para evitar loops
+            refreshUserData(false);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar estado de autenticação:', error);
+      }
+    };
+    
+    // Adicionar os event listeners
     window.addEventListener('auth-state-changed', handleAuthEvent);
     window.addEventListener('profile-image-updated', handleProfileImageUpdate);
+    window.addEventListener('focus', handlePageFocus);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'isAuthenticated' || e.key === 'user') {
+        handlePageFocus();
+      }
+    });
+    
+    // Verificação inicial - executar uma única vez com delay
+    setTimeout(handlePageFocus, 500);
     
     return () => {
       window.removeEventListener('auth-state-changed', handleAuthEvent);
       window.removeEventListener('profile-image-updated', handleProfileImageUpdate);
+      window.removeEventListener('focus', handlePageFocus);
+      window.removeEventListener('storage', handlePageFocus);
     };
-  }, [user]);
+  }, [user, refreshUserData, setUser, setImageTransition]);
 
   // Buscar estatísticas do usuário quando o componente montar
   useEffect(() => {

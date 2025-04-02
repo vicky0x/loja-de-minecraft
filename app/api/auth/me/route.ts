@@ -91,7 +91,7 @@ export async function DELETE() {
     console.log('API ME: Processando logout via DELETE...');
     
     // Limpar todos os cookies relevantes
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.delete('auth_token');
     cookieStore.delete('isAuthenticated');
     cookieStore.delete('userId');

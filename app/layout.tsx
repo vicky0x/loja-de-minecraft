@@ -6,6 +6,7 @@ import { Toaster } from "react-hot-toast";
 import Navbar from "./components/Navbar";
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
+import GlobalAppInitializer from './_app/globals';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +22,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        <link rel="icon" type="image/png" href="/favicon.png" />
+      </head>
       <body className={`${inter.className} bg-dark-100 text-white`}>
+        <GlobalAppInitializer />
         <AuthProvider>
           <CartProvider>
             <Toaster 

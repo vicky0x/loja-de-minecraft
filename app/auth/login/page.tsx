@@ -1,99 +1,53 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/hooks/useAuth';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
-  
-  // Verificar se o usuário já está autenticado ou se está em processo de logout
-  useEffect(() => {
-    // Limpar flag de logout em progresso se existir
-    try {
-      sessionStorage.removeItem('logout_in_progress');
-    } catch (error) {
-      console.error('Erro ao limpar flag de logout:', error);
-    }
-    
-    // Verificar parâmetros na URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasLogoutParam = urlParams.has('logout');
-    
-    if (hasLogoutParam) {
-      console.log('Login após logout bem-sucedido');
-      // Limpar a URL removendo o parâmetro de logout
-      if (window.history && window.history.replaceState) {
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-      }
-      return;
-    }
-    
-    const checkAuth = () => {
-      try {
-        const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-        const user = localStorage.getItem('user');
-        
-        if (isAuthenticated && user) {
-          console.log('Usuário já está autenticado, redirecionando para o dashboard');
-          router.push('/dashboard');
-        }
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-      }
-    };
-    
-    checkAuth();
-  }, [router]);
-  
-  const handleSubmit = async (e: FormEvent) => {
+  const { login } = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!email.trim() || !password.trim()) {
       setError('Por favor, preencha todos os campos.');
       return;
     }
     
+    setLoading(true);
+    setError('');
+    
     try {
-      setLoading(true);
-      setError('');
+      const data = await login(email, password);
       
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Email ou senha incorretos.');
-        } else if (response.status === 429) {
-          setError('Muitas tentativas de login. Tente novamente mais tarde.');
-        } else {
-          setError(data.message || 'Erro ao fazer login. Tente novamente.');
-        }
+      if (data.error) {
+        setError(data.error);
         return;
       }
       
-      // Login bem-sucedido
-      // Disparar evento para atualizar o estado de autenticação global
-      const event = new CustomEvent('auth-state-changed');
-      window.dispatchEvent(event);
-      
-      // Salvar dados do usuário no localStorage
+      // Atualizar o estado e o localStorage
       try {
-        localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('isAuthenticated', 'true');
+        
+        // Garantir que temos um objeto de usuário válido antes de salvar
+        if (data.user && typeof data.user === 'object') {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        
+        if (data.token) {
+          localStorage.setItem('auth_token', data.token);
+        }
+        
+        // Disparar evento
+        window.dispatchEvent(new Event('auth-state-changed'));
       } catch (storageError) {
         console.error('Erro ao salvar no localStorage:', storageError);
       }
@@ -101,15 +55,23 @@ export default function LoginPage() {
       // Marcar login como bem-sucedido
       setLoginSuccess(true);
       
-      // Verificar papel do usuário para redirecionamento
-      if (data.user && data.user.role === 'admin') {
-        setTimeout(() => {
-          router.push('/admin');
-        }, 1500);
-      } else {
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
+      // Verificar se há um redirecionamento pendente no localStorage
+      let redirectTo = '/dashboard'; // Valor padrão
+      try {
+        const savedRedirect = localStorage.getItem('redirectAfterLogin');
+        if (savedRedirect) {
+          console.log('[LOGIN] Redirecionamento após login encontrado:', savedRedirect);
+          redirectTo = savedRedirect;
+          // Limpar o redirecionamento
+          localStorage.removeItem('redirectAfterLogin');
+        } else {
+          console.log('[LOGIN] Nenhum redirecionamento encontrado, usando padrão:', redirectTo);
+        }
+      } catch (error) {
+        console.error('[LOGIN] Erro ao processar redirecionamento:', error);
+      } finally {
+        // Redirecionar para a página apropriada após um breve delay
+        setTimeout(() => router.push(redirectTo), 1000);
       }
     } catch (err) {
       console.error('Erro ao fazer login:', err);

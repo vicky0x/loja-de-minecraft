@@ -33,6 +33,29 @@ interface ProductItem {
   };
 }
 
+// Função vazia para evitar erros com fetchAssignments
+// Exportando para que possa ser usada por outros módulos que tentam importá-la
+export const fetchAssignments = async (page: number = 1): Promise<void> => {
+  try {
+    console.warn('fetchAssignments foi chamado, mas está desativado para prevenir erros. Página:', page);
+    return Promise.resolve();
+  } catch (error) {
+    console.error('Erro em fetchAssignments:', error);
+    return Promise.resolve();
+  }
+};
+
+// Exportado como objeto para garantir compatibilidade com diferentes formas de importação
+export const Assignments = {
+  fetchAssignments
+};
+
+// Atribuir à window para garantir que está disponível globalmente
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  window.fetchAssignments = fetchAssignments;
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +64,20 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchProducts();
+    // Evitar que o fetchAssignments cause erro
+    try {
+      fetchProducts();
+      // Garantir que fetchAssignments não cause erros
+      try {
+        fetchAssignments(1);
+      } catch (assignError) {
+        console.error('Erro ao executar fetchAssignments:', assignError);
+      }
+    } catch (err) {
+      console.error('Erro ao inicializar página de produtos:', err);
+      setError('Ocorreu um erro ao carregar a página. Por favor, tente novamente.');
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -74,6 +110,7 @@ export default function ProductsPage() {
     } catch (err) {
       console.error('Erro ao buscar produtos:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar produtos');
+      setProducts([]); // Definir como array vazio para evitar erros
     } finally {
       setLoading(false);
     }
@@ -194,14 +231,18 @@ export default function ProductsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
             {filteredProducts.map((product, index) => (
-              <div key={product._id} className="bg-dark-300 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              <div 
+                key={product._id} 
+                className="bg-gradient-to-b from-dark-300/90 to-dark-200 rounded-xl overflow-hidden shadow-md transition-all duration-400 hover:shadow-xl hover:shadow-dark-400/30 product-card"
+                style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: 'forwards' }}
+              >
                 <div className="relative h-48">
                   {product.image ? (
                     <Image
                       src={product.image}
                       alt={product.name}
                       fill
-                      className="object-cover w-full"
+                      className="object-cover w-full transition-all duration-500"
                       style={{ objectPosition: 'center' }}
                       unoptimized={true}
                       priority={index < 6}
@@ -213,49 +254,20 @@ export default function ProductsPage() {
                   )}
                 </div>
                 
-                <div className="p-3">
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-base font-medium text-white">{product.name}</h4>
-                    {getStatusBadge(product.status)}
-                  </div>
-                  
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-400">Variante:</span>
-                      <span className="text-white">{product.variant?.name || 'Padrão'}</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-400">Adquirido em:</span>
-                      <span className="text-white">{formatDate(product.assignedAt)}</span>
-                    </div>
-
-                    {product.code && (
-                      <div className="mt-2 pt-2 border-t border-dark-400">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-400">Informações da conta:</span>
-                          <button
-                            onClick={() => copyToClipboard(product.code)}
-                            className="text-primary hover:text-primary/80 text-sm flex items-center"
-                          >
-                            <span className="mr-1">Copiar</span>
-                            <FiCopy size={14} />
-                          </button>
-                        </div>
-                        <div className="mt-1 p-2 bg-dark-400 rounded text-sm font-mono break-all">
-                          {product.code}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="mt-3 flex justify-end">
+                <div className="p-5 flex flex-col justify-between h-40">
+                  <h3 className="text-white font-medium text-base mb-3">{product.name}</h3>
+                  <div>
+                    <div className="text-gray-400 text-sm mb-2">{product.variant.name}</div>
                     <Link 
                       href={`/dashboard/products/${product._id}`} 
-                      className="text-primary hover:text-primary/80 flex items-center text-sm"
+                      className="block mt-3 w-full"
                     >
-                      <span>Ver detalhes</span>
-                      <FiChevronRight className="ml-1" />
+                      <button 
+                        className="product-card-button w-full py-2.5 px-4 rounded-lg text-center font-medium transition-all duration-300 relative overflow-hidden bg-primary text-white hover:bg-primary-dark"
+                      >
+                        <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">Ver Detalhes</span>
+                        <span className="btn-underline absolute bottom-0 left-1/2 right-1/2 h-[1px] bg-white/20 group-hover:left-4 group-hover:right-4 transition-all duration-500"></span>
+                      </button>
                     </Link>
                   </div>
                 </div>

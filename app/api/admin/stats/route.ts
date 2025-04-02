@@ -243,28 +243,83 @@ export async function GET(req: NextRequest) {
     }
     
     // Conectar ao banco de dados
-    await connectDB();
+    try {
+      await connectDB();
+    } catch (dbError) {
+      console.error('Erro de conexão com o banco de dados:', dbError);
+      return NextResponse.json(
+        { error: 'Erro de conexão com o banco de dados' },
+        { status: 500 }
+      );
+    }
     
     // Executar todas as consultas em paralelo para melhor performance
+    // Usar um Promise.allSettled para continuar mesmo se algumas consultas falharem
     const [
-      totalUsers, 
-      totalProducts, 
-      pendingOrders,
-      revenueStats,
-      topProducts,
-      topCoupons,
-      conversionRate,
-      recentActivity
-    ] = await Promise.all([
-      User.countDocuments(),
-      Product.countDocuments(),
-      Order.countDocuments({ 'paymentInfo.status': 'pending' }),
-      getRevenueStats(),
-      getTopProducts(),
-      getTopCoupons(),
-      getConversionRate(),
-      getRecentActivity()
+      usersResult, 
+      productsResult, 
+      pendingOrdersResult,
+      revenueStatsResult,
+      topProductsResult,
+      topCouponsResult,
+      conversionRateResult,
+      recentActivityResult
+    ] = await Promise.allSettled([
+      User.countDocuments().exec().catch(err => {
+        console.error('Erro ao contar usuários:', err);
+        return 0;
+      }),
+      Product.countDocuments().exec().catch(err => {
+        console.error('Erro ao contar produtos:', err);
+        return 0;
+      }),
+      Order.countDocuments({ 'paymentInfo.status': 'pending' }).exec().catch(err => {
+        console.error('Erro ao contar pedidos pendentes:', err);
+        return 0;
+      }),
+      getRevenueStats().catch(err => {
+        console.error('Erro ao calcular estatísticas de receita:', err);
+        return {
+          daily: { revenue: 0, orders: 0 },
+          weekly: { revenue: 0, orders: 0 },
+          monthly: { revenue: 0, orders: 0 },
+          yearly: { revenue: 0, orders: 0 },
+          allTime: { revenue: 0, orders: 0 }
+        };
+      }),
+      getTopProducts().catch(err => {
+        console.error('Erro ao obter produtos mais vendidos:', err);
+        return [];
+      }),
+      getTopCoupons().catch(err => {
+        console.error('Erro ao obter cupons mais usados:', err);
+        return [];
+      }),
+      getConversionRate().catch(err => {
+        console.error('Erro ao calcular taxa de conversão:', err);
+        return { rate: '0.00', orders: 0, visitors: 0 };
+      }),
+      getRecentActivity().catch(err => {
+        console.error('Erro ao obter atividades recentes:', err);
+        return [];
+      })
     ]);
+    
+    // Extrair valores dos resultados (fulfilled ou rejected)
+    const totalUsers = usersResult.status === 'fulfilled' ? usersResult.value : 0;
+    const totalProducts = productsResult.status === 'fulfilled' ? productsResult.value : 0;
+    const pendingOrders = pendingOrdersResult.status === 'fulfilled' ? pendingOrdersResult.value : 0;
+    const revenueStats = revenueStatsResult.status === 'fulfilled' ? revenueStatsResult.value : {
+      daily: { revenue: 0, orders: 0 },
+      weekly: { revenue: 0, orders: 0 },
+      monthly: { revenue: 0, orders: 0 },
+      yearly: { revenue: 0, orders: 0 },
+      allTime: { revenue: 0, orders: 0 }
+    };
+    const topProducts = topProductsResult.status === 'fulfilled' ? topProductsResult.value : [];
+    const topCoupons = topCouponsResult.status === 'fulfilled' ? topCouponsResult.value : [];
+    const conversionRate = conversionRateResult.status === 'fulfilled' ? conversionRateResult.value : { rate: '0.00', orders: 0, visitors: 0 };
+    const recentActivity = recentActivityResult.status === 'fulfilled' ? recentActivityResult.value : [];
     
     // Montar o objeto de estatísticas completo
     const stats = {
@@ -286,11 +341,25 @@ export async function GET(req: NextRequest) {
       recentActivity
     };
     
-    return NextResponse.json({ stats }, { status: 200 });
+    // Adicionar timestamp para controle de cache no cliente
+    const responseWithTimestamp = {
+      stats,
+      timestamp: new Date().toISOString()
+    };
+    
+    return NextResponse.json(responseWithTimestamp, { 
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      } 
+    });
   } catch (error) {
     console.error('Erro ao buscar estatísticas de admin:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return NextResponse.json(
-      { error: 'Erro ao buscar estatísticas' },
+      { error: 'Erro ao buscar estatísticas', message: errorMessage, timestamp: new Date().toISOString() },
       { status: 500 }
     );
   }

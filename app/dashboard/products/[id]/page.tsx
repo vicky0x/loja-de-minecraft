@@ -44,7 +44,13 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   // Buscar detalhes do produto do usuário quando o ID estiver disponível
   useEffect(() => {
     if (productId) {
-      fetchProductDetails(productId);
+      try {
+        fetchProductDetails(productId);
+      } catch (error) {
+        console.error('Erro ao inicializar detalhes do produto:', error);
+        setError('Erro ao carregar detalhes do produto. Por favor, tente novamente.');
+        setLoading(false);
+      }
     }
   }, [productId]);
   
@@ -66,7 +72,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
       let assignedAtString = data.product.assignedAt;
       const assignedAtDate = new Date(data.product.assignedAt);
       
-      if (assignedAtDate.getFullYear() < 2020) {
+      if (!assignedAtDate || isNaN(assignedAtDate.getTime()) || assignedAtDate.getFullYear() < 2020) {
         console.error('Data de atribuição inválida:', assignedAtDate);
         // Usar a data atual como fallback
         assignedAtString = new Date().toISOString();
@@ -94,6 +100,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
     } catch (error: any) {
       console.error('Erro ao carregar detalhes do produto:', error);
       setError(error.message || 'Erro ao carregar detalhes do produto');
+      setProduct(null); // Definir como null para evitar erros
     } finally {
       setLoading(false);
     }

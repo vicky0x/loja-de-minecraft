@@ -615,12 +615,16 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="https://randomuser.me/api/portraits/men/32.jpg" 
-                    alt="Gabriel M."
+                    src="/images/avatars/isabela.jpg" 
+                    alt="Isabela BR"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.src = 'https://ui-avatars.com/api/?name=Isabela+BR&background=ff6000&color=fff';
+                    }}
                   />
                   <div>
-                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Gabriel M.</h3>
+                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Isabela BR</h3>
                     <div className="flex text-yellow-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -631,11 +635,11 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "Uso o cheat para Valorant há 3 meses e nunca tive problemas com banimento. O aimbot é discreto e o ESP mostra exatamente o que preciso. Atendimento rápido quando precisei de ajuda com a instalação."
+                  "Thank you for your incredible service! I had been looking for my item for so long, it was my bfs present for our anniversary. I was glad to find it here. I am totally satisfied (and he too)"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
-                  <span className="mr-2">Cliente há 3 meses</span>
-                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">Valorant</span>
+                  <span className="mr-2">Cliente verificado</span>
+                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">Minecraft</span>
                 </div>
                 
                 {/* Bottom Decoration */}
@@ -650,12 +654,16 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="https://randomuser.me/api/portraits/women/44.jpg" 
-                    alt="Juliana R."
+                    src="/images/avatars/customer2.jpg" 
+                    alt="Cliente Verificado"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.src = 'https://ui-avatars.com/api/?name=Cliente+Verificado&background=ff6000&color=fff';
+                    }}
                   />
                   <div>
-                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Juliana R.</h3>
+                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Cliente Verificado</h3>
                     <div className="flex text-yellow-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -666,11 +674,11 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "Comecei a usar o cheat para CS2 depois que meus amigos recomendaram. A diferença no meu gameplay foi absurda! O wallhack é perfeito e o sistema anti-detecção realmente funciona. Já renovei minha assinatura duas vezes."
+                  "Perfect service, reliable, responsive, and accurate accounts. I will return when I need more. Their Trustpilot score is well deserved, I'm very satisfied with my purchase."
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
-                  <span className="mr-2">Cliente há 6 meses</span>
-                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">CS2</span>
+                  <span className="mr-2">Cliente verificado</span>
+                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">Minecraft</span>
                 </div>
                 
                 {/* Bottom Decoration */}
@@ -685,30 +693,31 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="https://randomuser.me/api/portraits/men/75.jpg" 
-                    alt="Lucas T."
+                    src="/images/avatars/customer3.jpg" 
+                    alt="Cliente Verificado"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.src = 'https://ui-avatars.com/api/?name=Cliente+Verificado&background=ff6000&color=fff';
+                    }}
                   />
                   <div>
-                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Lucas T.</h3>
+                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Cliente Verificado</h3>
                     <div className="flex text-yellow-400">
-                      {[1, 2, 3, 4].map((star) => (
+                      {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
                       ))}
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
                     </div>
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "O cheat para Fortnite é muito bom, mas tive alguns problemas com a configuração inicial. O suporte me ajudou a resolver rapidamente. A função de auto-build é incrível e me ajudou a ganhar várias partidas. Só acho que poderia ter mais opções de personalização."
+                  "Reliable store with excellent customer service. I was skeptical at first, but after my purchase I'm very satisfied with how everything went. The accounts work as promised. Highly recommended!"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
-                  <span className="mr-2">Cliente há 2 meses</span>
-                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">Fortnite</span>
+                  <span className="mr-2">Cliente verificado</span>
+                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">Minecraft</span>
                 </div>
                 
                 {/* Bottom Decoration */}
@@ -719,51 +728,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="py-24 relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-dark to-primary overflow-hidden">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.2),transparent_70%)]"></div>
-          </div>
-        </div>
-        
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 drop-shadow-md">
-            PRONTO PARA DOMINAR?
-          </h2>
-          <p className="text-white text-xl mb-10 max-w-2xl mx-auto">
-            Junte-se a milhares de jogadores que já aumentaram seu desempenho com nossa tecnologia.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Link 
-              href="/products" 
-              className="relative overflow-hidden group bg-transparent border-2 border-primary text-white text-lg px-8 py-4 rounded-xl font-medium transition-all duration-300 ease-in-out"
-            >
-              <span className="relative z-10 flex items-center justify-center">
-                EXPLORAR CONTAS
-                <svg className="w-5 h-5 ml-2 transform transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </span>
-              <span className="absolute inset-0 bg-primary transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500"></span>
-            </Link>
-            <Link 
-              href="/auth/register" 
-              className="relative overflow-hidden group bg-transparent border-2 border-white/50 text-white hover:border-white text-lg px-8 py-4 rounded-xl font-medium transition-all duration-300 ease-in-out"
-            >
-              <span className="relative z-10 flex items-center justify-center">
-                CRIAR CONTA
-                <svg className="w-5 h-5 ml-2 opacity-0 transform transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </span>
-              <span className="absolute inset-0 bg-white/10 transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500"></span>
-            </Link>
-          </div>
-        </div>
-      </section>
-      
       {/* FAQ */}
       <section className="py-24 relative overflow-hidden">
         {/* Background Effects */}

@@ -354,8 +354,13 @@ export default function ProductsPage() {
             {/* Lista de produtos */}
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product._id} product={product} />
+                {filteredProducts.map((product, index) => (
+                  <div 
+                    key={product._id}
+                    style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: 'forwards' }}
+                  >
+                    <ProductCard product={product} />
+                  </div>
                 ))}
               </div>
             ) : (

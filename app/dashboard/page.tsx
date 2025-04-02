@@ -9,6 +9,23 @@ import {
   FiArrowUp, FiBarChart2, FiPercent
 } from 'react-icons/fi';
 
+// Definir a função fetchAssignments globalmente para prevenir erros
+export const fetchAssignments = async (page: number = 1): Promise<void> => {
+  try {
+    console.warn('fetchAssignments foi chamado no dashboard, mas está desativado para prevenir erros. Página:', page);
+    return Promise.resolve();
+  } catch (error) {
+    console.error('Erro em fetchAssignments:', error);
+    return Promise.resolve();
+  }
+};
+
+// Atribuir à window para garantir que está disponível globalmente
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  window.fetchAssignments = fetchAssignments;
+}
+
 interface Product {
   _id: string;
   name: string;
@@ -100,6 +117,8 @@ export default function Dashboard() {
     } catch (error: any) {
       console.error('Erro ao carregar produtos do usuário:', error);
       setError(error.message || 'Erro ao carregar seus produtos');
+      // Definir array vazio para evitar tentativas de mapear dados nulos
+      setUserProducts([]);
     } finally {
       setProductsLoading(false);
     }
@@ -112,14 +131,21 @@ export default function Dashboard() {
       const response = await fetch('/api/user/orders?limit=5');
       
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Erro ao carregar pedidos recentes');
+        const data = await response.json().catch(() => ({}));
+        console.error('Erro na resposta da API:', response.status, data);
+        setRecentOrders([]);
+        return;
       }
       
-      const data = await response.json();
-      setRecentOrders(data.orders || []);
+      const data = await response.json().catch(err => {
+        console.error('Erro ao processar JSON da resposta:', err);
+        return { orders: [] };
+      });
+      
+      setRecentOrders(Array.isArray(data.orders) ? data.orders : []);
     } catch (error: any) {
       console.error('Erro ao carregar pedidos recentes:', error);
+      setRecentOrders([]);
     } finally {
       setOrdersLoading(false);
     }

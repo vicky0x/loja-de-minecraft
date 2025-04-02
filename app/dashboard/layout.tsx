@@ -5,6 +5,17 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { FiHome, FiUser, FiShoppingCart, FiDownload, FiHelpCircle, FiLogOut, FiMessageSquare, FiMenu, FiX } from 'react-icons/fi';
 import { useAuth, logout } from '@/app/lib/auth/session';
+import { fetchAssignments } from '@/app/lib/store';
+
+// Definir a função fetchAssignments globalmente no layout para prevenir erros em qualquer página do dashboard
+const defineGlobalFunctions = () => {
+  if (typeof window !== 'undefined') {
+    // @ts-ignore
+    window.fetchAssignments = async (page = 1) => {
+      return fetchAssignments(page);
+    };
+  }
+};
 
 // Componente de barra lateral simplificado
 const DashboardSidebar = () => {
@@ -249,6 +260,11 @@ export default function DashboardLayout({
       window.location.href = '/auth/login';
     }
   }, [loading, isAuthenticated]);
+
+  // Executar definição global assim que o componente montar
+  useEffect(() => {
+    defineGlobalFunctions();
+  }, []);
 
   // Verificar se o componente ainda está carregando
   if (loading && !localAuth) {

@@ -21,23 +21,77 @@ export default function AdminDashboard() {
 
   // Buscar estatísticas do dashboard
   useEffect(() => {
-    const fetchDashboardStats = async () => {
+    const fetchDashboardStats = async (retryCount = 0) => {
       try {
         setStatsLoading(true);
         setStatsError(null);
         
-        const response = await fetch('/api/admin/stats');
+        // Usar AbortController para poder cancelar a solicitação se necessário
+        const controller = new AbortController();
+        const signal = controller.signal;
+        
+        // Timeout para impedir que a solicitação fique pendente por muito tempo
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch('/api/admin/stats', {
+          signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
+        // Limpar o timeout, pois a requisição se completou
+        clearTimeout(timeout);
         
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erro ao carregar estatísticas');
+          const contentType = response.headers.get('content-type');
+          let errorMessage = 'Erro ao carregar estatísticas';
+          
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorMessage;
+            } catch (parseError) {
+              console.error('Erro ao processar resposta JSON de erro:', parseError);
+            }
+          }
+          
+          throw new Error(errorMessage);
         }
         
         const data = await response.json();
+        
+        if (!data || !data.stats) {
+          throw new Error('Formato de resposta inválido');
+        }
+        
         setDashboardStats(data.stats);
+        
+        // Registrar timestamp da atualização para controle
+        console.log(`Estatísticas atualizadas em: ${data.timestamp || new Date().toISOString()}`);
       } catch (error) {
         console.error('Erro ao buscar estatísticas:', error);
-        setStatsError(error instanceof Error ? error.message : 'Erro ao carregar estatísticas');
+        
+        // Se for um erro de aborto, indicar que o tempo esgotou
+        const errorMessage = error instanceof DOMException && error.name === 'AbortError'
+          ? 'Tempo de resposta esgotado. Tente novamente.'
+          : error instanceof Error 
+            ? error.message 
+            : 'Erro ao carregar estatísticas';
+        
+        setStatsError(errorMessage);
+        
+        // Tentar novamente automaticamente até 2 vezes se for um erro de rede
+        if (retryCount < 2 && (
+            error instanceof TypeError || // Erro de rede
+            (error instanceof DOMException && error.name === 'AbortError') // Timeout
+        )) {
+          console.log(`Tentando novamente (${retryCount + 1}/2)...`);
+          // Esperar um tempo antes de tentar novamente
+          setTimeout(() => fetchDashboardStats(retryCount + 1), 1500 * (retryCount + 1));
+        }
       } finally {
         setStatsLoading(false);
       }
@@ -48,23 +102,79 @@ export default function AdminDashboard() {
 
   // Buscar dados reais de pedidos recentes
   useEffect(() => {
-    const fetchRecentOrders = async () => {
+    const fetchRecentOrders = async (retryCount = 0) => {
       try {
         setOrdersLoading(true);
         setOrdersError(null);
         
-        const response = await fetch('/api/admin/orders?limit=5');
+        // Usar AbortController para poder cancelar a solicitação se necessário
+        const controller = new AbortController();
+        const signal = controller.signal;
+        
+        // Timeout para impedir que a solicitação fique pendente por muito tempo
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch('/api/admin/orders?limit=5', {
+          signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
+        // Limpar o timeout, pois a requisição se completou
+        clearTimeout(timeout);
         
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erro ao carregar pedidos recentes');
+          const contentType = response.headers.get('content-type');
+          let errorMessage = 'Erro ao carregar pedidos recentes';
+          
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorMessage;
+            } catch (parseError) {
+              console.error('Erro ao processar resposta JSON de erro:', parseError);
+            }
+          }
+          
+          throw new Error(errorMessage);
         }
         
         const data = await response.json();
-        setRecentOrders(data.orders || []);
+        
+        if (!data || (!Array.isArray(data.orders) && !Array.isArray(data))) {
+          throw new Error('Formato de resposta inválido para pedidos');
+        }
+        
+        // Tratar tanto o formato com paginação {orders: [...]} quanto o formato direto de array
+        const ordersArray = Array.isArray(data.orders) ? data.orders : Array.isArray(data) ? data : [];
+        setRecentOrders(ordersArray);
+        
+        // Registrar timestamp da atualização para controle
+        console.log(`Pedidos atualizados em: ${data.timestamp || new Date().toISOString()}`);
       } catch (error) {
         console.error('Erro ao buscar pedidos recentes:', error);
-        setOrdersError(error instanceof Error ? error.message : 'Erro ao carregar pedidos');
+        
+        // Se for um erro de aborto, indicar que o tempo esgotou
+        const errorMessage = error instanceof DOMException && error.name === 'AbortError'
+          ? 'Tempo de resposta esgotado. Tente novamente.'
+          : error instanceof Error 
+            ? error.message 
+            : 'Erro ao carregar pedidos';
+        
+        setOrdersError(errorMessage);
+        
+        // Tentar novamente automaticamente até 2 vezes se for um erro de rede
+        if (retryCount < 2 && (
+            error instanceof TypeError || // Erro de rede
+            (error instanceof DOMException && error.name === 'AbortError') // Timeout
+        )) {
+          console.log(`Tentando novamente carregamento de pedidos (${retryCount + 1}/2)...`);
+          // Esperar um tempo antes de tentar novamente
+          setTimeout(() => fetchRecentOrders(retryCount + 1), 1500 * (retryCount + 1));
+        }
       } finally {
         setOrdersLoading(false);
       }
@@ -81,29 +191,94 @@ export default function AdminDashboard() {
       setOrdersLoading(true);
       setOrdersError(null);
       
+      // Usar AbortController para poder cancelar as solicitações se necessário
+      const controller = new AbortController();
+      const signal = controller.signal;
+      
+      // Timeout para impedir que as solicitações fiquem pendentes por muito tempo
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      
+      const requestOptions = {
+        signal,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      };
+      
       const [statsResponse, ordersResponse] = await Promise.all([
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/orders?limit=5')
+        fetch('/api/admin/stats', requestOptions),
+        fetch('/api/admin/orders?limit=5', requestOptions)
       ]);
       
+      // Limpar o timeout, pois as requisições se completaram
+      clearTimeout(timeout);
+      
+      // Processar resposta de estatísticas
       if (!statsResponse.ok) {
-        const errorData = await statsResponse.json();
-        throw new Error(errorData.error || 'Erro ao carregar estatísticas');
+        const contentType = statsResponse.headers.get('content-type');
+        let errorMessage = 'Erro ao carregar estatísticas';
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await statsResponse.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (parseError) {
+            console.error('Erro ao processar resposta JSON de erro (stats):', parseError);
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
       
+      // Processar resposta de pedidos
       if (!ordersResponse.ok) {
-        const errorData = await ordersResponse.json();
-        throw new Error(errorData.error || 'Erro ao carregar pedidos recentes');
+        const contentType = ordersResponse.headers.get('content-type');
+        let errorMessage = 'Erro ao carregar pedidos recentes';
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await ordersResponse.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (parseError) {
+            console.error('Erro ao processar resposta JSON de erro (orders):', parseError);
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const statsData = await statsResponse.json();
       const ordersData = await ordersResponse.json();
       
+      if (!statsData || !statsData.stats) {
+        throw new Error('Formato de resposta inválido para estatísticas');
+      }
+      
+      // Verificar o formato da resposta de pedidos e tratar corretamente
+      const ordersArray = 
+        ordersData && Array.isArray(ordersData.orders) ? ordersData.orders :
+        ordersData && Array.isArray(ordersData) ? ordersData : [];
+      
       setDashboardStats(statsData.stats);
-      setRecentOrders(ordersData.orders || []);
+      setRecentOrders(ordersArray);
+      
+      // Mostrar feedback de sucesso
+      console.log(`Dashboard atualizado com sucesso em: ${statsData.timestamp || new Date().toISOString()}`);
+      
     } catch (error) {
       console.error('Erro ao atualizar dashboard:', error);
-      setStatsError(error instanceof Error ? error.message : 'Erro ao atualizar dados');
+      
+      // Se for um erro de aborto, indicar que o tempo esgotou
+      const errorMessage = error instanceof DOMException && error.name === 'AbortError'
+        ? 'Tempo de resposta esgotado. Tente novamente.'
+        : error instanceof Error 
+          ? error.message 
+          : 'Erro ao atualizar dados';
+      
+      setStatsError(errorMessage);
+      setOrdersError(errorMessage);
     } finally {
       setStatsLoading(false);
       setOrdersLoading(false);
@@ -186,6 +361,16 @@ export default function AdminDashboard() {
         <div className="bg-red-900/30 border-l-4 border-red-500 p-4">
           <p className="font-medium text-red-400">Erro ao carregar estatísticas</p>
           <p className="text-red-300">{statsError}</p>
+          
+          {statsError.includes('autorizado') || statsError.includes('Não autorizado') ? (
+            <div className="mt-3">
+              <p className="text-red-300 mb-2">Sua sessão pode ter expirado ou você não tem permissões de administrador.</p>
+              <Link href="/login?redirect=/admin" className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80 transition-colors">
+                <FiUser className="mr-2" />
+                Fazer login novamente
+              </Link>
+            </div>
+          ) : null}
         </div>
       )}
 

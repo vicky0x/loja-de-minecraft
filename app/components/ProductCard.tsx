@@ -55,9 +55,10 @@ export default function ProductCard({ product }: { product: Product }) {
   
   const getStockClass = () => {
     const totalStock = getTotalStock();
-    if (totalStock <= 0) return 'bg-red-900/30 text-red-400';
-    if (totalStock <= 10) return 'bg-yellow-900/30 text-yellow-400';
-    return 'bg-green-900/30 text-green-400';
+    if (totalStock <= 0) return 'bg-red-900/70 text-red-200 border border-red-500/40';
+    if (totalStock <= 5) return 'bg-yellow-900/70 text-yellow-200 border border-yellow-500/40';
+    if (totalStock <= 10) return 'bg-yellow-900/70 text-yellow-200 border border-yellow-500/40';
+    return 'bg-dark-800/70 text-green-300 border border-green-500/40';
   };
   
   // Obter o preço base (menor preço entre as variantes ou preço direto)
@@ -110,7 +111,9 @@ export default function ProductCard({ product }: { product: Product }) {
   
   // Verificar se tem imagem
   const hasImage = product.images && product.images.length > 0;
-  const mainImage = hasImage ? product.images[0] : '/placeholder-product.jpg';
+  const imageUrl = hasImage 
+    ? product.images[0].startsWith('http') ? product.images[0] : `${product.images[0]}`
+    : 'https://placehold.co/600x400/222/444?text=Sem+Imagem';
   
   // Adicionar a função para configuração do status logo após a função getBasePrice
   const getStatusConfig = (status?: string) => {
@@ -171,125 +174,118 @@ export default function ProductCard({ product }: { product: Product }) {
     }
   };
   
+  const totalStock = getTotalStock();
+  const discount = getDiscountPercentage();
+  
   return (
     <>
-      <div ref={cardRef} className="bg-dark-200 rounded-lg overflow-hidden shadow-md transition-transform duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg">
-        <div className="relative">
-          {/* Badge de status do estoque - movida para antes da imagem, mas mantendo seu estilo */}
-          <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-md z-20 ${getStockClass()}`}>
+      <div 
+        ref={cardRef} 
+        className="bg-gradient-to-b from-dark-300/90 to-dark-200 rounded-xl overflow-hidden shadow-md transition-all duration-400 hover:shadow-xl hover:shadow-dark-400/30 product-card"
+      >
+        <div className="relative rounded-lg overflow-hidden z-10">
+          {/* Badge de estoque */}
+          <div className={`absolute top-4 right-4 text-xs font-medium px-2.5 py-1 rounded-full z-20 backdrop-blur-xl shadow-sm ${getStockClass()}`}>
             {getStockStatus()}
           </div>
           
-          {/* Imagem do produto com fallback */}
-          <div className="aspect-w-4 aspect-h-10 bg-dark-300 relative">
-            {/* Background pattern with wavy lines */}
-            <div className="absolute inset-0 z-0 overflow-hidden">
-              <div className="wavy-pattern h-full w-full"></div>
-            </div>
-            {hasImage ? (
-              product.images[0].startsWith('data:') ? (
-                // Imagem base64
-                <img 
-                  src={product.images[0]}
-                  alt={product.name}
-                  className="w-full h-full object-cover relative z-10"
-                />
-              ) : product.images[0].startsWith('/uploads/') ? (
-                // Imagem do servidor
-                <img 
-                  src={product.images[0]}
-                  alt={product.name}
-                  className="w-full h-full object-cover relative z-10"
-                />
-              ) : product.images[0].startsWith('http') ? (
-                // URL externa
-                <img 
-                  src={product.images[0]}
-                  alt={product.name}
-                  className="w-full h-full object-cover relative z-10"
-                />
-              ) : (
-                // Fallback para texto
-                <div className="flex items-center justify-center h-full p-4 text-gray-400 relative z-10">
-                  <span>Imagem não disponível</span>
-                </div>
-              )
-            ) : (
-              // Nenhuma imagem encontrada
-              <div className="flex items-center justify-center h-full p-4 text-gray-400 relative z-10">
-                <span>Sem imagem</span>
+          {/* Container da imagem com padding */}
+          <div className="pt-3 px-3 pb-0 bg-gradient-to-br from-dark-800 to-dark-900">
+            {/* Imagem sem efeito de zoom */}
+            <div className="h-52 relative overflow-hidden rounded-lg product-card-image">
+              <div className="absolute inset-0 z-0 overflow-hidden">
+                <div className="bg-gradient-to-br from-dark-800 to-dark-900 h-full w-full opacity-90"></div>
+                {/* Padrão sutil no fundo */}
+                <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:20px_20px] opacity-20"></div>
               </div>
-            )}
+              
+              <img 
+                src={imageUrl}
+                alt={product.name}
+                className="w-full h-full object-cover relative z-10 transition-all duration-500"
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  target.src = 'https://placehold.co/600x400/111/222?text=Imagem+Indisponível';
+                }}
+              />
+              
+              {/* Gradiente na parte inferior para melhorar transição com o conteúdo */}
+              <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-dark-300/90 to-transparent z-10"></div>
+            </div>
           </div>
           
-          {/* Badge de destaque */}
+          {/* Badge de destaque com animação mais sutil */}
           {product.featured && (
-            <div className="absolute top-2 left-2 bg-primary text-white text-xs font-bold px-2 py-1 rounded">
+            <div className="absolute top-4 left-4 bg-dark-800/80 text-white text-xs font-medium px-3 py-1 rounded-full z-20 flex items-center border border-primary/30 shadow-sm transition-all duration-300">
+              <span className="mr-1.5 inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
               Destaque
             </div>
           )}
           
-          {/* Badge de status do cheat - exibir apenas se houver status */}
+          {/* Badge de status */}
           {product.status && getStatusConfig(product.status) && (
-            <div className={`absolute bottom-2 left-2 ${getStatusConfig(product.status)?.bgColor} ${getStatusConfig(product.status)?.textColor} text-xs font-medium px-2 py-1 rounded-md flex items-center border ${getStatusConfig(product.status)?.borderColor} animate-pulse-slow`}>
-              <div className="flex items-center justify-center mr-1.5">
-                {getStatusConfig(product.status)?.icon}
-              </div>
+            <div className={`absolute bottom-[53px] left-4 bg-dark-800/80 ${getStatusConfig(product.status)?.textColor} border ${getStatusConfig(product.status)?.borderColor}/30 text-xs px-3 py-1 rounded-full flex items-center backdrop-blur-xl z-20 shadow-sm transition-all duration-300`}>
+              {getStatusConfig(product.status)?.icon && (
+                <span className="mr-1.5">{getStatusConfig(product.status)?.icon}</span>
+              )}
               {getStatusConfig(product.status)?.label}
             </div>
           )}
         </div>
         
-        <div className="p-4">
-          <h3 className="text-white font-medium text-base mb-2">{product.name}</h3>
+        <div className="p-5 flex flex-col justify-between h-48 relative z-10 bg-gradient-to-b from-dark-300/90 to-dark-200">
+          {/* Título com efeito mais sutil */}
+          <div className="relative">
+            <h3 className="text-white font-medium text-base mb-3 group-hover:text-primary transition-colors duration-300">{product.name}</h3>
+            <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-primary/30 group-hover:w-1/4 transition-all duration-500"></span>
+          </div>
           
-          {product.shortDescription && (
-            <div 
-              className="text-gray-400 text-xs mb-4 line-clamp-2 product-description"
-              dangerouslySetInnerHTML={{ 
-                __html: product.shortDescription
-                  // Remover tags HTML não permitidas para segurança
-                  .replace(/<(?!\/?(strong|em|span|b|i|p|br)\b)[^>]+>/gi, '') 
-              }}
-            />
-          )}
-          
-          {/* Preço e botão de detalhes */}
           <div>
-            <div className="mb-3">
-              {hasDiscount() && (
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-gray-400 line-through text-sm">
-                    R$ {getOriginalPrice()!.toFixed(2).replace('.', ',')}
-                  </span>
-                  {getDiscountPercentage() > 0 && (
-                    <span className="bg-green-600/30 text-green-400 text-xs font-bold px-2 py-0.5 rounded">
-                      -{getDiscountPercentage()}%
-                    </span>
-                  )}
-                </div>
+            <div className="flex items-baseline mb-3 relative">
+              {hasVariants ? (
+                <span className="text-primary font-bold text-xl transition-all duration-300">{`R$ ${getBasePrice().toFixed(2).replace('.', ',')}`}</span>
+              ) : (
+                <span className="text-primary font-bold text-xl transition-all duration-300">{`R$ ${getBasePrice().toFixed(2).replace('.', ',')}`}</span>
               )}
-              <div className="text-primary font-bold text-xl">
-                R$ {getBasePrice().toFixed(2).replace('.', ',')}
-              </div>
+              
+              {getOriginalPrice() && getOriginalPrice() > 0 && (
+                <span className="text-gray-400 line-through text-sm ml-2">
+                  R$ {getOriginalPrice().toFixed(2).replace('.', ',')}
+                </span>
+              )}
+              
+              {discount > 0 && (
+                <span className="ml-auto bg-green-900/40 text-green-300 text-xs px-2.5 py-1 rounded-full border border-green-500/20 shadow-sm transition-all duration-300">
+                  -{Math.round(discount)}%
+                </span>
+              )}
             </div>
             
-            <Link
-              href={`/product/${product.slug}`}
-              className="relative block w-full text-center bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md transition-all duration-300 overflow-hidden group"
-            >
-              <span className="relative z-10">Ver detalhes</span>
-              <span className="absolute left-0 top-0 w-full h-0 bg-gradient-to-r from-[#e05400] to-[#ff8a42] opacity-50 group-hover:h-full transition-all duration-300"></span>
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-500 delay-100"></span>
+            <Link href={`/product/${product.slug}`} className="block mt-3">
+              <button 
+                disabled={totalStock <= 0}
+                className={`product-card-button w-full py-2.5 px-4 rounded-lg text-center font-medium transition-all duration-300 relative overflow-hidden ${
+                  totalStock <= 0 
+                  ? 'bg-dark-300 text-gray-500 cursor-not-allowed' 
+                  : 'bg-primary text-white hover:bg-primary-dark group-hover:shadow-md'
+                }`}
+              >
+                {totalStock <= 0 ? 'Esgotado' : (
+                  <>
+                    <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">Ver detalhes</span>
+                    <span className="btn-underline absolute bottom-0 left-1/2 right-1/2 h-[1px] bg-white/20 group-hover:left-4 group-hover:right-4 transition-all duration-500"></span>
+                  </>
+                )}
+              </button>
             </Link>
           </div>
         </div>
       </div>
       
-      {hasVariants && (
-        <VariantStockModal 
-          productId={product._id}
-          isOpen={isStockModalOpen}
+      {/* Modal para exibir estoque das variantes */}
+      {isStockModalOpen && (
+        <VariantStockModal
+          product={product}
           onClose={() => setIsStockModalOpen(false)}
         />
       )}
