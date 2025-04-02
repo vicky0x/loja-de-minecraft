@@ -1,129 +1,371 @@
 'use client';
 
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { 
+  FaDiscord, 
+  FaInstagram, 
+  FaYoutube, 
+  FaEnvelope, 
+  FaHeadset, 
+  FaClock,
+  FaChevronRight
+} from 'react-icons/fa';
+import { SiTrustpilot } from 'react-icons/si';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  
+  // Animações para os elementos
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { 
+      y: 0, 
+      opacity: 1,
+      transition: { 
+        type: "spring", 
+        stiffness: 100,
+        duration: 0.5
+      }
+    }
+  };
+  
+  const socialIconVariants = {
+    initial: { scale: 1 },
+    hover: { 
+      scale: 1.2, 
+      transition: { type: "spring", stiffness: 300 }
+    }
+  };
 
   return (
-    <footer className="bg-dark-300 pt-16 pb-8">
+    <footer className="bg-gradient-to-b from-dark-100 to-dark-200 pt-16 pb-8 border-t border-dark-300/30">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-10"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.1 }}
+        >
           {/* Bloco 1 - Sobre */}
-          <div>
-            <h3 className="text-white text-xl font-bold mb-4">Fantasy Store</h3>
-            <p className="text-gray-300 mb-4">
+          <motion.div variants={itemVariants}>
+            <h3 className="text-white text-xl font-bold mb-6 relative inline-block">
+              Fantasy Store
+              <span className="absolute -bottom-2 left-0 w-12 h-0.5 bg-gradient-to-r from-primary to-primary-light rounded-full"></span>
+            </h3>
+            <p className="text-slate-300 mb-6 leading-relaxed">
               Oferecemos os melhores cheats para seus jogos favoritos com segurança e suporte garantido.
             </p>
-            <div className="flex space-x-4">
-              <a 
-                href="https://discord.gg" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-300 hover:text-primary transition-colors"
-              >
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.39-.444.883-.608 1.279-.184-.028-3.671-.367-3.671-.367s-2.142.33-4.424.367c-.176-.43-.381-.889-.609-1.279a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.293.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.293a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                </svg>
-              </a>
-              <a 
+            <div className="flex space-x-5">
+              <motion.a 
                 href="https://instagram.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-gray-300 hover:text-primary transition-colors"
+                className="text-slate-300 transition-colors hover:text-[#E1306C]"
+                variants={socialIconVariants}
+                initial="initial"
+                whileHover="hover"
+                aria-label="Instagram"
               >
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                </svg>
-              </a>
-              <a 
-                href="https://twitter.com" 
+                <span className="block w-6 h-6">
+                  <FaInstagram size={24} />
+                </span>
+              </motion.a>
+              <motion.a 
+                href="https://discord.gg" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-gray-300 hover:text-primary transition-colors"
+                className="text-slate-300 transition-colors hover:text-[#5865F2]"
+                variants={socialIconVariants}
+                initial="initial"
+                whileHover="hover"
+                aria-label="Discord"
               >
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
-                </svg>
-              </a>
+                <span className="block w-6 h-6">
+                  <FaDiscord size={24} />
+                </span>
+              </motion.a>
+              <motion.a 
+                href="https://youtube.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-slate-300 transition-colors hover:text-[#FF0000]"
+                variants={socialIconVariants}
+                initial="initial"
+                whileHover="hover"
+                aria-label="YouTube"
+              >
+                <span className="block w-6 h-6">
+                  <FaYoutube size={24} />
+                </span>
+              </motion.a>
+              <motion.a 
+                href="https://trustpilot.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-slate-300 transition-colors hover:text-[#00B67A]"
+                variants={socialIconVariants}
+                initial="initial"
+                whileHover="hover"
+                aria-label="TrustPilot"
+              >
+                <span className="block w-6 h-6">
+                  <SiTrustpilot size={24} />
+                </span>
+              </motion.a>
             </div>
-          </div>
+          </motion.div>
           
-          {/* Bloco 2 - Links Úteis */}
-          <div>
-            <h3 className="text-white text-xl font-bold mb-4">Links Úteis</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/products" className="text-gray-300 hover:text-primary transition-colors">
-                  Nossos Produtos
+          {/* Bloco 2 - Links Rápidos */}
+          <motion.div variants={itemVariants}>
+            <h3 className="text-white text-xl font-bold mb-6 relative inline-block">
+              Links Rápidos
+              <span className="absolute -bottom-2 left-0 w-12 h-0.5 bg-gradient-to-r from-primary to-primary-light rounded-full"></span>
+            </h3>
+            <ul className="space-y-3">
+              <li className="group">
+                <Link 
+                  href="/products" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Produtos</span>
                 </Link>
               </li>
-              <li>
-                <Link href="/faq" className="text-gray-300 hover:text-primary transition-colors">
-                  Perguntas Frequentes
+              <li className="group">
+                <Link 
+                  href="/dashboard" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Minha Conta</span>
                 </Link>
               </li>
-              <li>
-                <Link href="/how-it-works" className="text-gray-300 hover:text-primary transition-colors">
-                  Como Funciona
+              <li className="group">
+                <Link 
+                  href="/cart" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Carrinho</span>
                 </Link>
               </li>
-              <li>
-                <Link href="/contact" className="text-gray-300 hover:text-primary transition-colors">
-                  Contato
+              <li className="group">
+                <Link 
+                  href="/orders" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Meus Pedidos</span>
                 </Link>
               </li>
             </ul>
-          </div>
+          </motion.div>
           
-          {/* Bloco 3 - Políticas */}
-          <div>
-            <h3 className="text-white text-xl font-bold mb-4">Políticas</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/terms" className="text-gray-300 hover:text-primary transition-colors">
-                  Termos de Uso
+          {/* Bloco 3 - Categorias */}
+          <motion.div variants={itemVariants}>
+            <h3 className="text-white text-xl font-bold mb-6 relative inline-block">
+              Categorias
+              <span className="absolute -bottom-2 left-0 w-12 h-0.5 bg-gradient-to-r from-primary to-primary-light rounded-full"></span>
+            </h3>
+            <ul className="space-y-3">
+              <li className="group">
+                <Link 
+                  href="/products?category=fps" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">FPS</span>
                 </Link>
               </li>
-              <li>
-                <Link href="/privacy" className="text-gray-300 hover:text-primary transition-colors">
-                  Política de Privacidade
+              <li className="group">
+                <Link 
+                  href="/products?category=battle-royale" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Battle Royale</span>
                 </Link>
               </li>
-              <li>
-                <Link href="/refund" className="text-gray-300 hover:text-primary transition-colors">
-                  Política de Reembolso
+              <li className="group">
+                <Link 
+                  href="/products?category=mmorpg" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">MMORPG</span>
+                </Link>
+              </li>
+              <li className="group">
+                <Link 
+                  href="/products?category=sandbox" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Sandbox</span>
                 </Link>
               </li>
             </ul>
-          </div>
+          </motion.div>
           
-          {/* Bloco 4 - Newsletter */}
-          <div>
-            <h3 className="text-white text-xl font-bold mb-4">Newsletter</h3>
-            <p className="text-gray-300 mb-4">
-              Inscreva-se para receber novidades e ofertas exclusivas.
-            </p>
-            <form className="flex flex-col space-y-2">
-              <input 
-                type="email" 
-                placeholder="Seu e-mail" 
-                className="input"
-                required
-              />
-              <button type="submit" className="btn btn-primary">
-                Inscrever-se
-              </button>
-            </form>
-          </div>
-        </div>
+          {/* Bloco 4 - Contato e Suporte */}
+          <motion.div variants={itemVariants}>
+            <h3 className="text-white text-xl font-bold mb-6 relative inline-block">
+              Contato & Suporte
+              <span className="absolute -bottom-2 left-0 w-12 h-0.5 bg-gradient-to-r from-primary to-primary-light rounded-full"></span>
+            </h3>
+            <ul className="space-y-4">
+              <li className="flex items-start space-x-3">
+                <span className="text-primary mt-0.5 w-5 h-5 flex-shrink-0">
+                  <FaHeadset size={20} />
+                </span>
+                <div>
+                  <p className="text-white font-medium">Suporte via Chat</p>
+                  <p className="text-slate-300 text-sm">Resposta rápida e eficiente</p>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <span className="text-primary mt-0.5 w-5 h-5 flex-shrink-0">
+                  <FaClock size={20} />
+                </span>
+                <div>
+                  <p className="text-white font-medium">Horário de Atendimento</p>
+                  <p className="text-slate-300 text-sm">Segunda a Sexta, 12h às 20h</p>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <span className="text-primary mt-0.5 w-5 h-5 flex-shrink-0">
+                  <FaEnvelope size={20} />
+                </span>
+                <div>
+                  <p className="text-white font-medium">E-mail de Suporte</p>
+                  <a href="mailto:help@fantasystore.com.br" className="text-slate-300 text-sm hover:text-primary transition-colors">
+                    help@fantasystore.com.br
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </motion.div>
+        </motion.div>
         
         {/* Copyright */}
-        <div className="border-t border-gray-800 pt-8 mt-8 text-center">
-          <p className="text-gray-400">
-            &copy; {currentYear} Fantasy Store. Todos os direitos reservados.
-          </p>
-        </div>
+        <motion.div 
+          className="border-t border-dark-300/10 pt-8 mt-12 text-center"
+          initial={{ opacity: 0 }}
+          whileInView={{ 
+            opacity: 1, 
+            transition: { 
+              delay: 0.5, 
+              duration: 0.8 
+            } 
+          }}
+          viewport={{ once: true }}
+        >
+          <motion.p 
+            initial={{ y: 10, opacity: 0 }}
+            whileInView={{ 
+              y: 0, 
+              opacity: 1, 
+              transition: { duration: 0.5 } 
+            }}
+            viewport={{ once: true }}
+            className="text-slate-300 font-light"
+          >
+            © {currentYear} Fantasy Store. Todos os direitos reservados.
+          </motion.p>
+          <div className="mt-4 flex flex-wrap justify-center gap-5 text-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              whileInView={{ 
+                opacity: 1, 
+                y: 0, 
+                transition: { 
+                  delay: 0.6, 
+                  duration: 0.5 
+                } 
+              }}
+              viewport={{ once: true }}
+            >
+              <Link 
+                href="/terms" 
+                className="text-slate-400 hover:text-primary transition-all duration-300 relative group"
+              >
+                <span>Termos de Uso</span>
+                <span className="absolute left-0 right-0 bottom-0 h-px w-0 bg-gradient-to-r from-primary to-primary-light group-hover:w-full transition-all duration-300"></span>
+              </Link>
+            </motion.div>
+            <span className="text-slate-600">•</span>
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              whileInView={{ 
+                opacity: 1, 
+                y: 0, 
+                transition: { 
+                  delay: 0.7, 
+                  duration: 0.5 
+                } 
+              }}
+              viewport={{ once: true }}
+            >
+              <Link 
+                href="/privacy" 
+                className="text-slate-400 hover:text-primary transition-all duration-300 relative group"
+              >
+                <span>Política de Privacidade</span>
+                <span className="absolute left-0 right-0 bottom-0 h-px w-0 bg-gradient-to-r from-primary to-primary-light group-hover:w-full transition-all duration-300"></span>
+              </Link>
+            </motion.div>
+            <span className="text-slate-600">•</span>
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              whileInView={{ 
+                opacity: 1, 
+                y: 0, 
+                transition: { 
+                  delay: 0.8, 
+                  duration: 0.5 
+                } 
+              }}
+              viewport={{ once: true }}
+            >
+              <Link 
+                href="/refund" 
+                className="text-slate-400 hover:text-primary transition-all duration-300 relative group"
+              >
+                <span>Política de Reembolso</span>
+                <span className="absolute left-0 right-0 bottom-0 h-px w-0 bg-gradient-to-r from-primary to-primary-light group-hover:w-full transition-all duration-300"></span>
+              </Link>
+            </motion.div>
+          </div>
+        </motion.div>
       </div>
     </footer>
   );

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "react-hot-toast";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
 import GlobalAppInitializer from './_app/globals';
@@ -64,6 +65,7 @@ export default function RootLayout({
               <main className="pt-20">
                 {children}
               </main>
+              <Footer />
             </Providers>
           </CartProvider>
         </AuthProvider>
