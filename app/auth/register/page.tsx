@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, useRef } from 'react';
+import { useState, FormEvent, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -22,6 +22,25 @@ export default function RegisterPage() {
   const [previewUrl, setPreviewUrl] = useState('');
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Verificar se o usuário já está autenticado
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+        const user = localStorage.getItem('user');
+        
+        if (isAuthenticated && user) {
+          console.log('Usuário já está autenticado, redirecionando para o dashboard');
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

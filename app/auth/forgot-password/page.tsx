@@ -1,14 +1,35 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const router = useRouter();
+  
+  // Verificar se o usuário já está autenticado
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+        const user = localStorage.getItem('user');
+        
+        if (isAuthenticated && user) {
+          console.log('Usuário já está autenticado, redirecionando para o dashboard');
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
   
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

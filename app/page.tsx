@@ -117,13 +117,13 @@ export default function Home() {
       icon: 'support'
     },
     { 
-      value: '10k+', 
-      label: 'Usuários Ativos', 
+      value: '4k+', 
+      label: 'Contas Vendidas', 
       description: 'Jogadores utilizando nossos produtos',
       icon: 'users'
     },
     { 
-      value: '5+', 
+      value: '4+', 
       label: 'Anos de Experiência', 
       description: 'Fornecendo soluções de alta qualidade',
       icon: 'calendar'
@@ -149,11 +149,11 @@ export default function Home() {
   const [openFaqs, setOpenFaqs] = useState([]);
 
   const toggleFaq = (index: number) => {
-    if (openFaqs.includes(index)) {
-      setOpenFaqs(openFaqs.filter((faqIndex: number) => faqIndex !== index));
-    } else {
-      setOpenFaqs([...openFaqs, index]);
-    }
+    setOpenFaqs(prev => 
+      prev.includes(index) 
+        ? prev.filter(i => i !== index) 
+        : [...prev, index]
+    );
   };
 
   return (
@@ -174,30 +174,41 @@ export default function Home() {
             {/* Main Title */}
             <div className="mb-8 opacity-0 animate-fade-in" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
               {/* Badge premium */}
-              <div className="inline-flex items-center px-4 py-2 mb-4 rounded-full bg-gradient-to-r from-primary/10 to-primary/20 backdrop-blur-md border border-primary/30 text-white text-sm font-medium group relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_15px_rgba(255,96,0,0.25)] hover:scale-[1.01] shadow-[0_0_10px_rgba(0,0,0,0.1)]">
-                {/* Brilho de fundo */}
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-primary/10 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-md"></div>
+              <div className="inline-flex items-center px-4 py-2 mb-4 rounded-full bg-gradient-to-r from-primary/20 to-primary/30 backdrop-blur-md border border-primary/40 text-white text-sm font-medium group relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_20px_rgba(255,96,0,0.35)] hover:scale-[1.03] shadow-[0_0_12px_rgba(0,0,0,0.15)] animate-pulse-subtle">
+                {/* Brilho de fundo animado */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/20 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-md"></div>
                 
-                {/* Partículas mais sutis */}
+                {/* Efeito de partículas animadas */}
                 <div className="absolute inset-0 overflow-hidden">
-                  <div className="absolute top-1 left-3 w-1 h-1 rounded-full bg-white/30 animate-float-medium"></div>
-                  <div className="absolute bottom-2 right-10 w-1 h-1 rounded-full bg-primary/30 animate-float-slow"></div>
+                  <div className="absolute top-1 left-3 w-1 h-1 rounded-full bg-white/40 animate-float-fast"></div>
+                  <div className="absolute bottom-2 right-10 w-1 h-1 rounded-full bg-primary/40 animate-float-medium"></div>
+                  <div className="absolute top-3 right-5 w-1.5 h-1.5 rounded-full bg-yellow-400/30 animate-float-slow"></div>
+                  <div className="absolute bottom-1 left-10 w-0.5 h-0.5 rounded-full bg-white/30 animate-ping"></div>
                 </div>
                 
-                {/* Ícone #1 com estilo consistente */}
-                <div className="flex items-center justify-center mr-2 relative">
-                  <span className="relative z-10 text-primary font-bold text-sm flex items-center justify-center bg-primary/10 h-5 w-5 rounded-full">
-                    1
+                {/* Badge #1 estilizada - sem a bola circular */}
+                <div className="flex items-center justify-center mr-1 relative group-hover:scale-110 transition-transform duration-300">
+                  <div className="absolute inset-0 animate-pulse-fast"></div>
+                  <div className="relative z-10 font-black text-primary flex items-center justify-center bg-gradient-to-br from-yellow-400 to-primary p-0.5 h-6">
+                    <span className="bg-dark-100/90 h-[calc(100%-2px)] px-1.5 flex items-center justify-center text-yellow-400 font-extrabold">
+                      #1
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Texto principal com efeito de brilho */}
+                <div className="relative z-10 font-medium text-white/95 tracking-wide group-hover:text-white transition-all duration-300 ml-1">
+                  <span className="relative inline-block group-hover:animate-text-glow">
+                    A Maior Loja de Minecraft
+                    <span className="font-bold text-yellow-400 group-hover:text-yellow-300 transition-colors duration-300"> da América Latina</span>
                   </span>
                 </div>
                 
-                {/* Texto principal */}
-                <span className="relative z-10 font-medium text-white/90 tracking-wide group-hover:text-white transition-all duration-300 ml-1">
-                  A Maior Loja de Minecraft da América Latina
-                </span>
+                {/* Efeito de brilho no hover */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-primary/0 opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
                 
-                {/* Efeito sutil no hover */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+                {/* Efeito de reflexo no hover */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700 transform translate-y-full group-hover:translate-y-0"></div>
               </div>
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
                 Fantasy Store
@@ -215,35 +226,48 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
               <Link 
                 href="/products" 
-                className="btn-primary py-4 px-8 font-medium text-lg group relative overflow-hidden rounded-xl"
+                className="group relative overflow-hidden py-3 px-8 rounded-md bg-gradient-to-r from-primary/10 to-primary/20 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:translate-y-[-2px]"
               >
-                <span className="relative z-10 flex items-center justify-center">
-                  EXPLORAR PRODUTOS
-                  <svg className="w-5 h-5 ml-2 transform transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Fundo dinâmico */}
+                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-primary/80 to-primary-dark/90 opacity-0 group-hover:opacity-100 transition-all duration-500 ease-in-out"></span>
+                
+                {/* Efeito de brilho nas bordas */}
+                <span className="absolute inset-0 w-full h-full border border-primary/30 group-hover:border-primary/60 rounded-md transition-all duration-300"></span>
+                
+                {/* Partículas */}
+                <span className="absolute top-1/4 left-[10%] w-1 h-1 bg-primary/80 rounded-full opacity-0 group-hover:opacity-100 animate-ping"></span>
+                <span className="absolute bottom-1/3 right-[15%] w-1 h-1 bg-white/50 rounded-full opacity-0 group-hover:opacity-100 animate-ping" style={{ animationDelay: '0.5s' }}></span>
+                
+                {/* Texto e ícone */}
+                <span className="relative z-10 flex items-center justify-center text-primary group-hover:text-white font-medium tracking-wide text-sm transition-colors duration-300">
+                  EXPLORAR CONTAS
+                  <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1.5 transition-all duration-500 ease-out" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 </span>
-                <span className="absolute inset-0 bg-gradient-to-r from-primary to-primary-dark transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500"></span>
-                <span className="absolute inset-0 bg-gradient-to-r from-primary-dark to-primary"></span>
               </Link>
+              
               <Link 
                 href="/auth/register" 
-                className="relative py-4 px-8 font-medium text-lg rounded-xl border-2 border-dark-400/50 text-white hover:text-primary group overflow-hidden transform transition-all duration-500 hover:scale-105 shadow-lg shadow-transparent hover:shadow-dark-300/20 backdrop-blur-sm"
+                className="group relative overflow-hidden py-3 px-8 rounded-md border border-primary/30 text-primary font-medium tracking-wide text-sm bg-dark-100/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/60 hover:text-white hover:shadow-lg hover:shadow-primary/10 hover:translate-y-[-2px]"
               >
-                <span className="relative z-10 flex items-center justify-center tracking-wide transition-colors duration-300">
+                {/* Efeito de preenchimento */}
+                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-primary/80 to-primary-dark/90 transform origin-bottom scale-y-0 group-hover:scale-y-100 transition-transform duration-500 ease-in-out"></span>
+                
+                {/* Efeito de brilho diagonal */}
+                <span className="absolute inset-0 w-full h-full bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 transform translate-x-full group-hover:translate-x-[-100%]"></span>
+                
+                {/* Partículas */}
+                <span className="absolute top-1/3 right-[10%] w-1 h-1 bg-primary/80 rounded-full opacity-0 group-hover:opacity-100 animate-ping"></span>
+                <span className="absolute bottom-1/4 left-[15%] w-1 h-1 bg-white/50 rounded-full opacity-0 group-hover:opacity-100 animate-ping" style={{ animationDelay: '0.7s' }}></span>
+                
+                {/* Texto e ícone */}
+                <span className="relative z-10 flex items-center justify-center transition-colors duration-300">
                   CRIAR CONTA
-                  <svg className="w-5 h-5 ml-2 opacity-0 transform transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 ml-2 opacity-0 transform group-hover:opacity-100 group-hover:translate-x-1.5 transition-all duration-500 ease-out" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
                 </span>
-                <span className="absolute inset-0 bg-dark-300/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></span>
-                {/* Efeito de hover simplificado */}
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-20">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.1),transparent_70%)]"></div>
-                </span>
-                {/* Bordas simplificadas */}
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-dark-400 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></span>
-                <span className="absolute top-0 left-0 right-0 h-0.5 bg-dark-400 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></span>
               </Link>
             </div>
             
@@ -325,8 +349,8 @@ export default function Home() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-12 opacity-0 animate-fade-in" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
-              {availableProducts.slice(0, 4).map((product) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
+              {availableProducts.slice(0, 4).map((product, index) => {
                 // Determinar se o produto tem variantes ou preço direto
                 const hasVariants = product.variants && product.variants.length > 0;
                 const lowestPrice = hasVariants 
@@ -347,13 +371,17 @@ export default function Home() {
                   : calculateDiscount(lowestPrice, product.originalPrice);
                 
                 return (
-                  <div key={product._id} className="bg-dark-200 rounded-lg overflow-hidden shadow-md transition-transform duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg group h-full">
-                    <div className="relative">
+                  <div 
+                    key={product._id} 
+                    className="bg-gradient-to-b from-dark-300/90 to-dark-200 rounded-xl overflow-hidden shadow-md transition-all duration-400 hover:shadow-xl hover:shadow-dark-400/30 product-card" 
+                    style={{ animationDelay: `${0.2 + index * 0.1}s`, animationFillMode: 'forwards' }}
+                  >
+                    <div className="relative rounded-lg overflow-hidden z-10">
                       {/* Badge de estoque */}
-                      <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-md z-20 ${
-                        stock <= 0 ? 'bg-red-900/30 text-red-400' :
-                        stock <= 5 ? 'bg-yellow-900/30 text-yellow-400' :
-                        'bg-green-900/30 text-green-400'
+                      <div className={`absolute top-4 right-4 text-xs font-medium px-2.5 py-1 rounded-full z-20 backdrop-blur-xl shadow-sm ${
+                        stock <= 0 ? 'bg-red-900/70 text-red-200 border border-red-500/40' :
+                        stock <= 5 ? 'bg-yellow-900/70 text-yellow-200 border border-yellow-500/40' :
+                        'bg-dark-800/70 text-green-300 border border-green-500/40'
                       }`}>
                         {stock <= 0 ? 'Esgotado' :
                          stock <= 5 ? 'Últimas unidades' :
@@ -361,34 +389,43 @@ export default function Home() {
                          'Disponível'}
                       </div>
                       
-                      {/* Imagem */}
-                      <div className="h-48 bg-dark-300 relative">
-                        <div className="absolute inset-0 z-0 overflow-hidden">
-                          <div className="bg-gradient-to-br from-dark-400 to-dark-500 h-full w-full"></div>
+                      {/* Container da imagem com padding */}
+                      <div className="pt-3 px-3 pb-0 bg-gradient-to-br from-dark-800 to-dark-900">
+                        {/* Imagem sem efeito de zoom */}
+                        <div className="h-52 relative overflow-hidden rounded-lg product-card-image">
+                          <div className="absolute inset-0 z-0 overflow-hidden">
+                            <div className="bg-gradient-to-br from-dark-800 to-dark-900 h-full w-full opacity-90"></div>
+                            {/* Padrão sutil no fundo */}
+                            <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:20px_20px] opacity-20"></div>
+                          </div>
+                          
+                          <img 
+                            src={imageUrl}
+                            alt={product.name}
+                            className="w-full h-full object-cover relative z-10 transition-all duration-500"
+                            onError={(e) => {
+                              const target = e.currentTarget as HTMLImageElement;
+                              target.src = 'https://placehold.co/600x400/111/222?text=Imagem+Indisponível';
+                            }}
+                          />
+                          
+                          {/* Gradiente na parte inferior para melhorar transição com o conteúdo */}
+                          <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-dark-300/90 to-transparent z-10"></div>
                         </div>
-                        
-                        <img 
-                          src={imageUrl}
-                          alt={product.name}
-                          className="w-full h-full object-cover relative z-10"
-                          onError={(e) => {
-                            const target = e.currentTarget as HTMLImageElement;
-                            target.src = 'https://placehold.co/600x400/222/444?text=Imagem+Indisponível';
-                          }}
-                        />
                       </div>
                       
-                      {/* Badge de destaque */}
+                      {/* Badge de destaque com animação mais sutil */}
                       {product.featured && (
-                        <div className="absolute top-2 left-2 bg-primary text-white text-xs font-bold px-2 py-1 rounded">
+                        <div className="absolute top-4 left-4 bg-dark-800/80 text-white text-xs font-medium px-3 py-1 rounded-full z-20 flex items-center border border-primary/30 shadow-sm transition-all duration-300">
+                          <span className="mr-1.5 inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
                           Destaque
                         </div>
                       )}
                       
-                      {/* Badge de status */}
+                      {/* Badge de status com efeito mais sutil */}
                       {product.status === 'indetectavel' && (
-                        <div className="absolute bottom-2 left-2 bg-green-900/40 text-green-400 border border-green-500 text-xs px-2 py-1 rounded-md flex items-center">
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="absolute bottom-[53px] left-4 bg-dark-800/80 text-green-300 border border-green-500/30 text-xs px-3 py-1 rounded-full flex items-center backdrop-blur-xl z-20 shadow-sm transition-all duration-300">
+                          <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                           </svg>
                           Indetectável
@@ -396,15 +433,19 @@ export default function Home() {
                       )}
                     </div>
                     
-                    <div className="p-4 flex flex-col justify-between h-44">
-                      <h3 className="text-white font-medium text-base mb-2 group-hover:text-primary transition-colors">{product.name}</h3>
+                    <div className="p-5 flex flex-col justify-between h-48 relative z-10 bg-gradient-to-b from-dark-300/90 to-dark-200">
+                      {/* Título com efeito mais sutil */}
+                      <div className="relative">
+                        <h3 className="text-white font-medium text-base mb-3 group-hover:text-primary transition-colors duration-300">{product.name}</h3>
+                        <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-primary/30 group-hover:w-1/4 transition-all duration-500"></span>
+                      </div>
                       
                       <div>
-                        <div className="flex items-baseline mb-2">
+                        <div className="flex items-baseline mb-3 relative">
                           {hasVariants ? (
-                            <span className="text-primary font-bold text-xl">R$ {lowestPrice.toFixed(2).replace('.', ',')}</span>
+                            <span className="text-primary font-bold text-xl transition-all duration-300">{`R$ ${lowestPrice.toFixed(2).replace('.', ',')}`}</span>
                           ) : (
-                            <span className="text-primary font-bold text-xl">R$ {lowestPrice.toFixed(2).replace('.', ',')}</span>
+                            <span className="text-primary font-bold text-xl transition-all duration-300">{`R$ ${lowestPrice.toFixed(2).replace('.', ',')}`}</span>
                           )}
                           
                           {product.originalPrice && product.originalPrice > 0 && (
@@ -414,7 +455,7 @@ export default function Home() {
                           )}
                           
                           {discount > 0 && (
-                            <span className="ml-auto bg-primary/20 text-primary text-xs px-2 py-1 rounded">
+                            <span className="ml-auto bg-green-900/40 text-green-300 text-xs px-2.5 py-1 rounded-full border border-green-500/20 shadow-sm transition-all duration-300">
                               -{Math.round(discount)}%
                             </span>
                           )}
@@ -423,18 +464,16 @@ export default function Home() {
                         <Link href={`/product/${product.slug}`} className="block mt-3">
                           <button 
                             disabled={stock <= 0}
-                            className={`w-full py-2 px-4 rounded-lg text-center font-medium transition-all duration-300 relative overflow-hidden ${
+                            className={`product-card-button w-full py-2.5 px-4 rounded-lg text-center font-medium transition-all duration-300 relative overflow-hidden ${
                               stock <= 0 
                               ? 'bg-dark-300 text-gray-500 cursor-not-allowed' 
-                              : 'bg-primary text-white hover:bg-primary-dark group'
+                              : 'bg-primary text-white hover:bg-primary-dark group-hover:shadow-md'
                             }`}
                           >
                             {stock <= 0 ? 'Esgotado' : (
                               <>
-                                <span className="relative z-10 group-hover:tracking-wider transition-all duration-300 group-hover:translate-y-px">Ver detalhes</span>
-                                <span className="absolute inset-0 bg-gradient-to-r from-primary-dark to-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left opacity-80"></span>
-                                <span className="absolute inset-0 bg-gradient-to-tr from-primary/50 to-primary-dark/50 scale-y-0 group-hover:scale-y-100 transition-transform duration-700 origin-bottom"></span>
-                                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 delay-200 origin-left"></span>
+                                <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">Ver detalhes</span>
+                                <span className="btn-underline absolute bottom-0 left-1/2 right-1/2 h-[1px] bg-white/20 group-hover:left-4 group-hover:right-4 transition-all duration-500"></span>
                               </>
                             )}
                           </button>
@@ -659,7 +698,7 @@ export default function Home() {
                         </svg>
                       ))}
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                       </svg>
                     </div>
                   </div>
@@ -702,7 +741,7 @@ export default function Home() {
               className="relative overflow-hidden group bg-transparent border-2 border-primary text-white text-lg px-8 py-4 rounded-xl font-medium transition-all duration-300 ease-in-out"
             >
               <span className="relative z-10 flex items-center justify-center">
-                EXPLORAR PRODUTOS
+                EXPLORAR CONTAS
                 <svg className="w-5 h-5 ml-2 transform transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
@@ -748,32 +787,53 @@ export default function Home() {
             {faqs.map((faq, index) => (
               <div 
                 key={index}
-                className="mb-5 opacity-0 animate-fade-in-up"
-                style={{ animationDelay: `${0.3 + index * 0.1}s`, animationFillMode: 'forwards' }}
+                className="mb-5 faq-card"
+                data-faq-index={index}
               >
-                <div className="bg-dark-200 rounded-xl overflow-hidden border border-dark-300 hover:border-primary/30 transition-all duration-300">
+                <div className="bg-dark-200/80 rounded-xl overflow-hidden border border-dark-300">
                   <button
                     onClick={() => toggleFaq(index)}
-                    className="w-full px-6 py-4 flex justify-between items-center text-left focus:outline-none group"
+                    className="w-full px-6 py-5 flex justify-between items-center text-left focus:outline-none"
+                    aria-expanded={openFaqs.includes(index)}
+                    aria-controls={`faq-content-${index}`}
                   >
-                    <h3 className="text-lg font-medium text-white group-hover:text-primary transition-colors duration-300">{faq.question}</h3>
-                    <span className="text-primary ml-4 flex-shrink-0 transition-transform duration-300 transform group-hover:scale-110">
+                    <div className="flex items-center pr-4">
+                      <div className={`w-1 h-8 rounded-full mr-4 ${openFaqs.includes(index) ? 'bg-primary' : 'bg-dark-400'}`}></div>
+                      <h3 className="text-lg font-medium text-white">{faq.question}</h3>
+                    </div>
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${openFaqs.includes(index) ? 'bg-primary/20 text-primary rotate-180' : 'bg-dark-400/50 text-white'}`}>
                       <svg 
-                        className={`w-6 h-6 transform transition-transform duration-500 ease-in-out ${openFaqs.includes(index) ? 'rotate-180' : ''}`} 
+                        className="w-5 h-5" 
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7m0 0l-7-7m7 7V3" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
                       </svg>
-                    </span>
+                    </div>
                   </button>
                   
                   <div 
-                    className={`transition-all duration-500 ease-in-out ${openFaqs.includes(index) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
+                    id={`faq-content-${index}`}
+                    className="faq-content"
                   >
-                    <div className={`px-6 py-5 text-gray-300 bg-dark-300/30 border-t border-dark-400/50 transition-all duration-500 ${openFaqs.includes(index) ? 'translate-y-0' : '-translate-y-4'}`}>
+                    <div className="px-6 py-5 pl-[57px] text-gray-300 border-t border-dark-400/20">
                       <p className="leading-relaxed">{faq.answer}</p>
+                      
+                      <div className="mt-4 pt-3 border-t border-dark-400/10 flex items-center text-xs text-gray-400">
+                        <div className="flex items-center">
+                          <svg className="w-4 h-4 text-primary/70 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Informação útil
+                        </div>
+                        <div className="ml-auto flex items-center">
+                          <svg className="w-4 h-4 text-primary/70 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Atualizado recentemente
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -781,20 +841,6 @@ export default function Home() {
             ))}
           </div>
           
-          <div className="text-center mt-12 opacity-0 animate-fade-in" style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}>
-            <a 
-              href="/faq" 
-              className="inline-flex items-center text-primary hover:text-white px-6 py-3 rounded-lg bg-dark-200/50 hover:bg-primary/20 backdrop-blur-sm border border-dark-300 hover:border-primary/30 transition-all duration-300 group"
-            >
-              <span className="relative">
-                Ver todas as perguntas
-                <span className="absolute bottom-0 left-0 w-full h-1 bg-primary/30 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
-              </span>
-              <svg className="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </a>
-          </div>
         </div>
       </section>
       

@@ -111,10 +111,24 @@ export function useAuth() {
   };
 }
 
+// Variável para controlar o processo de logout
+let isLoggingOut = false;
+
 // Função para fazer logout
 export async function logout() {
+  // Evitar múltiplos logouts simultâneos
+  if (isLoggingOut) {
+    console.log('Processo de logout já está em andamento...');
+    return;
+  }
+  
   try {
     console.log('Iniciando processo de logout...');
+    isLoggingOut = true;
+    
+    // Cancelar todos os redirecionamentos de autenticação
+    // Isso serve como sinalizador para layout/middleware
+    sessionStorage.setItem('logout_in_progress', 'true');
     
     // Tentar fazer a requisição para a API de logout
     try {
@@ -151,27 +165,25 @@ export async function logout() {
       console.error('Erro ao limpar localStorage:', localStorageError);
     }
     
-    // Disparar evento para atualizar o estado de autenticação global
-    try {
-      const event = new CustomEvent('auth-state-changed');
-      window.dispatchEvent(event);
-      console.log('Evento auth-state-changed disparado');
-    } catch (eventError) {
-      console.error('Erro ao disparar evento de mudança de autenticação:', eventError);
-    }
+    // Limpar variáveis de estado
+    console.log('Processo de logout bem-sucedido, preparando redirecionamento...');
     
-    console.log('Logout concluído, redirecionando para login...');
-    
-    // Utilizar setTimeout para garantir que o redirecionamento ocorra
+    // Usar window.location com timeout para garantir que tudo seja processado
     setTimeout(() => {
-      window.location.href = '/auth/login';
-    }, 100);
+      // Limpar flag de logout em andamento
+      isLoggingOut = false;
+      sessionStorage.removeItem('logout_in_progress');
+      
+      // Redirecionar para a página de login com uma flag para evitar redirecionamentos
+      window.location.href = '/auth/login?logout=success';
+    }, 300);
     
   } catch (error) {
     console.error("Erro ao fazer logout:", error);
+    isLoggingOut = false;
+    sessionStorage.removeItem('logout_in_progress');
+    
     // Em caso de erro, tentar redirecionar de qualquer forma
-    setTimeout(() => {
-      window.location.href = '/auth/login?error=logout_failed';
-    }, 100);
+    window.location.href = '/auth/login?error=logout_failed';
   }
 } 

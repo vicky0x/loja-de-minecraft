@@ -138,7 +138,19 @@ export async function middleware(req: NextRequest) {
     // Se estiver autenticado e tentando acessar as páginas de login/registro
     if (AUTH_ROUTES.includes(req.nextUrl.pathname) && isAuthenticated) {
       console.log('Usuário autenticado tentando acessar página de login/registro');
-      console.log('Permitindo acesso para evitar loops de redirecionamento');
+      
+      // Verificar se há um parâmetro de logout na URL
+      const url = new URL(req.url);
+      const hasLogoutParam = url.searchParams.has('logout');
+      
+      if (hasLogoutParam) {
+        console.log('Parâmetro de logout detectado, permitindo acesso à página de login');
+        return NextResponse.next();
+      }
+      
+      // Redirecionar para o dashboard se já estiver autenticado
+      console.log('Redirecionando para o dashboard');
+      return NextResponse.redirect(new URL('/dashboard', req.url));
     }
     
     console.log('Middleware concluído, permitindo acesso');

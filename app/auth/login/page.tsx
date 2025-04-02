@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -11,6 +11,46 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
+  
+  // Verificar se o usuário já está autenticado ou se está em processo de logout
+  useEffect(() => {
+    // Limpar flag de logout em progresso se existir
+    try {
+      sessionStorage.removeItem('logout_in_progress');
+    } catch (error) {
+      console.error('Erro ao limpar flag de logout:', error);
+    }
+    
+    // Verificar parâmetros na URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasLogoutParam = urlParams.has('logout');
+    
+    if (hasLogoutParam) {
+      console.log('Login após logout bem-sucedido');
+      // Limpar a URL removendo o parâmetro de logout
+      if (window.history && window.history.replaceState) {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+      return;
+    }
+    
+    const checkAuth = () => {
+      try {
+        const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+        const user = localStorage.getItem('user');
+        
+        if (isAuthenticated && user) {
+          console.log('Usuário já está autenticado, redirecionando para o dashboard');
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
   
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
