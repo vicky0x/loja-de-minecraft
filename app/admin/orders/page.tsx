@@ -128,26 +128,53 @@ export default function OrdersPage() {
       if (start) params.append('startDate', start);
       if (end) params.append('endDate', end);
       
-      const response = await fetch(`/api/admin/orders?${params.toString()}`);
+      const response = await fetch(`/api/admin/orders?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Importante: Rejeitar requisições de rede com timeout
+        signal: AbortSignal.timeout(15000) // 15 segundos de timeout
+      });
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ 
+          error: `Erro ${response.status}: ${response.statusText || 'Erro desconhecido'}`
+        }));
         throw new Error(errorData.error || 'Erro ao carregar pedidos');
       }
       
-      const data = await response.json();
-      setOrders(data.orders || []);
-      setPagination(data.pagination || {
-        total: 0,
-        page,
-        limit: 10,
-        totalPages: 0,
-        hasNextPage: false,
-        hasPrevPage: false
+      const data = await response.json().catch(() => {
+        throw new Error('Erro ao processar resposta do servidor');
       });
+      
+      // Validar dados recebidos
+      if (!data || !Array.isArray(data.orders)) {
+        console.warn('Resposta da API não contém a lista de pedidos esperada', data);
+        setOrders([]);
+        setPagination({
+          total: 0,
+          page,
+          limit: 10,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false
+        });
+      } else {
+        setOrders(data.orders || []);
+        setPagination(data.pagination || {
+          total: 0,
+          page,
+          limit: 10,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false
+        });
+      }
     } catch (error) {
       console.error('Erro ao buscar pedidos:', error);
       setError(error instanceof Error ? error.message : 'Erro ao carregar pedidos');
+      setOrders([]);
     } finally {
       setLoading(false);
     }

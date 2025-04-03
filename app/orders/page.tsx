@@ -54,18 +54,35 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/orders');
+      const response = await fetch('/api/orders', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(15000)
+      });
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ 
+          error: `Erro ${response.status}: ${response.statusText || 'Erro desconhecido'}`
+        }));
         throw new Error(errorData.error || 'Erro ao carregar pedidos');
       }
       
-      const data = await response.json();
-      setOrders(data.orders);
+      const data = await response.json().catch(() => {
+        throw new Error('Erro ao processar resposta do servidor');
+      });
+      
+      if (!data || !Array.isArray(data.orders)) {
+        console.warn('Resposta da API não contém a lista de pedidos esperada', data);
+        setOrders([]);
+      } else {
+        setOrders(data.orders || []);
+      }
     } catch (err) {
       console.error('Erro ao buscar pedidos:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar pedidos');
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -92,7 +109,6 @@ export default function OrdersPage() {
       
       const data = await response.json();
       
-      // Se o pagamento foi completado, atualizar o status na lista local
       if (data.isPaid && selectedOrder) {
         setOrders(prevOrders => 
           prevOrders.map(order => 

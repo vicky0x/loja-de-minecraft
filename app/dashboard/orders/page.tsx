@@ -75,25 +75,51 @@ export default function OrdersPage() {
         limit: pagination.itemsPerPage.toString()
       });
       
-      const response = await fetch(`/api/user/orders?${queryParams.toString()}`);
+      const response = await fetch(`/api/user/orders?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Importante: Rejeitar requisições de rede com timeout
+        signal: AbortSignal.timeout(15000) // 15 segundos de timeout
+      });
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ 
+          error: `Erro ${response.status}: ${response.statusText || 'Erro desconhecido'}`
+        }));
         throw new Error(errorData.error || 'Erro ao carregar pedidos');
       }
       
-      const data = await response.json();
-      console.log("Dados recebidos da API:", data);
-      setOrders(data.orders || []);
-      setPagination(data.pagination || {
-        total: 0,
-        totalPages: 0,
-        currentPage: 1,
-        itemsPerPage: 10
+      const data = await response.json().catch(() => {
+        throw new Error('Erro ao processar resposta do servidor');
       });
+      
+      console.log("Dados recebidos da API:", data);
+      
+      // Validar dados recebidos
+      if (!data || !Array.isArray(data.orders)) {
+        console.warn('Resposta da API não contém a lista de pedidos esperada', data);
+        setOrders([]);
+        setPagination({
+          total: 0,
+          totalPages: 0,
+          currentPage: 1,
+          itemsPerPage: 10
+        });
+      } else {
+        setOrders(data.orders || []);
+        setPagination(data.pagination || {
+          total: 0,
+          totalPages: 0,
+          currentPage: 1,
+          itemsPerPage: 10
+        });
+      }
     } catch (err) {
       console.error('Erro ao buscar pedidos:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar pedidos');
+      setOrders([]);
     } finally {
       setLoading(false);
     }

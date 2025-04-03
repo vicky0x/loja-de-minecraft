@@ -30,14 +30,25 @@ export async function GET(request: NextRequest) {
         ...order,
         _id: order._id.toString(),
         user: order.user.toString(),
-        orderItems: order.orderItems.map(item => ({
-          ...item,
-          _id: item._id.toString(),
-          product: {
-            ...item.product,
-            _id: item.product._id.toString()
-          }
-        })),
+        orderItems: order.orderItems.map(item => {
+          // Verificar se item ou product existe
+          if (!item) return null;
+          
+          return {
+            ...item,
+            _id: item._id?.toString() || '',
+            product: item.product 
+              ? {
+                  ...item.product,
+                  _id: item.product._id?.toString() || ''
+                }
+              : {
+                  _id: '',
+                  name: 'Produto indisponível',
+                  images: []
+                }
+          };
+        }).filter(Boolean), // Remover itens nulos
         couponApplied: order.couponApplied ? order.couponApplied.toString() : undefined,
         createdAt: order.createdAt.toISOString(),
         updatedAt: order.updatedAt.toISOString()
