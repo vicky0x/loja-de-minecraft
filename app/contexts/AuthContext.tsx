@@ -21,6 +21,7 @@ interface AuthContextType {
   setUser: (user: User | null) => void;
   pendingProfileImage: string | null;
   updateProfileImage: (imageUrl: string) => void;
+  logout: () => Promise<void>;
 }
 
 // Criação do contexto com valores padrão
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   setUser: () => {},
   pendingProfileImage: null,
   updateProfileImage: () => {},
+  logout: async () => {},
 });
 
 // Hook personalizado para usar o contexto
@@ -40,6 +42,8 @@ export const useAuth = () => useContext(AuthContext);
 
 // Método adicional para manter a sincronização com outras fontes
 const syncWithLocalStorage = (userData: User | null) => {
+  if (typeof window === 'undefined') return userData;
+  
   if (userData) {
     try {
       const storedUser = localStorage.getItem('user');
@@ -69,7 +73,8 @@ const ensureAbsoluteProfileImageUrl = (userData: User | null): User | null => {
   
   // Caso contrário, converte para absoluta
   try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    if (typeof window === 'undefined') return userData;
+    const origin = window.location.origin;
     return {
       ...userData,
       profileImage: `${origin}${userData.profileImage}`
@@ -295,9 +300,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } catch (error) {
             console.error('Erro ao processar usuário do localStorage:', error);
           }
+        } else {
+          // Se não encontrar dados no localStorage, definir loading como false
+          // para que a interface mostre os botões de login/cadastro
+          setLoading(false);
         }
       } catch (error) {
         console.error('Erro ao ler localStorage:', error);
+        // Em caso de erro também queremos definir loading como false
+        setLoading(false);
       }
       
       // Se já houver um usuário no localStorage, usar ele temporariamente
@@ -305,6 +316,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         // Definir que já atualizamos pela primeira vez
         didInitialUpdate = true;
+        
+        // Definir loading como false para mostrar o usuário enquanto atualizamos
+        setLoading(false);
         
         // Depois de um breve delay, buscar dados atualizados da API
         setTimeout(() => {
@@ -477,6 +491,84 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [user]);
 
+  // Função para fazer logout
+  const logout = async () => {
+    try {
+      console.log('AuthContext: Iniciando logout...');
+      
+      // Limpar cookies localmente
+      if (typeof document !== 'undefined') {
+        console.log('AuthContext: Limpando cookies do navegador...');
+        document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "isAuthenticated=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "userEmail=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "userRole=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      }
+      
+      // Limpar localStorage
+      if (typeof window !== 'undefined') {
+        console.log('AuthContext: Limpando localStorage...');
+        localStorage.removeItem('user');
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('authExpiry');
+        localStorage.removeItem('cartItems');
+      }
+      
+      // Fazer requisição para API de logout
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        
+        console.log('AuthContext: Resposta da API de logout:', response.status);
+      } catch (apiError) {
+        console.error('AuthContext: Erro ao fazer requisição para API de logout:', apiError);
+      }
+      
+      // Atualizar o estado
+      setUser(null);
+      
+      // Atualizar o cache
+      userCacheRef.current = {
+        data: null,
+        timestamp: Date.now(),
+        hash: '',
+      };
+      
+      // Disparar evento para notificar mudança no estado de autenticação
+      if (typeof window !== 'undefined') {
+        console.log('AuthContext: Disparando evento auth-state-changed após logout');
+        window.dispatchEvent(new Event('auth-state-changed'));
+        
+        // Verificar se estamos na dashboard e forçar redirecionamento
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/dashboard')) {
+          console.log('AuthContext: Redirecionando da dashboard para login');
+          window.location.href = '/auth/login?logout=success';
+        }
+      }
+      
+      console.log('AuthContext: Logout bem-sucedido');
+    } catch (error) {
+      console.error('AuthContext: Erro ao fazer logout:', error);
+      
+      // Em caso de erro, tentar redirecionamento de fallback
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login?error=logout_failed';
+      }
+      
+      throw error;
+    }
+  };
+
   const contextValue = {
     user,
     loading,
@@ -485,7 +577,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     forceRefreshUserData: () => refreshUserData(true), // Versão com força explícita 
     setUser,
     pendingProfileImage,
-    updateProfileImage
+    updateProfileImage,
+    logout
   };
 
   return (

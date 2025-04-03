@@ -6,22 +6,24 @@ import { useRouter } from 'next/navigation';
 import { FiUser, FiLogOut } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { useAuth } from '@/app/hooks/useAuth';
+import { useAuth as useAuthContext } from '@/app/contexts/AuthContext';
 
 export default function AuthNav() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuthContext();
 
   useEffect(() => {
-    checkAuth();
+    // Definir o estado de autenticação com base no usuário do contexto
+    setIsAuthenticated(!!user);
+    setIsLoading(false);
     
     // Adicionar listener para eventos de autenticação
     const handleAuthChanged = () => {
       console.log('Auth state changed event captured in AuthNav');
-      checkAuth();
+      setIsAuthenticated(!!user);
     };
     
     window.addEventListener('auth-state-changed', handleAuthChanged);
@@ -29,27 +31,17 @@ export default function AuthNav() {
     return () => {
       window.removeEventListener('auth-state-changed', handleAuthChanged);
     };
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/check');
-      const data = await response.json();
-      setIsAuthenticated(data.isAuthenticated);
-    } catch (error) {
-      console.error('Erro ao verificar autenticação:', error);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [user]);
 
   const handleLogout = async () => {
     try {
       await logout();
+      setShowMenu(false);
+      router.refresh();
       router.push('/');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+      toast.error('Falha ao fazer logout');
     }
   };
 

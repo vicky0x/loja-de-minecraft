@@ -9,13 +9,19 @@
 import { useEffect } from 'react';
 import { fetchAssignments as storeAssignments } from '@/app/lib/store';
 
+// Declaração do tipo para as funções globais
+declare global {
+  interface Window {
+    fetchAssignments: (page?: number) => Promise<void>;
+  }
+}
+
 // Componente que será renderizado no layout raiz
 export default function GlobalAppInitializer() {
   useEffect(() => {
     // Definir funções globais na janela quando o componente for montado
     if (typeof window !== 'undefined') {
       // Definir fetchAssignments no objeto window
-      // @ts-ignore
       window.fetchAssignments = async (page = 1) => {
         return storeAssignments(page);
       };

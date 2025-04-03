@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { FiSearch, FiShoppingCart, FiUser, FiLogOut, FiSettings, FiPackage } from 'react-icons/fi';
 import { useCart } from '@/app/contexts/CartContext';
 import { IoWifi } from 'react-icons/io5';
-import { useAuth, logout } from '../lib/auth/session';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { useAuth as useAuthContext } from '../contexts/AuthContext';
 
@@ -34,7 +34,8 @@ export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
   // Usar o contexto de autenticação com os novos métodos
-  const { user, loading: loadingUser, refreshUserData, pendingProfileImage, setUser } = useAuthContext();
+  const { user, loading: loadingUser, refreshUserData, pendingProfileImage, setUser, logout } = useAuthContext();
+  const { isAuthenticated } = useAuth();
   
   // Estado para controlar a animação da imagem
   const [imageTransition, setImageTransition] = useState({
@@ -327,14 +328,19 @@ export default function Navbar() {
     try {
       console.log('Fazendo logout...');
       
-      // Usar a função de logout centralizada
+      // Usar a função de logout do contexto Auth
       await logout();
       
-      // Disparar evento para atualizar o estado de autenticação
-      const event = new CustomEvent('auth-state-changed');
-      window.dispatchEvent(event);
+      // Fechar o dropdown
+      setIsDropdownOpen(false);
       
-      // A função logout já cuida do redirecionamento
+      // Forçar atualização de toda a interface
+      router.refresh();
+      
+      // Redirecionar para a página inicial
+      setTimeout(() => {
+        router.push('/');
+      }, 100);
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
       toast.error('Falha ao fazer logout. Tente novamente.');
@@ -428,8 +434,27 @@ export default function Navbar() {
           {/* Botões e menu do usuário - versão desktop */}
           <div className="hidden md:flex items-center space-x-4">
             {loadingUser ? (
-              // Mostrar indicador de carregamento
-              <div className="w-8 h-8 rounded-full border-2 border-t-primary border-r-primary border-b-primary border-l-transparent animate-spin"></div>
+              // Mostrar botões de login/cadastro mesmo durante o carregamento
+              <div className="flex space-x-3">
+                <Link 
+                  href="/auth/login" 
+                  className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                >
+                  <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-dark-300 group-hover:bg-dark-400"></span>
+                  <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-dark-400 group-hover:bg-transparent group-hover:skew-x-6"></span>
+                  <span className="relative z-10">Login</span>
+                </Link>
+                <Link 
+                  href="/auth/register" 
+                  className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                >
+                  <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-primary group-hover:bg-primary-light"></span>
+                  <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-primary-dark opacity-70 group-hover:bg-transparent group-hover:skew-x-6"></span>
+                  <span className="relative z-10">Cadastrar</span>
+                </Link>
+              </div>
             ) : user ? (
               <>
                 {/* Botão de carrinho - Enhanced */}
@@ -719,7 +744,31 @@ export default function Navbar() {
             </button>
           </form>
 
-          {user ? (
+          {loadingUser ? (
+            // Botões de login/cadastro para usuários durante carregamento - Mobile
+            <div className="flex flex-col space-y-3 pt-2 border-t border-dark-300/50">
+              <Link 
+                href="/auth/login" 
+                className="relative overflow-hidden group py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 text-center"
+                onClick={() => setIsMenuOpen(false)}
+                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+              >
+                <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-dark-300 group-hover:bg-dark-400"></span>
+                <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-dark-400 group-hover:bg-transparent group-hover:skew-x-6"></span>
+                <span className="relative z-10">Login</span>
+              </Link>
+              <Link 
+                href="/auth/register" 
+                className="relative overflow-hidden group py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 text-center"
+                onClick={() => setIsMenuOpen(false)}
+                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+              >
+                <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-primary group-hover:bg-primary-light"></span>
+                <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform skew-x-0 bg-primary-dark opacity-70 group-hover:bg-transparent group-hover:skew-x-6"></span>
+                <span className="relative z-10">Cadastrar</span>
+              </Link>
+            </div>
+          ) : user ? (
             // Menu para usuários logados - Enhanced
             <div className="flex flex-col space-y-2 pt-2 border-t border-dark-300/50">
               <div className="flex items-center space-x-3 py-2">

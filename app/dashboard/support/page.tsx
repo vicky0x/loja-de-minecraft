@@ -25,7 +25,7 @@ export default function SupportPage() {
         <h1 className="text-3xl font-bold">Central de Suporte</h1>
         <div className="bg-primary/10 text-primary px-4 py-2 rounded-lg flex items-center">
           <FiAlertCircle className="mr-2" />
-          <span>Tempo médio de resposta: 30 minutos</span>
+          <span>Tempo médio de resposta: 10 minutos</span>
         </div>
       </div>
 
@@ -39,9 +39,27 @@ export default function SupportPage() {
         <div className="flex items-center text-primary">
           <FiBell className="mr-2" />
           <p className="text-sm font-medium">
-            Respondemos a maioria das solicitações em até 30 minutos durante o horário de atendimento.
+            Respondemos a maioria das solicitações em até 10 minutos durante o horário de atendimento.
           </p>
         </div>
+      </div>
+
+      {/* Aviso Importante */}
+      <div className="bg-primary/10 rounded-lg p-6 mb-8 shadow-lg border border-primary/20">
+        <h2 className="text-xl font-semibold mb-4 text-primary flex items-center">
+          <FiAlertCircle className="mr-2" />
+          Aviso Importante
+        </h2>
+        <p className="text-gray-300 mb-4">
+          Ao entrar em contato com o suporte através de qualquer canal disponível, é necessário que você forneça as seguintes informações:
+        </p>
+        <ul className="list-disc pl-6 text-gray-300 space-y-2 mb-4">
+          <li><strong>Problemas com produtos:</strong> Forneça os dados do pedido (número, data e produto específico) e descreva detalhadamente o problema que está enfrentando.</li>
+          <li><strong>Dúvidas gerais:</strong> Apresente sua dúvida de forma clara logo ao iniciar o atendimento.</li>
+        </ul>
+        <p className="text-primary text-sm font-medium">
+          Fornecer essas informações reduz significativamente o tempo de resposta e facilita que nossa equipe possa ajudá-lo(a) com mais eficiência.
+        </p>
       </div>
 
       {/* Canais de Atendimento */}
@@ -100,13 +118,13 @@ export default function SupportPage() {
           </p>
           <div className="mt-3 text-sm text-gray-400">
             <span className="flex items-center mb-1">
-              <FiMessageSquare className="mr-2" /> @FantasyStore
+              <FiMessageSquare className="mr-2" /> @fantasystorefc
             </span>
             <span className="flex items-center">
-              <FiClock className="mr-2" /> Resposta em até 15 min
+              <FiClock className="mr-2" /> Resposta em até 1h
             </span>
           </div>
-          <a href="https://t.me/FantasyStore" target="_blank" rel="noopener noreferrer" className="mt-4 block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-center transition-colors">
+          <a href="https://t.me/fantasystorefc" target="_blank" rel="noopener noreferrer" className="mt-4 block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-center transition-colors">
             Abrir Telegram
           </a>
         </div>
@@ -130,13 +148,13 @@ export default function SupportPage() {
           </p>
           <div className="mt-3 text-sm text-gray-400">
             <span className="flex items-center mb-1">
-              <FiMail className="mr-2" /> suporte@fantasystore.com
+              <FiMail className="mr-2" /> help@fantasystore.com.br
             </span>
             <span className="flex items-center">
-              <FiClock className="mr-2" /> Resposta em até 4h
+              <FiClock className="mr-2" /> Resposta em até 30 min
             </span>
           </div>
-          <a href="mailto:suporte@fantasystore.com" className="mt-4 block w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded text-center transition-colors">
+          <a href="mailto:help@fantasystore.com.br" className="mt-4 block w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded text-center transition-colors">
             Enviar Email
           </a>
         </div>
@@ -237,7 +255,7 @@ export default function SupportPage() {
                 </div>
                 <span>Telegram</span>
               </div>
-              <span className="text-blue-500">Até 15 minutos</span>
+              <span className="text-blue-500">Até 1h</span>
             </div>
             
             <div className="flex items-center justify-between pb-2 border-b border-dark-400">
@@ -247,7 +265,7 @@ export default function SupportPage() {
                 </div>
                 <span>Email</span>
               </div>
-              <span className="text-yellow-500">Até 4 horas</span>
+              <span className="text-yellow-500">Até 30 minutos</span>
             </div>
             
             <div className="flex items-center justify-between">
@@ -272,18 +290,19 @@ export default function SupportPage() {
       <div className="bg-dark-200 rounded-lg p-6 mb-8 shadow-lg">
         <div className="space-y-4">
           <div className="border-b border-dark-300 pb-4">
-            <h3 className="font-semibold text-lg mb-2">Como posso rastrear meu pedido?</h3>
+            <h3 className="font-semibold text-lg mb-2">Qual o tempo de entrega do produto?</h3>
             <p className="text-gray-300">
-              Você pode acompanhar o status do seu pedido na seção "Meus Pedidos" no Dashboard.
-              Lá você encontrará todas as informações e atualizações em tempo real.
+              A entrega dos nossos produtos digitais é feita imediatamente após a confirmação do pagamento.
+              Você receberá acesso instantâneo ao produto através da área "Meus Produtos" no Dashboard.
             </p>
           </div>
           
           <div className="border-b border-dark-300 pb-4">
-            <h3 className="font-semibold text-lg mb-2">Quanto tempo leva para processar um reembolso?</h3>
+            <h3 className="font-semibold text-lg mb-2">Por onde meu produto será entregue?</h3>
             <p className="text-gray-300">
-              Os reembolsos geralmente são processados em até 7 dias úteis, dependendo do método de pagamento utilizado.
-              Após aprovado, o valor pode levar até 30 dias para aparecer na sua fatura.
+              Todos os produtos são entregues digitalmente através da plataforma. Após a compra, 
+              você terá acesso imediato em "Meus Produtos" no seu Dashboard, onde poderá fazer o download 
+              ou acessar os links de ativação conforme o tipo de produto adquirido.
             </p>
           </div>
           
@@ -296,10 +315,11 @@ export default function SupportPage() {
           </div>
           
           <div>
-            <h3 className="font-semibold text-lg mb-2">O que fazer se o download não funcionar?</h3>
+            <h3 className="font-semibold text-lg mb-2">Os produtos do site têm garantia?</h3>
             <p className="text-gray-300">
-              Se você estiver enfrentando problemas com o download, verifique sua conexão e tente novamente.
-              Caso o problema persista, entre em contato com nossa equipe de suporte para assistência imediata.
+              Sim, todos os nossos produtos possuem garantia de funcionamento. Caso encontre algum problema 
+              técnico, você tem até 7 dias para solicitar suporte ou reembolso. Detalhes específicos sobre a garantia 
+              de cada produto estão disponíveis na página do produto e nos termos de uso.
             </p>
           </div>
         </div>

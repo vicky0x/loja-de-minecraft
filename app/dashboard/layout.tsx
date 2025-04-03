@@ -26,12 +26,32 @@ const DashboardSidebar = () => {
   const handleLogout = async () => {
     try {
       console.log('Dashboard: Iniciando logout...');
-      await logout();
-      // Não é necessário redirecionar aqui, pois a função logout já faz isso
+      
+      // Limpar localStorage manualmente antes de chamar a função de logout
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('authExpiry');
+      localStorage.removeItem('cartItems');
+      
+      // Limpar cookies manualmente
+      document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "isAuthenticated=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "userEmail=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "userRole=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      
+      // Forçar redirecionamento imediatamente para evitar problemas de estado
+      window.location.href = '/auth/login?logout=success';
+      
+      // Chamar função de logout em segundo plano para garantir que a API seja chamada
+      logout().catch(err => console.error('Erro secundário no logout:', err));
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
       // Em caso de erro, tentar redirecionar manualmente
-      window.location.href = '/auth/login';
+      window.location.href = '/auth/login?error=logout_failed';
     }
   };
 
@@ -243,14 +263,35 @@ export default function DashboardLayout({
           setLocalAuth(true);
           const userData = JSON.parse(storedUser);
           console.log('Autenticação via localStorage:', userData.username);
+        } else {
+          setLocalAuth(false);
         }
       } catch (error) {
         console.error('Erro ao ler autenticação do localStorage:', error);
+        setLocalAuth(false);
       }
     };
     
     // Verificar localStorage imediatamente
     checkLocalStorage();
+    
+    // Adicionar ouvinte para eventos de mudança de autenticação
+    const handleAuthChanged = () => {
+      console.log('Layout dashboard detectou mudança de autenticação');
+      setTimeout(() => {
+        // Verificar novamente após evento
+        checkLocalStorage();
+        
+        // Se não estiver mais autenticado, redirecionar
+        const storedAuth = localStorage.getItem('isAuthenticated');
+        if (storedAuth !== 'true') {
+          console.log('Dashboard layout: usuário deslogado, redirecionando...');
+          window.location.href = '/auth/login?logout=success';
+        }
+      }, 100);
+    };
+    
+    window.addEventListener('auth-state-changed', handleAuthChanged);
     
     // Verificar se o usuário está autenticado após o carregamento do hook useAuth
     if (!loading && !isAuthenticated && !localAuth) {
@@ -259,6 +300,10 @@ export default function DashboardLayout({
       // Redirecionamento único sem timeout ou lógica adicional para evitar loops
       window.location.href = '/auth/login';
     }
+    
+    return () => {
+      window.removeEventListener('auth-state-changed', handleAuthChanged);
+    };
   }, [loading, isAuthenticated]);
 
   // Executar definição global assim que o componente montar

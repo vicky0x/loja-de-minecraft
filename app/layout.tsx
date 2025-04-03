@@ -8,12 +8,9 @@ import Footer from "./components/Footer";
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
 import GlobalAppInitializer from './_app/globals';
-import dynamic from 'next/dynamic';
+import CharlaWidgetWrapper from './components/CharlaWidgetWrapper';
 
 const inter = Inter({ subsets: ["latin"] });
-
-// Carregamento dinâmico do componente client-side
-const CharlaWidgetWrapper = dynamic(() => import('./components/CharlaWidget'), { ssr: false });
 
 export const metadata: Metadata = {
   title: "Fantasy Store",

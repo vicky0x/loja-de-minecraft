@@ -20,12 +20,6 @@ export const fetchAssignments = async (page: number = 1): Promise<void> => {
   }
 };
 
-// Se executando no cliente, atribuir a função ao objeto window
-if (typeof window !== 'undefined') {
-  // @ts-ignore - Adicionar ao objeto global window
-  window.fetchAssignments = fetchAssignments;
-}
-
 // Exportação padrão para compatibilidade com diferentes formas de importação
 export default {
   fetchAssignments

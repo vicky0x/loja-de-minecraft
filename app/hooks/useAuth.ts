@@ -124,6 +124,27 @@ export function useAuth() {
     }
 
     try {
+      // Limpar cookies localmente
+      if (typeof document !== 'undefined') {
+        console.log('Limpando cookies do navegador...');
+        document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "isAuthenticated=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "userEmail=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "userRole=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      }
+      
+      // Limpar localStorage
+      if (typeof window !== 'undefined') {
+        console.log('Limpando localStorage...');
+        localStorage.removeItem('user');
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('authExpiry');
+      }
+
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
