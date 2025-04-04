@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiClock, FiCheckCircle, FiAlertCircle, FiArrowRight } from 'react-icons/fi';
+import { FiClock, FiCheckCircle, FiAlertCircle, FiArrowRight, FiShoppingBag } from 'react-icons/fi';
 import Link from 'next/link';
 
 // Interface para pedidos
@@ -49,6 +49,26 @@ export const PendingTable: React.FC<PendingTableProps> = ({
       return 'Data inválida';
     }
   };
+
+  // Formatar ID de pedido para exibição
+  const formatOrderId = (order: Order) => {
+    if (order.orderId) {
+      return `Pedido #${order.orderId.substring(0, 8)}`;
+    } else if (order._id) {
+      return `Pedido #${order._id.substring(0, 8)}`;
+    } else if (order.createdAt) {
+      // Usar a data como identificador alternativo se não tiver ID
+      try {
+        const date = new Date(order.createdAt);
+        const timestamp = date.getTime().toString().substring(0, 8);
+        return `Pedido #${timestamp}`;
+      } catch (e) {
+        return 'Pedido Processado';
+      }
+    } else {
+      return 'Pedido Processado';
+    }
+  };
   
   // Renderizar status com ícone apropriado
   const getStatusBadge = (order: Order) => {
@@ -77,8 +97,8 @@ export const PendingTable: React.FC<PendingTableProps> = ({
         );
       default:
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-900/30 text-gray-400">
-            <FiAlertCircle className="mr-1" /> Desconhecido
+          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-900/30 text-green-400">
+            <FiCheckCircle className="mr-1" /> Concluído
           </span>
         );
     }
@@ -99,7 +119,7 @@ export const PendingTable: React.FC<PendingTableProps> = ({
   if (!orders || orders.length === 0) {
     return (
       <div className="bg-dark-200 rounded-lg p-6 text-center">
-        <FiClock className="mx-auto text-3xl mb-2 text-primary/50" />
+        <FiShoppingBag className="mx-auto text-3xl mb-2 text-primary/50" />
         <p className="text-gray-400">Você ainda não fez nenhum pedido</p>
       </div>
     );
@@ -111,12 +131,18 @@ export const PendingTable: React.FC<PendingTableProps> = ({
         <h3 className="font-medium">Meus Pedidos</h3>
       </div>
       <div className="divide-y divide-dark-300">
-        {orders.map((order) => (
-          <div key={order._id || order.orderId || Math.random().toString()} className="p-4 hover:bg-dark-300/30 transition-colors">
+        {orders.map((order, index) => (
+          <div key={order._id || order.orderId || index} className="p-4 hover:bg-dark-300/30 transition-colors">
             <div className="flex justify-between items-center">
               <div>
                 <div className="flex items-center space-x-1 text-sm">
-                  <span className="text-gray-400"># {order.orderId || 'ID indisponível'}</span>
+                  <span 
+                    className="text-gray-300"
+                    title="ID abreviado. Veja o ID completo na página de detalhes."
+                  >
+                    {formatOrderId(order)}
+                  </span>
+                  <span className="text-gray-500 text-xs ml-1">(ID resumido)</span>
                 </div>
                 <div className="mt-1">
                   {getStatusBadge(order)}
@@ -130,8 +156,8 @@ export const PendingTable: React.FC<PendingTableProps> = ({
                   {formatCurrency(order.totalAmount || 0)}
                 </div>
                 <Link 
-                  href={`/dashboard/orders/${order._id || order.orderId || '#'}`}
-                  className={`mt-2 text-primary hover:text-primary/80 inline-flex items-center text-xs ${(!order._id && !order.orderId) ? 'pointer-events-none opacity-50' : ''}`}
+                  href={`/dashboard/orders/${order._id || order.orderId || 'details'}`}
+                  className="mt-2 text-primary hover:text-primary/80 inline-flex items-center text-xs"
                 >
                   Detalhes <FiArrowRight className="ml-1" />
                 </Link>

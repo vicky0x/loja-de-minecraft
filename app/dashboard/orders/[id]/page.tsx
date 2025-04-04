@@ -372,6 +372,9 @@ export default function OrderDetailPage() {
             </Link>
           </div>
           <h2 className="text-2xl font-bold mt-2">Detalhes do Pedido #{order._id.substring(order._id.length - 8)}</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            ID Completo: <span className="font-mono">{order._id}</span>
+          </p>
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-gray-400 mr-2">Status:</span>
@@ -421,6 +424,14 @@ export default function OrderDetailPage() {
             <h3 className="text-lg font-semibold">Informações do Pedido</h3>
           </div>
           <div className="p-6 space-y-4">
+            <div className="flex items-start space-x-3">
+              <FiClipboard className="text-primary mt-1" />
+              <div>
+                <p className="text-gray-400 text-sm">ID do Pedido</p>
+                <p className="font-medium font-mono">{order._id}</p>
+                <p className="text-xs text-gray-500 mt-1">Na lista de pedidos, mostramos apenas os últimos 8 caracteres para facilitar a visualização.</p>
+              </div>
+            </div>
             <div className="flex items-start space-x-3">
               <FiCalendar className="text-primary mt-1" />
               <div>
