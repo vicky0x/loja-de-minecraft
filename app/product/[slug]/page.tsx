@@ -45,7 +45,7 @@ interface Product {
 const primaryLight = "#6c63ff";  // Ajuste para a cor primária da sua aplicação
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
-  const { slug } = use(params);
+  const { slug } = params;
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
