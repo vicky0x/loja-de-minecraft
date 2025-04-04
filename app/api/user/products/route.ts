@@ -3,9 +3,19 @@ import connectDB from '@/app/lib/db/mongodb';
 import { checkAuth } from '@/app/lib/auth';
 import mongoose from 'mongoose';
 
+// Cache para produtos do usuário (validade de 5 minutos)
+const userProductsCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
 // GET /api/user/products - Obter produtos atribuídos ao usuário autenticado
 export async function GET(request: NextRequest) {
   try {
+    // Parâmetros de paginação (opcionais)
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '20');
+    const skipCache = url.searchParams.get('skipCache') === 'true';
+    
     // Verificar autenticação
     const authResult = await checkAuth(request);
     
@@ -13,25 +23,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
     }
     
-    const userId = authResult.user._id;
-    console.log(`Buscando produtos para o usuário: ${userId}`);
+    const userId = authResult.user._id.toString();
     
+    // Verificar cache primeiro (se não for solicitado para ignorar)
+    if (!skipCache) {
+      const cacheKey = `${userId}_${page}_${limit}`;
+      const now = Date.now();
+      const cachedData = userProductsCache.get(cacheKey);
+      
+      if (cachedData && (now - cachedData.timestamp) < CACHE_TTL) {
+        return NextResponse.json(cachedData.data);
+      }
+    }
+    
+    console.log(`Conectando ao MongoDB para buscar produtos para o usuário ID: ${userId}`);
     await connectDB();
+    console.log('Utilizando conexão existente com MongoDB');
     
-    // Importações dinâmicas de modelos para evitar problemas de importação circular
+    // Importações dinâmicas de modelos
     const StockItem = mongoose.models.StockItem || (await import('@/app/lib/models/stock')).default;
     const User = mongoose.models.User || (await import('@/app/lib/models/user')).default;
     const Product = mongoose.models.Product || (await import('@/app/lib/models/product')).default;
     
-    // Obter o usuário com seus produtos
-    const user = await User.findById(userId).lean();
-    if (!user) {
-      return NextResponse.json({ message: 'Usuário não encontrado' }, { status: 404 });
-    }
+    // Calcular skip para paginação
+    const skip = (page - 1) * limit;
     
-    console.log(`Usuário encontrado com ${user.products ? user.products.length : 0} produtos atribuídos`);
-    
-    // MÉTODO 1: Buscar itens de estoque atribuídos ao usuário
+    // Buscar itens de estoque atribuídos ao usuário com paginação
     const stockItems = await StockItem.find({ 
       assignedTo: new mongoose.Types.ObjectId(userId)
     })
@@ -40,144 +57,86 @@ export async function GET(request: NextRequest) {
       select: 'name slug status images shortDescription variants'
     })
     .sort({ assignedAt: -1 })
+    .skip(skip)
+    .limit(limit)
     .lean();
     
-    console.log(`MÉTODO 1: Encontrados ${stockItems.length} itens de estoque para o usuário ${userId}`);
+    console.log(`Encontrados ${stockItems.length} itens de estoque para o usuário`);
     
-    // MÉTODO 2: Verificar os produtos do usuário
-    let userProducts = [];
-    if (user.products && user.products.length > 0) {
-      userProducts = await Product.find({
-        _id: { $in: user.products }
-      })
-      .select('name slug status images shortDescription variants')
-      .lean();
-      
-      console.log(`MÉTODO 2: Encontrados ${userProducts.length} produtos na lista do usuário`);
-    }
-    
-    // Array para acompanhar itens que precisam ter a data de atribuição corrigida
-    const itemsToFix = [];
-    
-    // Combinar resultados dos dois métodos
-    let products = [];
-    
-    // Processar os itens de estoque
-    if (stockItems && stockItems.length > 0) {
-      const stockItemsProducts = stockItems.map(item => {
-        // Verificar e corrigir data de atribuição inválida
-        if (!item.assignedAt || new Date(item.assignedAt).getFullYear() < 2020) {
-          // Usar a data de criação ou a data atual como fallback
-          item.assignedAt = item.createdAt || new Date();
-          // Adicionar à lista de itens que precisam ser corrigidos no banco de dados
-          itemsToFix.push({
-            id: item._id,
-            newDate: item.assignedAt
-          });
-        }
-        
-        // Processar o status apenas se estiver definido
-        let status = '';
-        if (item.product && item.product.status) {
-          status = item.product.status === 'indetectavel' ? 'Ativo' : 
-                  item.product.status === 'manutencao' ? 'Em Manutenção' : 
-                  item.product.status === 'beta' ? 'Beta' : 'Detectável';
-        }
-        
-        // Encontrar informações da variante diretamente do produto populado
-        let variantName = 'Padrão';
-        if (item.product && item.product.variants && Array.isArray(item.product.variants)) {
-          const variant = item.product.variants.find(
-            (v: any) => v._id.toString() === item.variant || v._id === item.variant
+    // Verificar se há produtos com referências inválidas
+    const invalidItems = stockItems.filter(item => !item.product);
+    if (invalidItems.length > 0) {
+      console.warn(`AVISO: Encontrados ${invalidItems.length} itens de estoque com referências de produto inválidas`);
+      console.warn('IDs dos itens com problema:', 
+        invalidItems.map(item => ({
+          stockItemId: item._id.toString(),
+          productRef: item.product,
+          assignedAt: item.assignedAt
+        }))
+      );
+      // Opcional: Tente corrigir os registros problemáticos
+      try {
+        for (const item of invalidItems) {
+          console.log(`Tentando atualizar o item de estoque ${item._id} para marcar como não usado`);
+          // Marcar como não atribuído para evitar mais erros
+          await StockItem.updateOne(
+            { _id: item._id },
+            { $set: { assignedTo: null, isUsed: false } }
           );
-          if (variant) {
-            variantName = variant.name;
-          }
         }
-        
-        return {
-          _id: item._id,
-          productId: item.product?._id || null,
-          name: item.product?.name || 'Produto Desconhecido',
-          slug: item.product?.slug || '',
-          status: status,
-          image: item.product?.images?.[0] || '',
-          shortDescription: item.product?.shortDescription || '',
-          code: item.code,
-          assignedAt: item.assignedAt,
-          variant: {
-            _id: item.variant,
-            name: variantName
-          }
-        };
-      });
-      
-      products = [...stockItemsProducts];
-    }
-    
-    // Adicionar produtos do usuário que não foram encontrados nos itens de estoque
-    if (userProducts && userProducts.length > 0) {
-      const productIds = stockItems.map(item => item.product?._id?.toString()).filter(Boolean);
-      
-      for (const product of userProducts) {
-        if (!productIds.includes(product._id.toString())) {
-          console.log(`Adicionando produto ${product.name} da lista do usuário que não estava nos itens de estoque`);
-          
-          // Usar a primeira variante disponível
-          const variant = product.variants && product.variants.length > 0 
-            ? product.variants[0] 
-            : { _id: 'default', name: 'Padrão' };
-          
-          let status = '';
-          if (product.status) {
-            status = product.status === 'indetectavel' ? 'Ativo' : 
-                    product.status === 'manutencao' ? 'Em Manutenção' : 
-                    product.status === 'beta' ? 'Beta' : 'Detectável';
-          }
-          
-          products.push({
-            _id: new mongoose.Types.ObjectId(),
-            productId: product._id,
-            name: product.name,
-            slug: product.slug || '',
-            status: status,
-            image: product.images?.[0] || '',
-            shortDescription: product.shortDescription || '',
-            code: 'N/A',
-            assignedAt: new Date(),
-            variant: {
-              _id: variant._id,
-              name: variant.name
-            }
-          });
-        }
+      } catch (fixError) {
+        console.error('Erro ao tentar corrigir itens inválidos:', fixError);
       }
     }
     
-    // Corrigir as datas no banco de dados
-    if (itemsToFix.length > 0) {
-      console.log(`Corrigindo datas de atribuição para ${itemsToFix.length} itens`);
-      
-      // Atualizar cada item que precisa de correção
-      for (const item of itemsToFix) {
-        await StockItem.updateOne(
-          { _id: item.id },
-          { $set: { assignedAt: item.newDate } }
-        );
-      }
-    }
-    
-    console.log(`Retornando ${products.length} produtos para o cliente`);
-    
-    return NextResponse.json({ 
-      products,
-      count: products.length
+    // Contar total para paginação
+    const totalStockItems = await StockItem.countDocuments({
+      assignedTo: new mongoose.Types.ObjectId(userId)
     });
+    
+    // Formatar resultados
+    const formattedProducts = stockItems
+      .filter(item => item.product !== null && item.product !== undefined) // Filtrar itens com produto nulo
+      .map(item => ({
+        id: item._id.toString(),
+        productId: item.product._id.toString(),
+        name: item.product.name,
+        slug: item.product.slug,
+        status: item.product.status,
+        image: item.product.images && item.product.images.length > 0 
+          ? item.product.images[0]
+          : null,
+        shortDescription: item.product.shortDescription,
+        variants: item.product.variants,
+        assignedAt: item.assignedAt
+      }));
+    
+    // Dados para retornar
+    const responseData = { 
+      success: true, 
+      products: formattedProducts,
+      pagination: {
+        page,
+        limit,
+        total: totalStockItems,
+        totalPages: Math.ceil(totalStockItems / limit)
+      }
+    };
+    
+    // Atualizar cache
+    const cacheKey = `${userId}_${page}_${limit}`;
+    userProductsCache.set(cacheKey, { 
+      data: responseData, 
+      timestamp: Date.now() 
+    });
+    
+    return NextResponse.json(responseData);
+    
   } catch (error) {
     console.error('Erro ao buscar produtos do usuário:', error);
-    return NextResponse.json(
-      { message: 'Erro ao buscar produtos', error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      success: false, 
+      message: 'Erro ao buscar produtos do usuário'
+    }, { status: 500 });
   }
 } 

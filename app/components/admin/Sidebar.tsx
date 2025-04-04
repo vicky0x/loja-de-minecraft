@@ -6,15 +6,28 @@ import { usePathname } from 'next/navigation';
 
 const Sidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
 
-  // Fechar sidebar automaticamente em telas pequenas
+  // Ajuste automático do sidebar em telas diferentes
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 640) {
+        // Mobile - sidebar fechada por padrão
         setIsSidebarOpen(false);
-      } else {
+        setIsCollapsed(false);
+      } else if (window.innerWidth < 768) {
+        // Tablet pequeno - sidebar fechada, abre ao interagir
+        setIsSidebarOpen(false);
+        setIsCollapsed(false);
+      } else if (window.innerWidth < 1024) {
+        // Tablet/desktop pequeno - sidebar aberta e colapsada
         setIsSidebarOpen(true);
+        setIsCollapsed(true);
+      } else {
+        // Desktop - sidebar aberta e expandida
+        setIsSidebarOpen(true);
+        setIsCollapsed(false);
       }
     };
 
@@ -42,6 +55,10 @@ const Sidebar = () => {
   // Toggle do sidebar
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
   };
 
   // Itens do menu de navegação
@@ -140,79 +157,98 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside
-      className={`bg-dark-300 fixed inset-y-0 left-0 z-50 transition-all duration-300 transform ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:relative md:translate-x-0 w-64 min-h-screen flex flex-col`}
-    >
-      {/* Logo e título */}
-      <div className="p-4 bg-dark-400 flex items-center justify-between">
-        <Link href="/admin" className="flex items-center">
-          <span className="text-primary font-bold text-xl">Fantasy Admin</span>
-        </Link>
-        <button
-          onClick={toggleSidebar}
-          className="md:hidden text-white p-2"
-          aria-label="Toggle Sidebar"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
-
-      {/* Links de navegação */}
-      <nav className="p-4 flex-grow">
-        <ul className="space-y-2">
-          {navItems.map((item) => (
-            <li key={item.name}>
-              <Link
-                href={item.href}
-                className={`flex items-center p-3 rounded-lg text-gray-300 hover:bg-dark-400 hover:text-white transition-colors ${
-                  pathname === item.href ? 'bg-dark-400 text-primary' : ''
-                }`}
+    <>
+      {/* Overlay para fechar o menu em dispositivos móveis */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`bg-dark-200 fixed left-0 top-[120px] h-auto max-h-[calc(100vh-180px)] overflow-hidden transition-all duration-300 z-20 shadow-lg rounded-lg mx-4 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${isCollapsed ? 'w-16' : 'w-56'} md:translate-x-0`}
+      >
+        <div className="flex flex-col h-full">
+          {/* Menu de navegação */}
+          <nav className="flex-1 overflow-y-auto py-3 px-2 max-h-[calc(100vh-250px)]">
+            <div className="flex justify-end mb-2 md:block hidden">
+              <button 
+                onClick={toggleCollapse}
+                className="p-1 rounded-md bg-dark-300 text-gray-400 hover:text-white hover:bg-dark-400 transition-colors"
+                title={isCollapsed ? "Expandir menu" : "Recolher menu"}
               >
-                <span className="mr-3">{item.icon}</span>
-                <span>{item.name}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* Rodapé do Sidebar */}
-      <div className="p-4 border-t border-dark-400">
-        <Link 
-          href="/"
-          className="flex items-center text-gray-300 hover:text-white transition-colors"
-        >
-          <svg
-            className="w-5 h-5 mr-3"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
-          <span>Voltar ao Site</span>
-        </Link>
-      </div>
-    </aside>
+                {isCollapsed ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <ul className="space-y-1">
+              {navItems.map((item) => (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className={`flex items-center rounded-md transition-colors ${
+                      pathname === item.href
+                        ? 'bg-primary text-white'
+                        : 'text-gray-300 hover:bg-dark-300 hover:text-white'
+                    } ${isCollapsed ? 'justify-center py-2' : 'px-3 py-2'}`}
+                    title={isCollapsed ? item.name : ''}
+                    onClick={() => {
+                      if (window.innerWidth < 768) {
+                        setIsSidebarOpen(false);
+                      }
+                    }}
+                  >
+                    <span className={isCollapsed ? '' : 'mr-3'}>{item.icon}</span>
+                    {!isCollapsed && <span className="text-sm">{item.name}</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          
+          {/* Rodapé do Sidebar */}
+          <div className="p-2 border-t border-dark-400">
+            <Link 
+              href="/"
+              className={`flex items-center rounded-md transition-colors text-gray-300 hover:bg-dark-300 hover:text-white ${
+                isCollapsed ? 'justify-center w-full py-2' : 'px-3 py-2 w-full'
+              }`}
+              title={isCollapsed ? 'Voltar ao Site' : ''}
+              onClick={() => {
+                if (window.innerWidth < 768) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+            >
+              <svg
+                className={`w-5 h-5 ${isCollapsed ? '' : 'mr-3'}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+              {!isCollapsed && <span className="text-sm">Voltar ao Site</span>}
+            </Link>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 };
 

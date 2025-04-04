@@ -606,19 +606,53 @@ export default function CartPage() {
   const handleCheckout = () => {
     if (!isMounted.current || isCartEmpty) return;
     
-    // Verificar se o usuário está autenticado
+    // Se não estiver autenticado, mostrar toast e redirecionar
     if (!isAuthenticated) {
-      // Salvar o estado atual do carrinho no localStorage para que possa ser recuperado após o login
+      // Verificar tokens no localStorage antes de mostrar mensagem
       try {
-        localStorage.setItem('redirectAfterLogin', '/cart');
-      } catch (error) {
-        console.error('Erro ao salvar informações de redirecionamento:', error);
+        const token = localStorage.getItem('auth_token');
+        const isAuthStored = localStorage.getItem('isAuthenticated');
+        
+        // Se tokens existem, mas estado isAuthenticated é falso, forçar atualização
+        if (token && isAuthStored === 'true') {
+          console.log('Tokens de autenticação encontrados no localStorage, atualizando estado...');
+          // Atualizar o estado com um pequeno delay para dar tempo de renderizar
+          setTimeout(() => {
+            if (isMounted.current) {
+              window.dispatchEvent(new Event('auth-state-changed'));
+              
+              // Continuar com o fluxo normal após um breve momento
+              setTimeout(() => {
+                if (isMounted.current && !showCheckoutForm) {
+                  updateStateIfMounted(() => {
+                    setShowCheckoutForm(true);
+                    setActiveStep(2);
+                  });
+                }
+              }, 300);
+            }
+          }, 100);
+          return;
+        }
+        
+        // Se realmente não está autenticado, mostrar mensagem e redirecionar
+        toast.error('É necessário fazer login para finalizar a compra');
+        
+        // Salvar estado atual do carrinho para recuperar após login
+        try {
+          localStorage.setItem('pending_checkout', 'true');
+        } catch (e) {
+          // Ignorar erros
+        }
+        
+        router.push('/auth/login');
+        return;
+      } catch (e) {
+        console.error('Erro ao verificar tokens no localStorage:', e);
+        toast.error('É necessário fazer login para finalizar a compra');
+        router.push('/auth/login');
+        return;
       }
-      
-      // Redirecionar para a página de login
-      toast.success('É necessário fazer login para finalizar a compra');
-      router.push('/auth/login');
-      return;
     }
     
     if (!showCheckoutForm) {

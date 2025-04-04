@@ -70,11 +70,26 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchCartFromServer = async () => {
     if (!isAuthenticated || !user?.id) return;
     
+    // Verificar novamente o token antes de fazer a requisição
+    const hasToken = typeof window !== 'undefined' && window.localStorage.getItem('auth_token');
+    if (!hasToken) return;
+    
     try {
       setIsLoading(true);
       const response = await fetch('/api/cart');
       
       if (!response.ok) {
+        // Tratar erro 401 (não autorizado) - não tente novamente
+        if (response.status === 401) {
+          console.warn('Usuário não autenticado para buscar carrinho');
+          // Limpar tokens inválidos
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem('auth_token');
+            window.localStorage.removeItem('isAuthenticated');
+          }
+          return;
+        }
+        
         throw new Error(`Erro ao buscar carrinho: ${response.status}`);
       }
       
@@ -98,6 +113,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Função para salvar carrinho no servidor
   const saveCartToServer = async (cartItems: CartItem[]) => {
     if (!isAuthenticated || !user?.id) return;
+    
+    // Verificar novamente o token antes de fazer a requisição
+    const hasToken = typeof window !== 'undefined' && window.localStorage.getItem('auth_token');
+    if (!hasToken) return;
     
     try {
       setIsLoading(true);
@@ -126,6 +145,17 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       if (!response.ok) {
+        // Tratar erro 401 (não autorizado) - não tente novamente
+        if (response.status === 401) {
+          console.warn('Usuário não autenticado para salvar carrinho');
+          // Limpar tokens inválidos
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem('auth_token');
+            window.localStorage.removeItem('isAuthenticated');
+          }
+          return;
+        }
+        
         try {
           const errorData = await response.json();
           console.error('Erro na resposta do servidor:', errorData);
@@ -363,7 +393,18 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Verificar login se necessário
       if (!isAuthenticated) {
         console.log('Tentativa de adicionar item ao carrinho sem autenticação');
-        // (A verificação de login agora é feita no componente de produto)
+        
+        // Verificar novamente a autenticação do localStorage
+        const storedAuth = typeof window !== 'undefined' && localStorage.getItem('isAuthenticated') === 'true';
+        
+        if (!storedAuth) {
+          console.warn('Usuário não autenticado tentando adicionar item ao carrinho');
+          return;
+        } else {
+          // Se estiver autenticado no localStorage mas não no estado, tentar atualizar o estado
+          // Continuar com a adição do item mesmo assim
+          console.log('Usuário autenticado no localStorage, continuando com a adição');
+        }
       }
       
       // Validar o item antes de processar

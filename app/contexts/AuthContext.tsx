@@ -165,6 +165,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Função para buscar dados do usuário da API
   const refreshUserData = async (force: boolean = false) => {
     try {
+      // Adicionar verificação de anti-loop
+      if (typeof window !== 'undefined' && window.__ANTI_LOOP_FLAG === true) {
+        console.warn('Proteção anti-loop ativada no AuthContext. Bloqueando verificação.');
+        return;
+      }
+      
       // Verificar se uma atualização é realmente necessária
       const currentTime = Date.now();
       const cacheAge = currentTime - userCacheRef.current.timestamp;

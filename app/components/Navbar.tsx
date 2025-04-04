@@ -32,6 +32,8 @@ export default function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  // Estado para detectar se estamos em telas grandes quando no dashboard
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
   
   // Usar o contexto de autenticação com os novos métodos
   const { user, loading: loadingUser, refreshUserData, pendingProfileImage, setUser, logout } = useAuthContext();
@@ -48,6 +50,25 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const cart = useCart();
+
+  // Verificar se estamos no dashboard
+  const isDashboard = pathname?.startsWith('/dashboard') || pathname?.startsWith('/admin');
+  
+  // Efeito para verificar o tamanho da tela (para o caso de dashboards)
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024); // lg breakpoint do Tailwind
+    };
+    
+    // Verificar tamanho inicial
+    checkScreenSize();
+    
+    // Adicionar event listener para redimensionamento
+    window.addEventListener('resize', checkScreenSize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   // Efeito para verificar scroll
   useEffect(() => {
@@ -354,6 +375,11 @@ export default function Navbar() {
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
+
+  // Em páginas dashboard, não renderizar em telas pequenas
+  if (isDashboard && !isLargeScreen) {
+    return null;
+  }
 
   return (
     <header 

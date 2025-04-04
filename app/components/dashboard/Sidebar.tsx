@@ -1,0 +1,180 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { FiHome, FiUser, FiShoppingCart, FiDownload, FiHelpCircle, FiLogOut, FiMessageSquare } from 'react-icons/fi';
+
+// Definir os itens do menu fora do componente para evitar recriação
+const menuItems = [
+  { name: 'Início', path: '/dashboard', icon: <FiHome size={20} /> },
+  { name: 'Anúncios', path: '/dashboard/announcements', icon: <FiMessageSquare size={20} /> },
+  { name: 'Meu Perfil', path: '/dashboard/profile', icon: <FiUser size={20} /> },
+  { name: 'Meus Pedidos', path: '/dashboard/orders', icon: <FiShoppingCart size={20} /> },
+  { name: 'Meus Produtos', path: '/dashboard/products', icon: <FiDownload size={20} /> },
+  { name: 'Suporte', path: '/dashboard/support', icon: <FiHelpCircle size={20} /> },
+];
+
+const Sidebar = () => {
+  const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Simplificar a lógica de inicialização
+  useEffect(() => {
+    // Marcar como montado
+    setMounted(true);
+    
+    // Configurar sidebar com base no tamanho da tela
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        // Desktop - sidebar aberta e expandida
+        setIsSidebarOpen(true);
+        setIsCollapsed(false);
+      } else if (window.innerWidth >= 768) {
+        // Tablet/desktop pequeno - sidebar aberta e colapsada
+        setIsSidebarOpen(true);
+        setIsCollapsed(true);
+      } else {
+        // Mobile - sidebar fechada
+        setIsSidebarOpen(false);
+        setIsCollapsed(false);
+      }
+    };
+
+    // Executar imediatamente e adicionar listener
+    if (typeof window !== 'undefined') {
+      handleResize();
+      window.addEventListener('resize', handleResize);
+    }
+
+    // Listener para evento customizado do Header
+    const handleToggleEvent = () => {
+      setIsSidebarOpen(prev => !prev);
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('toggle-sidebar', handleToggleEvent);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('toggle-sidebar', handleToggleEvent);
+      }
+    };
+  }, []);
+
+  // Função simplificada para alternar o estado colapsado
+  const toggleCollapse = () => {
+    setIsCollapsed(prev => !prev);
+  };
+
+  // Função de logout simplificada
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.clear();
+        window.location.href = '/auth/login';
+      } catch (error) {
+        console.error('Erro ao fazer logout:', error);
+        // Fallback se o localStorage não estiver disponível
+        window.location.href = '/auth/login';
+      }
+    }
+  };
+
+  // Se não estiver montado, retornar um espaçador básico para evitar layout shift
+  if (!mounted) {
+    return <div className="hidden md:block md:w-16 lg:w-56" />;
+  }
+
+  return (
+    <>
+      {/* Overlay para fechar o menu em dispositivos móveis */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      
+      {/* Sidebar principal */}
+      <aside
+        className={`fixed left-0 h-auto z-20 transition-all duration-300 shadow-lg 
+          bg-dark-200 lg:top-[160px] top-[120px] 
+          max-h-[calc(100vh-180px)] lg:max-h-[calc(100vh-220px)] 
+          overflow-hidden rounded-lg mx-4
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${isCollapsed ? 'w-16' : 'w-56'} md:translate-x-0`}
+      >
+        <div className="flex flex-col h-full">
+          {/* Botão de colapso */}
+          <div className="flex justify-end py-2 px-2 md:block hidden">
+            <button 
+              onClick={toggleCollapse}
+              className="p-1 rounded-md bg-dark-300 text-gray-400 hover:text-white hover:bg-dark-400 transition-colors"
+              title={isCollapsed ? "Expandir menu" : "Recolher menu"}
+              aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"}
+            >
+              {isCollapsed ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              )}
+            </button>
+          </div>
+          
+          {/* Menu de navegação */}
+          <nav className="flex-1 overflow-y-auto px-2 py-2 max-h-[calc(100vh-250px)]">
+            <ul className="space-y-1">
+              {menuItems.map((item) => (
+                <li key={item.path}>
+                  <Link
+                    href={item.path}
+                    className={`flex items-center rounded-md transition-colors ${
+                      pathname === item.path
+                        ? 'bg-primary text-white'
+                        : 'text-gray-300 hover:bg-dark-300 hover:text-white'
+                    } ${isCollapsed ? 'justify-center py-2' : 'px-3 py-2'}`}
+                    title={isCollapsed ? item.name : ''}
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                        setIsSidebarOpen(false);
+                      }
+                    }}
+                  >
+                    <span className={isCollapsed ? '' : 'mr-3'}>{item.icon}</span>
+                    {!isCollapsed && <span className="text-sm">{item.name}</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          
+          {/* Botão de logout */}
+          <div className="p-2 border-t border-dark-400">
+            <button
+              onClick={handleLogout}
+              className={`flex items-center rounded-md transition-colors text-gray-300 hover:bg-dark-300 hover:text-white ${
+                isCollapsed ? 'justify-center w-full py-2' : 'px-3 py-2 w-full'
+              }`}
+              title={isCollapsed ? 'Sair' : ''}
+            >
+              <FiLogOut size={20} className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span className="text-sm">Sair</span>}
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+};
+
+export default Sidebar; 

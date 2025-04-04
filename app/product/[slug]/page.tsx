@@ -121,18 +121,32 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
   // Fazer verificação de autenticação ao montar o componente
   useEffect(() => {
+    const verifyAuth = async () => {
+      try {
+        await checkAuth();
+        console.log('[PRODUTO] Verificação de autenticação realizada');
+      } catch (error) {
+        console.error('[PRODUTO] Erro na verificação de autenticação:', error);
+      }
+    };
+    
+    verifyAuth();
+    
     // Verificação de cookies do cliente
     if (typeof window !== 'undefined') {
       const hasAuthToken = document.cookie
         .split('; ')
         .some(row => row.startsWith('auth_token='));
       
+      const storedAuth = localStorage.getItem('isAuthenticated') === 'true';
+      
       console.log('[PRODUTO] Estado de autenticação:', 
         isAuthenticated ? 'Autenticado' : 'Não autenticado',
-        'Token presente:', hasAuthToken
+        'Token presente:', hasAuthToken,
+        'Local Storage:', storedAuth
       );
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, checkAuth]);
 
   async function fetchProduct() {
     try {
@@ -1304,8 +1318,17 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                                 } catch (error) {
                                   console.error('[PRODUTO] Erro ao salvar redirecionamento:', error);
                                 }
-                                toast.success('É necessário fazer login para adicionar ao carrinho');
-                                router.push('/auth/login');
+                                
+                                // Verificar novamente o estado de autenticação antes de mostrar o toast
+                                const storedAuth = localStorage.getItem('isAuthenticated') === 'true';
+                                if (!storedAuth) {
+                                  toast.success('É necessário fazer login para adicionar ao carrinho');
+                                  router.push('/auth/login');
+                                } else {
+                                  // Se estiver autenticado no localStorage, atualizar o estado
+                                  checkAuth();
+                                  handleAddToCart();
+                                }
                                 return;
                               }
                               
@@ -1359,8 +1382,20 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                                       console.error('[PRODUTO] Erro ao salvar redirecionamento para o carrinho:', error);
                                     }
                                     
-                                    toast.success('É necessário fazer login para finalizar a compra');
-                                    router.push('/auth/login');
+                                    // Verificar novamente o estado de autenticação antes de mostrar o toast
+                                    const storedAuth = localStorage.getItem('isAuthenticated') === 'true';
+                                    if (!storedAuth) {
+                                      toast.success('É necessário fazer login para adicionar ao carrinho');
+                                      router.push('/auth/login');
+                                    } else {
+                                      // Se estiver autenticado no localStorage, atualizar o estado
+                                      await checkAuth();
+                                      const addedToCart = await handleAddToCart();
+                                      
+                                      if (addedToCart === true) {
+                                        router.push('/cart');
+                                      }
+                                    }
                                     return;
                                   }
                                   

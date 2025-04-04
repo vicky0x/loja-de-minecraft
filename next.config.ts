@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
     ],
     unoptimized: true, // Para facilitar o uso com as imagens da API
   },
+  // Definir porta fixa
+  serverRuntimeConfig: {
+    port: 3000
+  },
 };
 
 export default nextConfig;

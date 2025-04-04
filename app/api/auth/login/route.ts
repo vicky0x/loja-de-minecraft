@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
       const response = NextResponse.json(
         { 
           success: true, 
-          user: userData 
+          user: userData,
+          token: token
         },
         { 
           status: 200,

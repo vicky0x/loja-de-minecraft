@@ -98,6 +98,7 @@ export default function ProductsPage() {
       setLoading(true);
       setError(null);
       
+      console.log('fetchProducts: Iniciando busca de produtos');
       const response = await fetch('/api/user/products');
       
       if (!response.ok) {
@@ -106,9 +107,34 @@ export default function ProductsPage() {
       }
       
       const data = await response.json();
-      setProducts(data.products || []);
+      
+      // Verificar e filtrar produtos com valores nulos ou indefinidos
+      const validProducts = (data.products || []).filter(product => {
+        // Verificar se o produto existe e tem propriedades necessárias
+        if (!product || typeof product !== 'object') {
+          console.warn('Produto inválido encontrado:', product);
+          return false;
+        }
+        
+        // Verificar se o produto tem _id e outras propriedades essenciais
+        if (!product._id) {
+          console.warn('Produto sem ID encontrado:', product);
+          return false;
+        }
+        
+        // Garantir que a propriedade variant exista
+        if (!product.variant) {
+          console.warn('Produto sem variante encontrado:', product._id);
+          product.variant = { _id: 'default', name: 'Padrão' };
+        }
+        
+        return true;
+      });
+      
+      console.log(`fetchProducts: ${validProducts.length} produtos válidos encontrados`);
+      setProducts(validProducts);
     } catch (err) {
-      console.error('Erro ao buscar produtos:', err);
+      console.error('Erro ao buscar produtos do usuário:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar produtos');
       setProducts([]); // Definir como array vazio para evitar erros
     } finally {

@@ -3,26 +3,17 @@ import { checkAuth } from '@/app/lib/auth';
 import connectDB from '@/app/lib/db/mongodb';
 import { cookies } from 'next/headers';
 
+// Cache em memória para reduzir consultas frequentes (5 minutos de validade)
+const userCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
 // Função para recuperar informações do usuário atual
 export async function GET(request: NextRequest) {
   try {
-    console.log('---- API /auth/me REQUEST ----');
-    
-    // Log dos cookies disponíveis
-    const cookieHeader = request.headers.get('cookie') || '';
-    console.log('Cookies na requisição:', cookieHeader.replace(/;/g, ', '));
-    
-    // Conectar ao banco de dados
-    await connectDB();
-    
     // Verificar autenticação
     const authResult = await checkAuth(request);
-    console.log('Resultado da verificação de autenticação:', 
-      authResult.isAuthenticated ? 'Autenticado' : 'Não autenticado',
-      authResult.user ? `(${authResult.user.username})` : '');
     
     if (!authResult.isAuthenticated || !authResult.user) {
-      console.log('Tentativa de acesso /api/auth/me sem autenticação');
       return NextResponse.json(
         { message: 'Não autenticado' },
         { status: 401 }
@@ -30,14 +21,28 @@ export async function GET(request: NextRequest) {
     }
     
     const user = authResult.user;
+    const userId = user._id.toString();
     
-    // Buscar informações adicionais do usuário diretamente do banco de dados
-    // para garantir que todos os campos estejam disponíveis
+    // Verificar cache primeiro
+    const now = Date.now();
+    const cachedUser = userCache.get(userId);
+    if (cachedUser && (now - cachedUser.timestamp) < CACHE_TTL) {
+      // Retornar dados do cache se existirem e não estiverem expirados
+      return NextResponse.json({ user: cachedUser.data }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }
+      });
+    }
+    
+    // Se não estiver em cache, buscar do banco de dados
+    await connectDB();
     const User = (await import('@/app/lib/models/user')).default;
-    const userFromDB = await User.findById(user._id);
+    const userFromDB = await User.findById(userId);
     
     if (!userFromDB) {
-      console.log('Usuário não encontrado no banco de dados:', user._id);
       return NextResponse.json(
         { message: 'Usuário não encontrado' },
         { status: 404 }
@@ -46,7 +51,7 @@ export async function GET(request: NextRequest) {
     
     // Dados do usuário para retornar (removendo dados sensíveis)
     const userData = {
-      id: user._id.toString(),
+      id: userId,
       username: user.username,
       email: user.email,
       name: user.name || '',
@@ -60,26 +65,21 @@ export async function GET(request: NextRequest) {
       phone: userFromDB.phone || '',
     };
     
-    console.log('Enviando dados do usuário:', {
-      ...userData,
-      memberNumber: userData.memberNumber || 'não definido',
-      createdAt: userData.createdAt || 'não definido'
-    });
+    // Atualizar cache
+    userCache.set(userId, { data: userData, timestamp: now });
     
     // Definir cabeçalhos para evitar cache
-    const response = NextResponse.json({ user: userData }, {
+    return NextResponse.json({ user: userData }, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',
       }
     });
-    
-    return response;
   } catch (error) {
     console.error('Erro ao obter dados do usuário:', error);
     return NextResponse.json(
-      { message: 'Erro ao obter dados do usuário', error: error instanceof Error ? error.message : String(error) },
+      { message: 'Erro ao obter dados do usuário' },
       { status: 500 }
     );
   }
@@ -88,8 +88,6 @@ export async function GET(request: NextRequest) {
 // Método para logout (remover a sessão)
 export async function DELETE() {
   try {
-    console.log('API ME: Processando logout via DELETE...');
-    
     // Limpar todos os cookies relevantes
     const cookieStore = await cookies();
     cookieStore.delete('auth_token');
@@ -99,11 +97,9 @@ export async function DELETE() {
     cookieStore.delete('userEmail');
     cookieStore.delete('userRole');
     
-    console.log('API ME: Cookies limpos com sucesso');
-    
     return NextResponse.json({ success: true, message: 'Logout realizado com sucesso' });
   } catch (error) {
-    console.error('API ME: Erro ao processar logout:', error);
+    console.error('Erro ao processar logout:', error);
     return NextResponse.json(
       { success: false, message: 'Erro ao processar logout' },
       { status: 500 }
