@@ -252,10 +252,7 @@ export default function Dashboard() {
                 }));
               }
             })
-            .catch(error => {
-              console.error('Erro ao processar produtos:', error);
-              setState(prev => ({ ...prev, products: [] }));
-            });
+            .catch(error => console.error('Erro ao processar dados de produtos:', error));
           
           // Carregar pedidos recentes com tratamento de erros
           fetch('/api/user/orders?limit=5')
@@ -299,73 +296,123 @@ export default function Dashboard() {
               setState(prev => ({ ...prev, recentOrders: [] }));
             });
           
-        } catch (dataError) {
-          console.error('Erro ao carregar dados do dashboard:', dataError);
-          setState(prev => ({ 
-            ...prev, 
-            error: 'Ocorreu um erro ao carregar os dados do dashboard.' 
-          }));
+        } catch (error) {
+          console.error('Erro ao carregar dados iniciais:', error);
         }
-      } catch (e) {
-        console.error('Erro geral no carregamento do dashboard:', e);
-      } finally {
-        // Finalizar carregamento após um tempo mínimo
-        setTimeout(() => {
-          setState(prev => ({ ...prev, isLoading: false }));
-        }, 800);
+        
+        setState(prev => ({ ...prev, isLoading: false }));
+        
+      } catch (error) {
+        console.error('Erro ao carregar dashboard:', error);
+        setState(prev => ({ 
+          ...prev, 
+          error: error instanceof Error ? error.message : 'Erro desconhecido ao carregar dados',
+          isLoading: false 
+        }));
       }
     };
-
-    loadDashboard();
     
-    return () => {
-      // Limpeza ao desmontar
-    };
-  }, [shouldLoadData, router]);
+    loadDashboard();
+  }, [shouldLoadData]);
 
-  // Renderizar o dashboard independente de erros de autenticação
-  if (!state.mounted) {
-    return <div className="min-h-screen flex flex-col items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-      <span className="text-lg text-gray-300">Carregando...</span>
-    </div>;
+  if (state.isLoading) {
+    return (
+      <div className="min-h-[300px] flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+        <p className="text-gray-400">Carregando seu dashboard...</p>
+      </div>
+    );
+  }
+  
+  if (state.error) {
+    return <ErrorDisplay message={state.error} />;
   }
 
+  // Formato valores monetários
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  // Formatar data
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('pt-BR');
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   return (
-    <div className="p-6">
-      {state.isLoading ? (
-        <div className="min-h-[80vh] flex flex-col items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-          <span className="text-lg text-gray-300">Carregando dashboard...</span>
+    <div className="space-y-8">
+      {/* Cabeçalho da página */}
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div className="flex items-center space-x-2">
+          <span className="text-gray-400">Bem-vindo, </span>
+          <span className="font-medium">{state.userInfo?.username || 'Usuário'}</span>
         </div>
-      ) : (
-        <>
-          <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-          
-          {state.error && (
-            <div className="mb-6 p-4 bg-red-900/30 border border-red-800 rounded-lg text-red-400">
-              {state.error}
-            </div>
-          )}
-          
-          <DashboardStats 
-            stats={state.stats}
-            isLoading={false}
-          />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-            <div className="lg:col-span-2">
-              <h2 className="text-xl font-semibold mb-4">Meus Produtos</h2>
-              <ProductGrid products={state.products} isLoading={false} />
-            </div>
-            
+      </div>
+
+      {/* Cards de estatísticas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {/* Card 1: Produtos */}
+        <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
+          <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-xl font-semibold mb-4">Meus Pedidos</h2>
-              <PendingTable orders={state.recentOrders} isLoading={false} />
+              <h3 className="text-gray-400 text-sm">Seus Produtos</h3>
+              <p className="text-2xl font-bold mt-1">{state.stats.totalProducts}</p>
+              <p className="text-xs mt-2 text-gray-400">Produtos na sua conta</p>
+            </div>
+            <div className="p-3 bg-primary/10 text-primary rounded-lg">
+              <FiShoppingBag className="w-6 h-6 md:w-8 md:h-8" />
             </div>
           </div>
-        </>
-      )}
+        </div>
+        
+        {/* Card 2: Pedidos */}
+        <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-gray-400 text-sm">Pedidos Pendentes</h3>
+              <p className="text-2xl font-bold mt-1">{state.stats.pendingOrders}</p>
+              <p className="text-xs mt-2 text-gray-400">Pedidos aguardando processamento</p>
+            </div>
+            <div className="p-3 bg-yellow-500/10 text-yellow-500 rounded-lg">
+              <FiPackage className="w-6 h-6 md:w-8 md:h-8" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Card 3: Faturamento */}
+        <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-gray-400 text-sm">Faturamento Total</h3>
+              <p className="text-2xl font-bold mt-1">{formatCurrency(state.stats.revenue)}</p>
+              <p className="text-xs mt-2 text-gray-400">Valor total de pedidos processados</p>
+            </div>
+            <div className="p-3 bg-green-500/10 text-green-500 rounded-lg">
+              <FiDollarSign className="w-6 h-6 md:w-8 md:h-8" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <div className="lg:col-span-2">
+          <h2 className="text-xl font-semibold mb-4">Meus Produtos</h2>
+          <ProductGrid products={state.products} isLoading={false} />
+        </div>
+        
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Meus Pedidos</h2>
+          <PendingTable orders={state.recentOrders} isLoading={false} />
+        </div>
+      </div>
     </div>
   );
 } 

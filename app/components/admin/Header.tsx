@@ -66,7 +66,7 @@ const Header = () => {
   };
   
   return (
-    <header className="bg-dark-300 border-b border-dark-400">
+    <header className="bg-dark-300 border-b border-dark-400 fixed top-0 left-0 right-0 z-20">
       <div className="px-4 py-3 flex justify-between items-center">
         {/* Botão do menu mobile */}
         <button
@@ -95,7 +95,7 @@ const Header = () => {
         </h1>
 
         {/* Perfil e ações */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-4">
           <Link 
             href="/admin/profile" 
             className="p-2 text-gray-300 hover:text-white transition-colors"

@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiLoader } from 'react-icons/fi';
-import { use } from 'react';
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { id } = use(params);
+  const { id } = params;
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

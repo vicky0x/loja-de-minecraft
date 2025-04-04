@@ -5,6 +5,7 @@ import Sidebar from '@/app/components/admin/Sidebar';
 import Header from '@/app/components/admin/Header';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/lib/auth/session';
+import Image from 'next/image';
 
 // Componente de Layout do Admin
 export default function AdminLayout({
@@ -76,11 +77,11 @@ export default function AdminLayout({
   
   if (hasAdminPermission) {
     return (
-      <div className="flex h-screen bg-dark-100">
+      <div className="flex min-h-screen bg-dark-100 text-white">
         <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 transition-all duration-300 pl-0 md:pl-56">
           <Header />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-dark-100 p-4 md:p-6">
+          <main className="p-4 md:p-6 pt-24 md:pt-28 max-w-[1200px] mx-auto">
             {children}
           </main>
         </div>
@@ -90,10 +91,21 @@ export default function AdminLayout({
 
   // Estado de carregamento enquanto decide se redireciona
   return (
-    <div className="flex items-center justify-center min-h-screen bg-dark-100">
-      <div className="flex flex-col items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        <p className="mt-4 text-gray-400">Verificando permissões...</p>
+    <div className="flex min-h-screen bg-dark-100 text-white items-center justify-center">
+      <div className="w-full max-w-md p-8 space-y-8 bg-dark-200 rounded-lg shadow-lg">
+        <div className="text-center">
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/assets/img/logo-fullbody.png"
+              alt="Logo"
+              width={80}
+              height={80}
+              className="animate-pulse"
+            />
+          </div>
+          <h2 className="text-2xl font-bold">Carregando painel administrativo...</h2>
+          <p className="mt-2 text-gray-400">Verificando suas credenciais</p>
+        </div>
       </div>
     </div>
   );

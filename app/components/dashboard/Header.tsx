@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { FiMenu, FiX, FiBell, FiUser, FiChevronDown } from 'react-icons/fi';
+import { FiMenu, FiX, FiUser, FiChevronDown } from 'react-icons/fi';
+import { useAuth } from '@/app/contexts/AuthContext';
 
 // Nome das páginas por rota - definido fora do componente
 const PAGE_TITLES: Record<string, string> = {
@@ -20,6 +21,7 @@ const Header: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
+  const { user } = useAuth();
 
   // Determinar o título da página com base na rota atual
   const pageTitle = PAGE_TITLES[pathname] || 'Dashboard';
@@ -82,15 +84,7 @@ const Header: React.FC = () => {
           </button>
           
           <Link href="/dashboard" className="flex items-center">
-            <Image
-              src="/logo.png"
-              alt="Fantasy Cheats"
-              width={40}
-              height={40}
-              className="mr-2"
-              priority
-            />
-            <span className="text-xl font-bold hidden md:inline">Fantasy</span>
+            <span className="text-xl font-bold">Fantasy</span>
           </Link>
         </div>
 
@@ -98,15 +92,7 @@ const Header: React.FC = () => {
         <div className="hidden lg:block text-xl font-bold">{pageTitle}</div>
 
         {/* Menu de usuário */}
-        <div className="flex items-center space-x-4">
-          <button
-            className="p-2 text-gray-400 hover:text-white relative"
-            aria-label="Notificações"
-          >
-            <FiBell size={22} />
-            <span className="absolute top-1 right-1 h-2 w-2 bg-primary rounded-full"></span>
-          </button>
-
+        <div className="flex items-center">
           <div className="relative">
             <button
               id="user-menu-button"
@@ -115,10 +101,22 @@ const Header: React.FC = () => {
               aria-expanded={showUserMenu}
               aria-haspopup="true"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
-                <FiUser size={16} className="text-primary" />
-              </div>
-              <span className="hidden md:block">Usuário</span>
+              {user?.profileImage ? (
+                <div className="w-10 h-10 rounded-full overflow-hidden mr-2">
+                  <Image
+                    src={user.profileImage}
+                    alt="Perfil"
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mr-2">
+                  <FiUser size={20} className="text-primary" />
+                </div>
+              )}
+              <span className="hidden md:block">{user?.username || 'Usuário'}</span>
               <FiChevronDown className="ml-1" />
             </button>
 

@@ -439,9 +439,9 @@ export default function AdminDashboard() {
       )}
 
       {/* Métricas principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {/* Total de Usuários */}
-        <div className="bg-dark-200 rounded-lg p-6 shadow-md">
+        <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Total de Usuários</p>
@@ -455,13 +455,13 @@ export default function AdminDashboard() {
               <p className="text-xs mt-2 text-gray-400">Usuários registrados no sistema</p>
             </div>
             <div className="p-3 bg-blue-900/30 text-blue-400 rounded-lg">
-              <FiUsers className="w-8 h-8" />
+              <FiUsers className="w-6 h-6 md:w-8 md:h-8" />
             </div>
           </div>
         </div>
 
         {/* Vendas do Dia */}
-        <div className="bg-dark-200 rounded-lg p-6 shadow-md">
+        <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Vendas do Dia</p>
@@ -478,13 +478,13 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="p-3 bg-green-900/30 text-green-400 rounded-lg">
-              <FiDollarSign className="w-8 h-8" />
+              <FiDollarSign className="w-6 h-6 md:w-8 md:h-8" />
             </div>
           </div>
         </div>
 
         {/* Faturamento Mensal */}
-        <div className="bg-dark-200 rounded-lg p-6 shadow-md">
+        <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Faturamento Mensal</p>
@@ -501,13 +501,13 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="p-3 bg-purple-900/30 text-purple-400 rounded-lg">
-              <FiBarChart2 className="w-8 h-8" />
+              <FiBarChart2 className="w-6 h-6 md:w-8 md:h-8" />
             </div>
           </div>
         </div>
 
         {/* Taxa de Conversão */}
-        <div className="bg-dark-200 rounded-lg p-6 shadow-md">
+        <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-400 text-sm">Taxa de Conversão</p>
@@ -524,20 +524,20 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="p-3 bg-yellow-900/30 text-yellow-400 rounded-lg">
-              <FiPercent className="w-8 h-8" />
+              <FiPercent className="w-6 h-6 md:w-8 md:h-8" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Resumo de faturamento */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
         {/* Faturamento por período */}
         <div className="lg:col-span-2 bg-dark-200 rounded-lg shadow-md">
-          <div className="p-6 border-b border-dark-300">
+          <div className="p-4 md:p-6 border-b border-dark-300">
             <h3 className="text-lg font-bold">Resumo de Faturamento</h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {statsLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3, 4].map(i => (
@@ -615,13 +615,13 @@ export default function AdminDashboard() {
 
         {/* Top Produtos */}
         <div className="lg:col-span-2 bg-dark-200 rounded-lg shadow-md">
-          <div className="p-6 border-b border-dark-300 flex justify-between items-center">
+          <div className="p-4 md:p-6 border-b border-dark-300 flex justify-between items-center">
             <h3 className="text-lg font-bold">Top Produtos</h3>
             <Link href="/admin/products" className="text-primary hover:underline text-sm">
               Ver todos
             </Link>
           </div>
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {statsLoading ? (
               <div className="space-y-6">
                 {[1, 2, 3].map(i => (
@@ -677,13 +677,13 @@ export default function AdminDashboard() {
 
       {/* Pedidos recentes */}
       <div className="bg-dark-200 rounded-lg shadow-md">
-        <div className="p-6 border-b border-dark-300 flex justify-between items-center">
+        <div className="p-4 md:p-6 border-b border-dark-300 flex justify-between items-center">
           <h3 className="text-lg font-bold">Pedidos Recentes</h3>
           <Link href="/admin/orders" className="text-primary hover:underline text-sm">
             Ver todos
           </Link>
         </div>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {ordersLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
@@ -698,22 +698,22 @@ export default function AdminDashboard() {
               Nenhum pedido encontrado.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto -mx-4 md:mx-0">
+              <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="text-left text-gray-400 text-sm">
-                    <th className="pb-3 font-medium">ID</th>
+                    <th className="pb-3 pl-4 md:pl-0 font-medium">ID</th>
                     <th className="pb-3 font-medium">Usuário</th>
                     <th className="pb-3 font-medium">Data</th>
                     <th className="pb-3 font-medium">Valor</th>
                     <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Ações</th>
+                    <th className="pb-3 pr-4 md:pr-0 font-medium">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dark-300">
                   {recentOrders.map((order) => (
                     <tr key={order._id} className="hover:bg-dark-300">
-                      <td className="py-3 pr-4">
+                      <td className="py-3 pr-4 pl-4 md:pl-0">
                         <span 
                           className="font-mono text-xs cursor-help" 
                           title={`ID completo: ${order._id}`}
@@ -745,7 +745,7 @@ export default function AdminDashboard() {
                           {translateStatus(order.paymentInfo?.status)}
                         </span>
                       </td>
-                      <td className="py-3">
+                      <td className="py-3 pr-4 md:pr-0">
                         <Link 
                           href={`/admin/orders/${order._id}`} 
                           className="px-3 py-1 bg-primary/20 text-primary hover:bg-primary/30 transition-colors rounded-md text-sm"

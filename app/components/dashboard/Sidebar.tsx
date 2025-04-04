@@ -103,19 +103,27 @@ const Sidebar = () => {
       
       {/* Sidebar principal */}
       <aside
-        className={`fixed left-0 h-auto z-20 transition-all duration-300 shadow-lg 
-          bg-dark-200 lg:top-[160px] top-[120px] 
-          max-h-[calc(100vh-180px)] lg:max-h-[calc(100vh-220px)] 
-          overflow-hidden rounded-lg mx-4
+        className={`fixed left-0 top-16 bottom-0 z-10 transition-all duration-300 shadow-lg 
+          bg-dark-200/95 border-r border-dark-300
+          overflow-y-auto
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           ${isCollapsed ? 'w-16' : 'w-56'} md:translate-x-0`}
       >
         <div className="flex flex-col h-full">
+          {/* Logo para mobile (apenas visível quando não colapsado) */}
+          {!isCollapsed && (
+            <div className="flex items-center px-4 py-3 border-b border-dark-300 md:hidden">
+              <Link href="/dashboard" className="flex items-center" onClick={() => setIsSidebarOpen(false)}>
+                <span className="text-lg font-bold text-white">Fantasy</span>
+              </Link>
+            </div>
+          )}
+          
           {/* Botão de colapso */}
-          <div className="flex justify-end py-2 px-2 md:block hidden">
+          <div className="sticky top-0 flex justify-end pt-3 px-3 md:block hidden bg-dark-200 z-10">
             <button 
               onClick={toggleCollapse}
-              className="p-1 rounded-md bg-dark-300 text-gray-400 hover:text-white hover:bg-dark-400 transition-colors"
+              className="p-2 rounded-md bg-dark-300 text-gray-400 hover:text-white hover:bg-dark-400 transition-colors"
               title={isCollapsed ? "Expandir menu" : "Recolher menu"}
               aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"}
             >
@@ -132,8 +140,8 @@ const Sidebar = () => {
           </div>
           
           {/* Menu de navegação */}
-          <nav className="flex-1 overflow-y-auto px-2 py-2 max-h-[calc(100vh-250px)]">
-            <ul className="space-y-1">
+          <nav className="py-4 px-2">
+            <ul className="space-y-2">
               {menuItems.map((item) => (
                 <li key={item.path}>
                   <Link
@@ -142,7 +150,7 @@ const Sidebar = () => {
                       pathname === item.path
                         ? 'bg-primary text-white'
                         : 'text-gray-300 hover:bg-dark-300 hover:text-white'
-                    } ${isCollapsed ? 'justify-center py-2' : 'px-3 py-2'}`}
+                    } ${isCollapsed ? 'justify-center py-3' : 'px-3 py-3'}`}
                     title={isCollapsed ? item.name : ''}
                     onClick={() => {
                       if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -150,8 +158,8 @@ const Sidebar = () => {
                       }
                     }}
                   >
-                    <span className={isCollapsed ? '' : 'mr-3'}>{item.icon}</span>
-                    {!isCollapsed && <span className="text-sm">{item.name}</span>}
+                    <span className={`text-lg ${isCollapsed ? '' : 'mr-3'}`}>{item.icon}</span>
+                    {!isCollapsed && <span className="text-sm font-medium">{item.name}</span>}
                   </Link>
                 </li>
               ))}
@@ -159,16 +167,18 @@ const Sidebar = () => {
           </nav>
           
           {/* Botão de logout */}
-          <div className="p-2 border-t border-dark-400">
+          <div className="sticky bottom-0 p-3 border-t border-dark-400 bg-dark-200">
             <button
               onClick={handleLogout}
               className={`flex items-center rounded-md transition-colors text-gray-300 hover:bg-dark-300 hover:text-white ${
-                isCollapsed ? 'justify-center w-full py-2' : 'px-3 py-2 w-full'
+                isCollapsed ? 'justify-center w-full py-3' : 'px-3 py-3 w-full'
               }`}
               title={isCollapsed ? 'Sair' : ''}
             >
-              <FiLogOut size={20} className={isCollapsed ? '' : 'mr-3'} />
-              {!isCollapsed && <span className="text-sm">Sair</span>}
+              <span className={`text-lg ${isCollapsed ? '' : 'mr-3'}`}>
+                <FiLogOut size={20} />
+              </span>
+              {!isCollapsed && <span className="text-sm font-medium">Sair</span>}
             </button>
           </div>
         </div>
