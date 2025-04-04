@@ -98,18 +98,46 @@ export async function GET(request: NextRequest) {
     const formattedProducts = stockItems
       .filter(item => item.product !== null && item.product !== undefined) // Filtrar itens com produto nulo
       .map(item => ({
-        id: item._id.toString(),
+        _id: item._id.toString(),
         productId: item.product._id.toString(),
         name: item.product.name,
         slug: item.product.slug,
-        status: item.product.status,
+        status: mapStatusToPortuguese(item.product.status), // Converter para formato visível
         image: item.product.images && item.product.images.length > 0 
           ? item.product.images[0]
           : null,
         shortDescription: item.product.shortDescription,
-        variants: item.product.variants,
-        assignedAt: item.assignedAt
+        assignedAt: item.assignedAt,
+        code: item.code,
+        variant: {
+          _id: item.variant || 'default',
+          name: getVariantName(item.product, item.variant)
+        }
       }));
+    
+    // Função auxiliar para mapear status para português
+    function mapStatusToPortuguese(status) {
+      switch(status) {
+        case 'indetectavel': return 'Ativo';
+        case 'detectavel': return 'Detectável';
+        case 'manutencao': return 'Em Manutenção';
+        case 'beta': return 'Beta';
+        default: return status;
+      }
+    }
+    
+    // Função auxiliar para obter o nome da variante
+    function getVariantName(product, variantId) {
+      if (!variantId || variantId === 'default') return 'Padrão';
+      
+      // Tentar encontrar a variante pelo ID
+      if (product.variants && Array.isArray(product.variants)) {
+        const variant = product.variants.find(v => v._id.toString() === variantId);
+        if (variant) return variant.name;
+      }
+      
+      return 'Padrão';
+    }
     
     // Dados para retornar
     const responseData = { 

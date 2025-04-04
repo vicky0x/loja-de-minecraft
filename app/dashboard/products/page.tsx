@@ -33,29 +33,6 @@ interface ProductItem {
   };
 }
 
-// Função vazia para evitar erros com fetchAssignments
-// Exportando para que possa ser usada por outros módulos que tentam importá-la
-export const fetchAssignments = async (page: number = 1): Promise<void> => {
-  try {
-    console.warn('fetchAssignments foi chamado, mas está desativado para prevenir erros. Página:', page);
-    return Promise.resolve();
-  } catch (error) {
-    console.error('Erro em fetchAssignments:', error);
-    return Promise.resolve();
-  }
-};
-
-// Exportado como objeto para garantir compatibilidade com diferentes formas de importação
-export const Assignments = {
-  fetchAssignments
-};
-
-// Atribuir à window para garantir que está disponível globalmente
-if (typeof window !== 'undefined') {
-  // @ts-ignore
-  window.fetchAssignments = fetchAssignments;
-}
-
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,20 +41,8 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // Evitar que o fetchAssignments cause erro
-    try {
-      fetchProducts();
-      // Garantir que fetchAssignments não cause erros
-      try {
-        fetchAssignments(1);
-      } catch (assignError) {
-        console.error('Erro ao executar fetchAssignments:', assignError);
-      }
-    } catch (err) {
-      console.error('Erro ao inicializar página de produtos:', err);
-      setError('Ocorreu um erro ao carregar a página. Por favor, tente novamente.');
-      setLoading(false);
-    }
+    // Buscar produtos quando o componente montar
+    fetchProducts();
   }, []);
 
   useEffect(() => {
@@ -108,8 +73,13 @@ export default function ProductsPage() {
       
       const data = await response.json();
       
+      if (!data.success || !data.products || !Array.isArray(data.products)) {
+        console.warn('Resposta da API de produtos inválida:', data);
+        throw new Error('Dados de produtos inválidos');
+      }
+      
       // Verificar e filtrar produtos com valores nulos ou indefinidos
-      const validProducts = (data.products || []).filter(product => {
+      const validProducts = data.products.filter(product => {
         // Verificar se o produto existe e tem propriedades necessárias
         if (!product || typeof product !== 'object') {
           console.warn('Produto inválido encontrado:', product);
@@ -248,54 +218,77 @@ export default function ProductsPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-gray-400">Você ainda não possui produtos adquiridos</p>
-            <Link href="/products" className="text-primary hover:text-primary/80 inline-block mt-2">
-              Ver produtos disponíveis
-            </Link>
+          <div className="p-8 text-center">
+            <div className="mb-4">
+              <FiPackage className="w-12 h-12 mx-auto text-gray-400" />
+            </div>
+            {searchTerm.trim() !== '' ? (
+              <div>
+                <h3 className="text-lg font-medium mb-2">Nenhum produto encontrado</h3>
+                <p className="text-gray-400">
+                  Não encontramos produtos correspondentes à sua busca. Tente outros termos.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-lg font-medium mb-2">Você ainda não possui produtos</h3>
+                <p className="text-gray-400">
+                  Todos os produtos que você adquirir aparecerão aqui.
+                </p>
+                <Link href="/products" className="inline-flex items-center mt-4 px-4 py-2 bg-primary rounded-md">
+                  <span>Explorar Produtos</span>
+                  <FiChevronRight className="ml-1" />
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
-            {filteredProducts.map((product, index) => (
-              <div 
-                key={product._id} 
-                className="bg-gradient-to-b from-dark-300/90 to-dark-200 rounded-xl overflow-hidden shadow-md transition-all duration-400 hover:shadow-xl hover:shadow-dark-400/30 product-card"
-                style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: 'forwards' }}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+            {filteredProducts.map((product) => (
+              <div
+                key={product._id}
+                className="bg-dark-300 rounded-lg overflow-hidden flex flex-col border border-dark-400 hover:border-primary transition-colors duration-200"
               >
-                <div className="relative h-48">
+                <div className="relative aspect-video">
                   {product.image ? (
                     <Image
                       src={product.image}
                       alt={product.name}
                       fill
-                      className="object-cover w-full transition-all duration-500"
-                      style={{ objectPosition: 'center' }}
-                      unoptimized={true}
-                      priority={index < 6}
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-dark-400 flex items-center justify-center">
+                    <div className="w-full h-full bg-dark-400 flex justify-center items-center">
                       <FiPackage className="text-4xl text-gray-500" />
                     </div>
                   )}
+                  <div className="absolute top-2 right-2">
+                    {getStatusBadge(product.status)}
+                  </div>
                 </div>
                 
-                <div className="p-5 flex flex-col justify-between h-40">
-                  <h3 className="text-white font-medium text-base mb-3">{product.name}</h3>
-                  <div>
-                    <div className="text-gray-400 text-sm mb-2">{product.variant.name}</div>
-                    <Link 
-                      href={`/dashboard/products/${product._id}`} 
-                      className="block mt-3 w-full"
-                    >
-                      <button 
-                        className="product-card-button w-full py-2.5 px-4 rounded-lg text-center font-medium transition-all duration-300 relative overflow-hidden bg-primary text-white hover:bg-primary-dark"
-                      >
-                        <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">Ver Detalhes</span>
-                        <span className="btn-underline absolute bottom-0 left-1/2 right-1/2 h-[1px] bg-white/20 group-hover:left-4 group-hover:right-4 transition-all duration-500"></span>
-                      </button>
-                    </Link>
+                <div className="p-4 flex-grow flex flex-col">
+                  <h3 className="text-lg font-medium mb-1">{product.name}</h3>
+                  <p className="text-sm text-gray-400 mb-2">
+                    {product.variant.name}
+                  </p>
+                  
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="text-xs text-gray-400">
+                      <span>Adquirido em: </span>
+                      <span>{formatDate(product.assignedAt)}</span>
+                    </div>
                   </div>
+                </div>
+                
+                <div className="bg-dark-400 p-3 flex justify-end items-center">
+                  <Link 
+                    href={`/dashboard/products/${product._id}`} 
+                    className="inline-flex items-center text-primary hover:text-primary-light"
+                  >
+                    <span className="text-sm">Ver detalhes</span>
+                    <FiChevronRight className="ml-1" />
+                  </Link>
                 </div>
               </div>
             ))}
