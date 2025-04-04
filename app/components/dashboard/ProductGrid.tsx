@@ -51,7 +51,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     return (
       <div className="bg-dark-200 rounded-lg p-6 text-center">
         <FiPackage className="mx-auto text-3xl mb-2 text-primary/50" />
-        <p className="text-gray-400">Nenhum produto encontrado</p>
+        <p className="text-gray-400">Você ainda não comprou nenhum produto</p>
       </div>
     );
   }

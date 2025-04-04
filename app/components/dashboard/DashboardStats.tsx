@@ -35,21 +35,21 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
 
   const statCards = [
     {
-      title: 'Total de Produtos',
+      title: 'Total de Produtos Comprados',
       value: stats.totalProducts || 0,
       icon: <FiPackage className="w-6 h-6 text-blue-500" />,
       bgColor: 'bg-blue-900/30',
       textColor: 'text-blue-400'
     },
     {
-      title: 'Pedidos Pendentes',
+      title: 'Pedidos Feitos',
       value: stats.pendingOrders || 0,
       icon: <FiClock className="w-6 h-6 text-amber-500" />,
       bgColor: 'bg-amber-900/30',
       textColor: 'text-amber-400'
     },
     {
-      title: 'Receita Total',
+      title: 'Valor Total Gasto',
       value: formatCurrency(stats.revenue || 0),
       icon: <FiDollarSign className="w-6 h-6 text-green-500" />,
       bgColor: 'bg-green-900/30',

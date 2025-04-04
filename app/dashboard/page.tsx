@@ -276,10 +276,8 @@ export default function Dashboard() {
             .then(data => {
               if (data && Array.isArray(data.orders)) {
                 const orders = data.orders;
-                const pendingOrders = orders.filter(
-                  order => order.paymentInfo?.status === 'pending' || 
-                         order.status === 'pending'
-                ).length;
+                // Contar todos os pedidos feitos pelo usuário, não apenas os pendentes
+                const totalOrders = orders.length;
                 
                 const totalRevenue = orders
                   .filter(order => order.paymentInfo?.status === 'paid' || order.status === 'completed')
@@ -290,7 +288,7 @@ export default function Dashboard() {
                   recentOrders: orders,
                   stats: {
                     ...prev.stats,
-                    pendingOrders,
+                    pendingOrders: totalOrders, // Usar o total de pedidos em vez de apenas pendentes
                     revenue: totalRevenue
                   }
                 }));
@@ -327,16 +325,18 @@ export default function Dashboard() {
 
   // Renderizar o dashboard independente de erros de autenticação
   if (!state.mounted) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <span className="animate-pulse">Carregando...</span>
+    return <div className="min-h-screen flex flex-col items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+      <span className="text-lg text-gray-300">Carregando...</span>
     </div>;
   }
 
   return (
     <div className="p-6">
       {state.isLoading ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <span className="animate-pulse">Carregando dashboard...</span>
+        <div className="min-h-[80vh] flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+          <span className="text-lg text-gray-300">Carregando dashboard...</span>
         </div>
       ) : (
         <>
@@ -355,12 +355,12 @@ export default function Dashboard() {
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
             <div className="lg:col-span-2">
-              <h2 className="text-xl font-semibold mb-4">Produtos Populares</h2>
+              <h2 className="text-xl font-semibold mb-4">Meus Produtos</h2>
               <ProductGrid products={state.products} isLoading={false} />
             </div>
             
             <div>
-              <h2 className="text-xl font-semibold mb-4">Pedidos Recentes</h2>
+              <h2 className="text-xl font-semibold mb-4">Meus Pedidos</h2>
               <PendingTable orders={state.recentOrders} isLoading={false} />
             </div>
           </div>

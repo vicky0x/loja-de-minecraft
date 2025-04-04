@@ -100,7 +100,7 @@ export const PendingTable: React.FC<PendingTableProps> = ({
     return (
       <div className="bg-dark-200 rounded-lg p-6 text-center">
         <FiClock className="mx-auto text-3xl mb-2 text-primary/50" />
-        <p className="text-gray-400">Nenhum pedido recente</p>
+        <p className="text-gray-400">Você ainda não fez nenhum pedido</p>
       </div>
     );
   }
@@ -108,7 +108,7 @@ export const PendingTable: React.FC<PendingTableProps> = ({
   return (
     <div className="bg-dark-200 rounded-lg shadow">
       <div className="p-4 border-b border-dark-300">
-        <h3 className="font-medium">Pedidos Recentes</h3>
+        <h3 className="font-medium">Meus Pedidos</h3>
       </div>
       <div className="divide-y divide-dark-300">
         {orders.map((order) => (
