@@ -10,6 +10,7 @@ import VariantStockModal from '@/app/components/VariantStockModal';
 import { useCart } from '@/app/contexts/CartContext';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
+import { use } from 'react';
 
 interface Variant {
   _id: string;
@@ -44,7 +45,10 @@ interface Product {
 const primaryLight = "#6c63ff";  // Ajuste para a cor primária da sua aplicação
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+  // Usar React.use para desempacotar corretamente o objeto params
+  const resolvedParams = use(params);
+  const { slug } = resolvedParams;
+  
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);

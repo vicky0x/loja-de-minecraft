@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiPlus, FiTrash2, FiUpload, FiX, FiSave, FiLoader, FiShield, FiClock, FiAward, FiSlash } from 'react-icons/fi';
 import RichTextEditor from '@/app/components/RichTextEditor';
+import { use } from 'react';
 
 interface Variant {
   name: string;
@@ -34,7 +35,8 @@ interface ProductData {
 
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { id } = params;
+  const resolvedParams = use(params);
+  const { id } = resolvedParams;
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

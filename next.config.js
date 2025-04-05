@@ -16,6 +16,13 @@ const nextConfig = {
   serverRuntimeConfig: {
     port: 3000
   },
+  // Configuração para limitar os logs apenas a erros
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+    level: 'error'
+  },
 };
 
 module.exports = nextConfig; 
