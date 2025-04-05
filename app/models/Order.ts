@@ -98,7 +98,7 @@ const OrderSchema = new Schema<IOrder>(
     },
     paymentMethod: {
       type: String,
-      enum: ['pix', 'credit_card', 'other'],
+      enum: ['pix', 'credit_card', 'other', 'card'],
       required: true,
     },
     paymentInfo: PaymentInfoSchema,

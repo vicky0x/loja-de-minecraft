@@ -79,9 +79,8 @@ interface UserDetail {
 }
 
 export default function UserDetailPage({ params }: { params: { id: string } }) {
-  // Desempacotar params usando React.use()
-  const unwrappedParams = React.use(params);
-  const userId = unwrappedParams.id;
+  // Não usar React.use() para obter o ID dos parâmetros
+  const userId = params.id;
   
   const router = useRouter();
   const [user, setUser] = useState<UserDetail | null>(null);

@@ -33,7 +33,7 @@ export interface IOrder extends Document {
   user: mongoose.Types.ObjectId;
   orderItems: IOrderItem[];
   totalAmount: number;
-  paymentMethod: 'pix' | 'credit_card';
+  paymentMethod: 'pix' | 'credit_card' | 'card';
   paymentInfo: {
     id?: string;
     status: 'pending' | 'paid' | 'failed' | 'refunded';
@@ -108,7 +108,7 @@ const orderSchema = new Schema<IOrder>(
     },
     paymentMethod: {
       type: String,
-      enum: ['pix', 'credit_card'],
+      enum: ['pix', 'credit_card', 'card'],
       required: true,
     },
     paymentInfo: {

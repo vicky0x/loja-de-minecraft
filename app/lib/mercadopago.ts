@@ -76,6 +76,14 @@ interface PixPaymentResponse {
   expirationDate: Date;
 }
 
+// Interface para o retorno do Checkout Transparente
+interface TransparentCheckoutResponse {
+  id: string;
+  status: string;
+  processUrl: string;
+  externalReference: string;
+}
+
 // Função para limpar propriedade incorreta do objeto de pagamento
 function ensureCorrectPaymentProperties(paymentData: any): any {
   if (!paymentData) return paymentData;
@@ -359,5 +367,100 @@ export async function getMercadoPagoPaymentStatus(paymentId: string): Promise<st
   } catch (error) {
     logger.error(`Erro ao obter status simplificado: ${error}`);
     return 'error';
+  }
+}
+
+// Cria um pagamento com cartão via checkout transparente do Mercado Pago
+export async function createCardCheckout(paymentData: any): Promise<TransparentCheckoutResponse> {
+  try {
+    // Obter o token de acesso
+    const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
+    if (!mpToken) {
+      throw new Error('Token do Mercado Pago não encontrado nas variáveis de ambiente.');
+    }
+    
+    // Extrair dados essenciais
+    const transaction_amount = Number(paymentData.transaction_amount || 0);
+    const description = String(paymentData.description || '');
+    const external_reference = String(paymentData.external_reference || '');
+    
+    // Preparando URL de retorno
+    let baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+    
+    // Garantir que a URL tem protocolo (http ou https)
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    // Garantir que não termina com barra
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
+    // Preparar os dados para o checkout transparente
+    const preferenceRequest = {
+      items: [
+        {
+          id: external_reference,
+          title: description,
+          description: description,
+          quantity: 1,
+          unit_price: transaction_amount,
+          currency_id: 'BRL'
+        }
+      ],
+      payer: {
+        email: paymentData.payer?.email || ''
+      },
+      payment_methods: {
+        excluded_payment_methods: [
+          { id: "bolbradesco" },
+          { id: "pix" }
+        ],
+        excluded_payment_types: [],
+        installments: 12
+      },
+      external_reference: external_reference,
+      auto_return: "approved",
+      back_urls: {
+        success: `${baseUrl}/checkout/success?external_reference=${external_reference}`,
+        failure: `${baseUrl}/checkout/failure?external_reference=${external_reference}`,
+        pending: `${baseUrl}/checkout/pending?external_reference=${external_reference}`
+      },
+      notification_url: `${baseUrl}/webhooks/mercadopago`
+    };
+    
+    logger.info('Criando preferência para checkout transparente do Mercado Pago');
+    logger.info('Dados enviados:', JSON.stringify(preferenceRequest));
+    
+    // Chamar a API do Mercado Pago para criar a preferência
+    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${mpToken}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': randomUUID()
+      },
+      body: JSON.stringify(preferenceRequest)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      logger.error('Erro na chamada à API do MP:', errorData);
+      throw new Error(`Erro ao criar preferência de checkout: ${JSON.stringify(errorData)}`);
+    }
+    
+    const responseData = await response.json();
+    logger.info(`Preferência de checkout criada com sucesso: ${responseData.id}`);
+    
+    return {
+      id: responseData.id,
+      status: 'pending',
+      processUrl: responseData.init_point,
+      externalReference: external_reference
+    };
+  } catch (error) {
+    logger.error('Erro ao criar checkout transparente:', error);
+    throw error;
   }
 } 

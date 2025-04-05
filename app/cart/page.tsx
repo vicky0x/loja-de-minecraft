@@ -430,92 +430,151 @@ export default function CartPage() {
   
   // Função para gerar pagamento PIX
   const generatePixPayment = async (orderId: string): Promise<boolean> => {
+    if (!isMounted.current) return false;
+    
     try {
-      setIsLoading(true);
+      updateStateIfMounted(() => setIsLoading(true));
       
-      // Obter o total do carrinho
-      const totalAmount = cartTotal.toFixed(2);
-      
-      // Limpar o CPF (remover pontos, traços e espaços)
-      const cleanCPF = customerData.cpf.replace(/\D/g, '');
-      
-      // Validação completa do CPF antes de enviar
-      if (cleanCPF.length !== 11) {
-        throw new Error('CPF inválido. Insira um CPF com 11 dígitos.');
-      }
-      
-      // Verificar se tem padrões inválidos (todos os dígitos iguais)
-      if (/^(\d)\1{10}$/.test(cleanCPF)) {
-        throw new Error('CPF inválido. O CPF não pode ter todos os dígitos iguais.');
-      }
-      
-      // Preparar os dados para o pagamento PIX
+      // Preparar dados para enviar à API
       const paymentData = {
         order_id: orderId,
-        transaction_amount: totalAmount,
+        transaction_amount: cartTotal,
         email: customerData.email,
-        cpf: cleanCPF, // Enviando CPF apenas com números
+        cpf: customerData.cpf.replace(/\D/g, ''), // Remover pontos, traços, etc
         first_name: customerData.firstName,
-        last_name: customerData.lastName
+        last_name: customerData.lastName,
+        reference_id: `order_${orderId}`
       };
       
-      // Adicionar telefone apenas se estiver preenchido
-      if (customerData.phone) {
-        // Limpar telefone (remover formatação)
-        const cleanPhone = customerData.phone.replace(/\D/g, '');
-        // @ts-ignore - Adicionar ao objeto de dados
-        paymentData.phone = cleanPhone;
-      }
-      
-      const pixResponse = await fetch('/api/payment/mercadopago', {
+      // Enviar requisição para a API
+      const response = await fetch('/api/payment/mercadopago', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(paymentData),
+        body: JSON.stringify(paymentData)
       });
       
-      if (!pixResponse.ok) {
-        const errorData = await pixResponse.json();
-        throw new Error(errorData.details || errorData.error || 'Erro ao gerar pagamento PIX');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Erro ao gerar pagamento PIX');
       }
       
-      const pixData = await pixResponse.json();
-      console.log('Dados do PIX gerados:', pixData);
+      const pixData = await response.json();
       
-      // Verificar se os dados do PIX estão presentes
-      if (!pixData.pixCopiaECola && !pixData.qrCodeBase64 && !pixData.qrCodeUrl) {
-        console.error('Dados do PIX incompletos:', pixData);
-        throw new Error('Não foi possível gerar o código PIX. Tente novamente.');
+      // Verificar se as informações do PIX estão presentes
+      if (!pixData.qrCodeBase64 || !pixData.pixCopiaECola) {
+        throw new Error('Informações de pagamento PIX incompletas');
       }
-
-      // Dados do PIX que serão utilizados no modal
-      const pixPaymentDataToStore = {
-        orderId: orderId,
-        paymentId: pixData.paymentId,
-        qrCodeBase64: pixData.qrCodeBase64,
-        qrCodeUrl: pixData.qrCodeUrl,
-        pixCopiaECola: pixData.pixCopiaECola,
-        expiresAt: pixData.expiresAt,
-        total: cartTotal // Armazenar o valor total do carrinho
-      };
-
-      // Guardar dados do PIX e abrir modal
-      setPixPaymentData(pixPaymentDataToStore);
-      setIsPixModalOpen(true);
       
-      // Salvar dados no localStorage para persistir entre navegações
-      localStorage.setItem('pixPaymentData', JSON.stringify(pixPaymentDataToStore));
-      localStorage.setItem('createdOrderId', orderId);
+      // Armazenar dados localmente para recuperação
+      try {
+        localStorage.setItem('createdOrderId', orderId);
+        localStorage.setItem('pixPaymentData', JSON.stringify({
+          orderId,
+          paymentId: pixData.paymentId,
+          pixCopiaECola: pixData.pixCopiaECola,
+          qrCodeBase64: pixData.qrCodeBase64,
+          qrCodeUrl: pixData.qrCodeUrl,
+          expiresAt: pixData.expiresAt,
+          total: cartTotal
+        }));
+      } catch (storageError) {
+        console.error('Erro ao armazenar dados do PIX no localStorage:', storageError);
+      }
+      
+      // Atualizar estado com dados do PIX e abrir modal
+      updateStateIfMounted(() => {
+        setPixPaymentData({
+          orderId,
+          paymentId: pixData.paymentId,
+          pixCopiaECola: pixData.pixCopiaECola,
+          qrCodeBase64: pixData.qrCodeBase64,
+          qrCodeUrl: pixData.qrCodeUrl,
+          expiresAt: pixData.expiresAt,
+          total: cartTotal
+        });
+        setIsPixModalOpen(true);
+        setIsLoading(false);
+      });
       
       return true;
     } catch (error: any) {
-      console.error('Erro ao processar pagamento PIX:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao processar pagamento');
-      toast.error('Erro ao gerar QR Code PIX. Tente novamente.');
+      console.error('Erro ao gerar pagamento PIX:', error);
+      
+      if (isMounted.current) {
+        setError(error instanceof Error ? error.message : 'Erro ao gerar código PIX');
+        setIsLoading(false);
+        toast.error('Não foi possível gerar o pagamento PIX. Tente novamente.');
+      }
+      
       return false;
-    } finally {
-      setIsLoading(false);
+    }
+  };
+  
+  // Função para gerar pagamento com cartão
+  const generateCardPayment = async (orderId: string): Promise<boolean> => {
+    if (!isMounted.current) return false;
+    
+    try {
+      updateStateIfMounted(() => setIsLoading(true));
+      
+      // Preparar dados para enviar à API
+      const paymentData = {
+        order_id: orderId,
+        transaction_amount: cartTotal,
+        email: customerData.email,
+        cpf: customerData.cpf.replace(/\D/g, ''), // Remover pontos, traços, etc
+        first_name: customerData.firstName,
+        last_name: customerData.lastName,
+        reference_id: `order_${orderId}`
+      };
+      
+      // Enviar requisição para a API de pagamento com cartão
+      const response = await fetch('/api/payment/card', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Erro ao gerar pagamento com cartão');
+      }
+      
+      const cardData = await response.json();
+      
+      // Verificar se as informações do checkout estão presentes
+      if (!cardData.checkoutUrl || !cardData.preferenceId) {
+        throw new Error('Informações de pagamento com cartão incompletas');
+      }
+      
+      // Armazenar o ID do pedido no localStorage para recuperação posterior
+      try {
+        localStorage.setItem('createdOrderId', orderId);
+      } catch (storageError) {
+        console.error('Erro ao armazenar ID do pedido no localStorage:', storageError);
+      }
+      
+      // Limpar o carrinho após redirecionamento para checkout
+      clearCart();
+      
+      // Redirecionar para a página de checkout do Mercado Pago
+      window.location.href = cardData.checkoutUrl;
+      
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao gerar pagamento com cartão:', error);
+      
+      if (isMounted.current) {
+        setError(error instanceof Error ? error.message : 'Erro ao processar pagamento com cartão');
+        setIsLoading(false);
+        toast.error('Não foi possível processar o pagamento com cartão. Tente novamente.');
+      }
+      
+      return false;
     }
   };
   
@@ -685,7 +744,7 @@ export default function CartPage() {
       });
       
       // Criar o pedido com o método de pagamento correto
-      const paymentMethodToSend = selectedPaymentMethod === 'card' ? 'credit_card' : selectedPaymentMethod;
+      const paymentMethodToSend = selectedPaymentMethod === 'card' ? 'card' : selectedPaymentMethod;
       const orderId = await createOrder(paymentMethodToSend);
       if (!orderId || !isMounted.current) return;
       
@@ -696,7 +755,7 @@ export default function CartPage() {
       if (selectedPaymentMethod === 'pix') {
         await generatePixPayment(orderId);
       } else if (selectedPaymentMethod === 'card') {
-        toast.error('Pagamento por cartão ainda não implementado');
+        await generateCardPayment(orderId);
       } else {
         toast.error('Método de pagamento não implementado');
       }

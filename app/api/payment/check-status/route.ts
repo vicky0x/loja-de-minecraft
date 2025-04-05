@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectDB from '@/app/lib/db/mongodb';
 import { getPaymentStatus } from '@/app/lib/mercadopago';
+import { getOrderById, updateOrder } from '@/app/lib/orders';
+import logger from '@/app/lib/logger';
 
 // Logger simples
-const logger = {
+const loggerSimple = {
   info: (message: string, ...args: any[]) => console.log(`[API:PAYMENT:CHECK INFO] ${message}`, ...args),
   error: (message: string, ...args: any[]) => console.error(`[API:PAYMENT:CHECK ERROR] ${message}`, ...args),
   warn: (message: string, ...args: any[]) => console.warn(`[API:PAYMENT:CHECK WARN] ${message}`, ...args)
@@ -23,85 +25,70 @@ const PAYMENT_EXPIRATION_TIME = 30 * 60 * 1000;
  */
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-    
-    // Obter todos os pedidos pendentes
-    const connection = mongoose.connection;
-    if (!connection || !connection.db) {
-      throw new Error('Falha na conexão com o banco de dados');
+    const searchParams = request.nextUrl.searchParams;
+    const orderId = searchParams.get('orderId');
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: 'ID do pedido não fornecido' },
+        { status: 400 }
+      );
     }
+
+    logger.info(`Verificando status de pagamento para o pedido ${orderId}`);
+
+    // Buscar o pedido no banco de dados
+    const order = await getOrderById(orderId);
     
-    const db = connection.db;
-    const ordersCollection = db.collection('orders');
-    
-    // Buscar pedidos pendentes
-    const pendingOrders = await ordersCollection.find({
-      $or: [
-        { paymentStatus: 'pending' },
-        { orderStatus: 'pending' },
-        { 'paymentInfo.status': 'pending' }
-      ],
-      'metadata.pixExpiresAt': { $exists: true },
-    }).toArray();
-    
-    logger.info(`Verificando ${pendingOrders.length} pedidos pendentes para expiração`);
-    
-    const now = new Date();
-    const expiredOrders = [];
-    
-    // Verificar e atualizar cada pedido
-    for (const order of pendingOrders) {
-      try {
-        // Verificar se o pagamento expirou
-        const expirationDate = new Date(order.metadata.pixExpiresAt);
-        
-        if (expirationDate < now) {
-          // Atualizar status para "expirado"
-          await ordersCollection.updateOne(
-            { _id: order._id },
-            {
-              $set: {
-                paymentStatus: 'expired',
-                orderStatus: 'canceled',
-                'paymentInfo.status': 'expired',
-                'metadata.expiredAt': now,
-                updatedAt: now
-              },
-              $push: {
-                statusHistory: {
-                  status: 'expired',
-                  changedBy: 'Sistema (Verificação Automática)',
-                  changedAt: now
-                }
-              }
-            }
-          );
-          
-          logger.info(`Pedido ${order._id} marcado como expirado/cancelado`);
-          expiredOrders.push({
-            id: order._id.toString(),
-            expirationDate
-          });
-        }
-      } catch (error) {
-        logger.error(`Erro ao processar expiração do pedido ${order._id}: ${error}`);
-      }
+    if (!order) {
+      logger.warn(`Pedido ${orderId} não encontrado`);
+      return NextResponse.json(
+        { error: 'Pedido não encontrado' },
+        { status: 404 }
+      );
     }
-    
+
+    // Se o pedido já estiver pago, retornar sucesso
+    if (order.paymentStatus === 'paid') {
+      logger.info(`Pedido ${orderId} já está pago`);
+      return NextResponse.json({
+        status: 'success',
+        paymentStatus: 'paid',
+        message: 'Pagamento já confirmado'
+      });
+    }
+
+    // Se não houver ID de pagamento, não é possível verificar
+    if (!order.paymentId) {
+      logger.warn(`Pedido ${orderId} não possui ID de pagamento`);
+      return NextResponse.json({
+        status: 'error',
+        paymentStatus: order.paymentStatus,
+        message: 'Pedido sem informações de pagamento'
+      });
+    }
+
+    // Verificar o status do pagamento no Mercado Pago
+    const paymentStatus = await getPaymentStatus(order.paymentId);
+    logger.info(`Status do pagamento para o pedido ${orderId}: ${paymentStatus}`);
+
+    // Atualizar o status do pedido no banco de dados se o status mudou
+    if (paymentStatus !== order.paymentStatus) {
+      await updateOrder(orderId, { paymentStatus });
+      logger.info(`Status do pedido ${orderId} atualizado para ${paymentStatus}`);
+    }
+
     return NextResponse.json({
-      success: true,
-      processed: pendingOrders.length,
-      expired: expiredOrders.length,
-      orders: expiredOrders
+      status: 'success',
+      paymentStatus,
+      message: 'Status do pagamento verificado com sucesso'
     });
-    
   } catch (error) {
-    logger.error('Erro ao processar verificação de expiração:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: `Erro ao processar: ${error instanceof Error ? error.message : String(error)}`
-    }, { status: 500 });
+    logger.error('Erro ao verificar status do pagamento:', error);
+    return NextResponse.json(
+      { error: 'Erro ao verificar status do pagamento' },
+      { status: 500 }
+    );
   }
 }
 
