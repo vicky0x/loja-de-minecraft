@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Fragment } from 'react';
-import { FiCopy, FiCheck, FiClock, FiAlertCircle, FiX, FiRefreshCw, FiHelpCircle, FiAlertTriangle } from 'react-icons/fi';
+import { FiCopy, FiCheck, FiClock, FiAlertCircle, FiX, FiRefreshCw, FiHelpCircle, FiAlertTriangle, FiArrowRight } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -24,6 +24,7 @@ const IconFiX = (props: IconProps) => <FiX {...props} />;
 const IconFiRefreshCw = (props: IconProps) => <FiRefreshCw {...props} />;
 const IconFiHelpCircle = (props: IconProps) => <FiHelpCircle {...props} />;
 const IconFiAlertTriangle = (props: IconProps) => <FiAlertTriangle {...props} />;
+const IconFiArrowRight = (props: IconProps) => <FiArrowRight {...props} />;
 
 // Interface para os props do componente PixPaymentModal
 interface PixPaymentModalProps {
@@ -289,6 +290,17 @@ function PixPaymentModal({
           console.log('Pagamento confirmado! Atualizando estado...');
           setIsPaid(true);
           
+          // Atualizar o estado do objeto paymentData para refletir que o pagamento foi confirmado
+          if (paymentData) {
+            const updatedPaymentData = { ...paymentData, isPaid: true };
+            // Atualizar o localStorage para manter este estado
+            try {
+              localStorage.setItem('pixPaymentData', JSON.stringify(updatedPaymentData));
+            } catch (error) {
+              console.error('Erro ao atualizar dados de pagamento no localStorage:', error);
+            }
+          }
+          
           // Notificar o componente pai que o pagamento foi confirmado
           if (onPaymentConfirmed) {
             onPaymentConfirmed();
@@ -329,28 +341,14 @@ function PixPaymentModal({
   
   // Efeito para redirecionar quando o pagamento for confirmado
   useEffect(() => {
-    // Se o pagamento foi confirmado, mostrar a tela de sucesso e redirecionar
+    // Se o pagamento foi confirmado, redirecionar imediatamente
     if (isPaid) {
-      console.log('Pagamento confirmado, configurando redirecionamento...');
+      console.log('Pagamento confirmado, redirecionando imediatamente...');
       
-      // Manter o modal aberto com a mensagem de sucesso por 5 segundos
-      // e depois redirecionar para a página de produtos
-      const timer = setTimeout(() => {
-        console.log('Tempo expirado, redirecionando...');
-        // Fechar o modal
-        onClose();
-        
-        // Redirecionar para a página "meus produtos"
-        window.location.href = '/profile/products';
-      }, 5000);
-      
-      // Limpar o timer quando o componente for desmontado
-      return () => {
-        console.log('Limpando timer de redirecionamento');
-        clearTimeout(timer);
-      };
+      // Redirecionar para a página de produtos do dashboard
+      window.location.href = '/dashboard/products';
     }
-  }, [isPaid, onClose]);
+  }, [isPaid]);
   
   // Exibir o código PIX na interface
   const renderPixCode = () => {
@@ -464,6 +462,17 @@ function PixPaymentModal({
         console.log('Pagamento confirmado manualmente! Atualizando estado...');
         setIsPaid(true);
         
+        // Atualizar o estado do objeto paymentData para refletir que o pagamento foi confirmado
+        if (paymentData) {
+          const updatedPaymentData = { ...paymentData, isPaid: true };
+          // Atualizar o localStorage para manter este estado
+          try {
+            localStorage.setItem('pixPaymentData', JSON.stringify(updatedPaymentData));
+          } catch (error) {
+            console.error('Erro ao atualizar dados de pagamento no localStorage:', error);
+          }
+        }
+        
         // Notificar o componente pai que o pagamento foi confirmado
         if (onPaymentConfirmed) {
           onPaymentConfirmed();
@@ -565,60 +574,72 @@ function PixPaymentModal({
   }, [isOpen]);
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md"
       onClick={(e) => {
         // Se o clique foi no overlay (não em um elemento filho)
-        if (e.target === e.currentTarget) {
-          // Fechar o modal
+        if (e.target === e.currentTarget && !isPaid) {
+          // Fechar o modal apenas se o pagamento não estiver confirmado
           onClose();
         }
       }}
     >
-      <div className="fixed inset-0 bg-black/75" onClick={(e) => e.stopPropagation()}></div>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={(e) => e.stopPropagation()}></div>
       
-      <div className="relative z-10 w-full max-w-md transform overflow-hidden rounded-lg bg-dark-200 p-6 text-left align-middle shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="absolute right-4 top-4">
-          <button
-            type="button"
-            className="text-gray-400 hover:text-gray-300 focus:outline-none"
-            onClick={onClose}
-          >
-            <IconFiX className="h-5 w-5" />
-          </button>
-        </div>
+      <div className={`relative z-10 w-full max-w-md transform overflow-hidden rounded-xl bg-dark-200 p-6 text-left align-middle shadow-2xl transition-all duration-500 ${isPaid ? 'scale-105' : 'scale-100'}`} onClick={(e) => e.stopPropagation()}>
+        {!isPaid && (
+          <div className="absolute right-4 top-4 transition-opacity">
+            <button
+              type="button"
+              className="text-gray-400 hover:text-gray-300 focus:outline-none"
+              onClick={onClose}
+            >
+              <IconFiX className="h-5 w-5" />
+            </button>
+          </div>
+        )}
 
-        <h3 className="text-lg font-medium leading-6 text-white text-center mb-4">
-          {isPaid ? "Pagamento Confirmado" : "Pagamento via PIX"}
+        <h3 className={`text-xl font-medium leading-6 text-white text-center mb-4 transition-all duration-300 ${isPaid ? 'opacity-0 h-0 mb-0' : ''}`}>
+          {isPaid ? "" : "Pagamento via PIX"}
         </h3>
 
         {isPaid ? (
-          <div className="bg-green-900/30 border border-green-500 rounded-md p-6 mb-4 text-center">
-            <IconFiCheck className="mx-auto h-16 w-16 text-green-500 mb-4" />
-            <h3 className="text-green-300 font-medium text-xl mb-2">Pagamento confirmado!</h3>
-            <div className="bg-green-800/30 p-3 rounded-md mb-4">
-              <p className="text-white font-medium">Seu pedido foi processado com sucesso!</p>
-              <p className="text-gray-300 mt-2">
-                Você será redirecionado para seus produtos em alguns segundos...
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-green-300 text-sm">
-                <IconFiCheck className="inline-block mr-1" size={14} />
-                Pagamento processado
-              </p>
-              <p className="text-green-300 text-sm">
-                <IconFiCheck className="inline-block mr-1" size={14} />
-                Pedido registrado
-              </p>
-              <p className="text-green-300 text-sm">
-                <IconFiCheck className="inline-block mr-1" size={14} />
-                Produtos liberados
-              </p>
-            </div>
-            <div className="mt-4 pt-4 border-t border-green-800">
-              <p className="text-gray-400 text-sm">
-                Você pode acessar seus produtos a qualquer momento na página "Meus Produtos"
-              </p>
+          <div className="animate-fadeIn">
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-900/40 via-green-800/30 to-green-900/40 border border-green-500/50 p-8 mb-4 text-center shadow-lg shadow-green-900/20">
+              {/* Círculos decorativos animados */}
+              <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-green-500/10 animate-pulse-slow"></div>
+              <div className="absolute -left-6 -bottom-6 w-20 h-20 rounded-full bg-green-500/10 animate-pulse-slow delay-700"></div>
+              
+              <div className="relative">
+                {/* Animação do ícone de check */}
+                <div className="mx-auto h-20 w-20 rounded-full bg-green-500/20 flex items-center justify-center mb-6 transform transition-all duration-1000 animate-scale-check">
+                  <IconFiCheck className="text-green-400 h-10 w-10 animate-fade-check" />
+                </div>
+                
+                <h3 className="text-white font-bold text-2xl mb-3 animate-fade-up">Pagamento Confirmado!</h3>
+                
+                <p className="text-gray-300 mb-6 animate-fade-up delay-200">
+                  Seus produtos foram liberados com sucesso
+                </p>
+                
+                <div className="bg-green-500/10 p-4 rounded-lg mb-6 text-center animate-fade-up delay-300">
+                  <p className="text-white font-medium mb-1">
+                    Você será redirecionado em instantes...
+                  </p>
+                  <div className="w-full bg-gray-700 h-1 rounded-full overflow-hidden mt-3">
+                    <div className="bg-green-400 h-full animate-progress-bar"></div>
+                  </div>
+                </div>
+                
+                <div className="mt-6 animate-fade-up delay-400">
+                  <button
+                    onClick={() => window.location.href = '/dashboard/products'}
+                    className="py-3 px-6 bg-green-600 hover:bg-green-700 transition-colors duration-300 text-white font-medium rounded-lg shadow-lg shadow-green-900/30 w-full flex items-center justify-center"
+                  >
+                    <span className="mr-2">Acessar Meus Produtos</span>
+                    <IconFiArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ) : (

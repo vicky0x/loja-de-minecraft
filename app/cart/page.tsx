@@ -94,6 +94,7 @@ export default function CartPage() {
     qrCodeUrl?: string;
     expiresAt?: string;
     total?: number;
+    isPaid: boolean;
   } | null>(null);
   const [isPixModalOpen, setIsPixModalOpen] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -140,8 +141,26 @@ export default function CartPage() {
           setCreatedOrderId(storedOrderId);
           setIsPixModalOpen(true);
         }
+        
+        // Verificar e restaurar dados do cliente
+        const storedCustomerData = localStorage.getItem('customerData');
+        if (storedCustomerData) {
+          try {
+            const parsedCustomerData = JSON.parse(storedCustomerData);
+            // Verificar se os dados são válidos antes de restaurar
+            if (parsedCustomerData && 
+                typeof parsedCustomerData === 'object' && 
+                parsedCustomerData.firstName &&
+                parsedCustomerData.lastName) {
+              console.log('Restaurando dados do cliente do localStorage');
+              setCustomerData(parsedCustomerData);
+            }
+          } catch (error) {
+            console.error('Erro ao processar dados do cliente do localStorage:', error);
+          }
+        }
       } catch (error) {
-        console.error('Erro ao recuperar dados de PIX do localStorage:', error);
+        console.error('Erro ao recuperar dados do localStorage:', error);
       }
     };
     
@@ -477,7 +496,8 @@ export default function CartPage() {
           qrCodeBase64: pixData.qrCodeBase64,
           qrCodeUrl: pixData.qrCodeUrl,
           expiresAt: pixData.expiresAt,
-          total: cartTotal
+          total: cartTotal,
+          isPaid: false
         }));
       } catch (storageError) {
         console.error('Erro ao armazenar dados do PIX no localStorage:', storageError);
@@ -492,7 +512,8 @@ export default function CartPage() {
           qrCodeBase64: pixData.qrCodeBase64,
           qrCodeUrl: pixData.qrCodeUrl,
           expiresAt: pixData.expiresAt,
-          total: cartTotal
+          total: cartTotal,
+          isPaid: false
         });
         setIsPixModalOpen(true);
         setIsLoading(false);
@@ -868,7 +889,17 @@ export default function CartPage() {
     // Formatação especial para CPF
     if (name === 'cpf') {
       const formattedCPF = formatCPF(value);
-      updateStateIfMounted(() => setCustomerData((prev: CustomerData) => ({ ...prev, [name]: formattedCPF })));
+      updateStateIfMounted(() => {
+        const updatedData = { ...customerData, [name]: formattedCPF };
+        setCustomerData(updatedData);
+        
+        // Salvar no localStorage após atualização
+        try {
+          localStorage.setItem('customerData', JSON.stringify(updatedData));
+        } catch (error) {
+          console.error('Erro ao salvar dados do cliente no localStorage:', error);
+        }
+      });
       return;
     }
     
@@ -887,11 +918,31 @@ export default function CartPage() {
         formattedPhone = `(${cleanPhone.slice(0, 2)}) ${cleanPhone.slice(2, 7)}-${cleanPhone.slice(7, 11)}`;
       }
       
-      updateStateIfMounted(() => setCustomerData((prev: CustomerData) => ({ ...prev, [name]: formattedPhone })));
+      updateStateIfMounted(() => {
+        const updatedData = { ...customerData, [name]: formattedPhone };
+        setCustomerData(updatedData);
+        
+        // Salvar no localStorage após atualização
+        try {
+          localStorage.setItem('customerData', JSON.stringify(updatedData));
+        } catch (error) {
+          console.error('Erro ao salvar dados do cliente no localStorage:', error);
+        }
+      });
       return;
     }
     
-    updateStateIfMounted(() => setCustomerData((prev: CustomerData) => ({ ...prev, [name]: value })));
+    updateStateIfMounted(() => {
+      const updatedData = { ...customerData, [name]: value };
+      setCustomerData(updatedData);
+      
+      // Salvar no localStorage após atualização
+      try {
+        localStorage.setItem('customerData', JSON.stringify(updatedData));
+      } catch (error) {
+        console.error('Erro ao salvar dados do cliente no localStorage:', error);
+      }
+    });
   };
   
   // Função para formatar CPF
@@ -983,6 +1034,47 @@ export default function CartPage() {
       
       setIsProcessingPayment(true);
       
+      // Função para obter dados de pagamento do usuário
+      const getUserPaymentInfo = () => {
+        // Se não tivermos os dados do cliente no estado, tentamos restaurá-los a partir do localStorage
+        if (!customerData || !customerData.email || !customerData.firstName || !customerData.lastName || !customerData.cpf) {
+          // Tentar recuperar informações do localStorage
+          try {
+            const storedCustomerData = localStorage.getItem('customerData');
+            if (storedCustomerData) {
+              const parsedData = JSON.parse(storedCustomerData);
+              // Atualizar o estado com os dados recuperados
+              setCustomerData(parsedData);
+              
+              // Retornar os dados recuperados do localStorage
+              return {
+                email: parsedData.email,
+                cpf: parsedData.cpf.replace(/\D/g, ''),
+                firstName: parsedData.firstName,
+                lastName: parsedData.lastName
+              };
+            }
+          } catch (error) {
+            console.error('Erro ao tentar recuperar dados do cliente:', error);
+          }
+          
+          // Se não conseguimos recuperar os dados, lançamos um erro
+          throw new Error("Dados do cliente incompletos");
+        }
+        
+        // Validar formato do email
+        if (!customerData.email.includes('@')) {
+          throw new Error("Email inválido");
+        }
+        
+        return {
+          email: customerData.email,
+          cpf: customerData.cpf.replace(/\D/g, ''), // Remover caracteres não numéricos
+          firstName: customerData.firstName,
+          lastName: customerData.lastName
+        };
+      };
+      
       // Obter os dados do usuário para o pagamento
       const userInfo = getUserPaymentInfo();
       
@@ -1023,7 +1115,8 @@ export default function CartPage() {
         qrCodeBase64: responseData.qrCodeBase64,
         qrCodeUrl: responseData.qrCodeUrl,
         expiresAt: responseData.expiresAt,
-        total: pixPaymentData.total || cartTotal
+        total: pixPaymentData.total || cartTotal,
+        isPaid: false
       });
       
       toast.success('Um novo código PIX foi gerado com sucesso!');
@@ -1170,6 +1263,83 @@ export default function CartPage() {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, []);
+
+  // Adicionar efeito específico para resolver o problema de interações bloqueadas
+  useEffect(() => {
+    if (!isMounted.current) return;
+    
+    // Função para resolver problemas de interação quando o usuário retorna à página
+    const fixInteractionIssues = () => {
+      try {
+        // Remover qualquer overlay invisível que possa estar bloqueando interações
+        const overlays = document.querySelectorAll('.fixed.inset-0');
+        overlays.forEach(overlay => {
+          const el = overlay as HTMLElement;
+          const style = window.getComputedStyle(el);
+          
+          // Se o overlay estiver invisível mas ainda bloqueando interações
+          if ((style.opacity === '0' || parseFloat(style.opacity) < 0.1) && 
+              style.pointerEvents !== 'none') {
+            console.log('Corrigindo overlay bloqueante invisível');
+            el.style.pointerEvents = 'none';
+            
+            // Se o overlay estiver bloqueando, podemos definir z-index para negativo
+            // apenas se não for parte de um componente visível necessário
+            if (!el.querySelector('.relative')) {
+              el.style.zIndex = '-1';
+            }
+            
+            // Em casos extremos, remover o elemento
+            if (el.getAttribute('data-modal-container') === 'true' && 
+                !el.hasChildNodes()) {
+              el.remove();
+            }
+          }
+        });
+        
+        // Resetar estados que podem estar causando problemas
+        if (isPixModalOpen && !pixPaymentData) {
+          setIsPixModalOpen(false);
+        }
+        
+        // Garantir que o body possa receber interações
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'auto';
+      } catch (error) {
+        console.error('Erro ao corrigir problemas de interação:', error);
+      }
+    };
+    
+    // Executar imediatamente na montagem
+    fixInteractionIssues();
+    
+    // Adicionar listeners para eventos que podem indicar problemas
+    const handlePageBecameVisible = () => {
+      if (document.visibilityState === 'visible') {
+        setTimeout(fixInteractionIssues, 200);
+      }
+    };
+    
+    const handleMouseDown = () => {
+      // Se o usuário clicar e nada acontecer, pode haver um overlay invisível
+      setTimeout(() => {
+        const activeElement = document.activeElement;
+        if (activeElement === document.body) {
+          fixInteractionIssues();
+        }
+      }, 300);
+    };
+    
+    document.addEventListener('visibilitychange', handlePageBecameVisible);
+    document.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('focus', fixInteractionIssues);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handlePageBecameVisible);
+      document.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('focus', fixInteractionIssues);
+    };
+  }, [isPixModalOpen, pixPaymentData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200">
@@ -1635,25 +1805,49 @@ export default function CartPage() {
       {/* Modal de pagamento PIX */}
       {isPixModalOpen && pixPaymentData ? (
         <div 
-          className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4"
+          data-modal-container="true"
           onClick={(e) => {
             // Verificar se o clique foi no overlay (fundo escuro) e não no conteúdo do modal
-            if (e.target === e.currentTarget) {
+            // E se o pagamento não foi confirmado - não permitir fechar se o pagamento foi confirmado
+            if (e.target === e.currentTarget && !pixPaymentData.isPaid) {
               // Fechar o modal apenas se o clique foi no overlay
               setIsPixModalOpen(false);
               // Quando o modal é fechado intencionalmente pelo usuário, limpar dados do localStorage
               localStorage.removeItem('pixPaymentData');
               localStorage.removeItem('createdOrderId');
+              
+              // Garantir que a página possa receber interações novamente
+              document.body.style.pointerEvents = 'auto';
+              document.body.style.overflow = 'auto';
+              
+              // Forçar a remoção de qualquer overlay invisível bloqueante
+              setTimeout(() => {
+                const overlays = document.querySelectorAll('.fixed.inset-0');
+                overlays.forEach(overlay => {
+                  const el = overlay as HTMLElement;
+                  if (!el.contains(document.activeElement)) {
+                    el.style.pointerEvents = 'none';
+                  }
+                });
+              }, 100);
             }
           }}
         >
           <PixPaymentModal 
             isOpen={isPixModalOpen}
             onClose={() => {
+              // Não permitir fechar o modal se o pagamento foi confirmado
+              if (pixPaymentData.isPaid) return;
+              
               setIsPixModalOpen(false);
               // Quando o modal é fechado intencionalmente pelo usuário, limpar dados do localStorage
               localStorage.removeItem('pixPaymentData');
               localStorage.removeItem('createdOrderId');
+              
+              // Garantir que a página possa receber interações novamente
+              document.body.style.pointerEvents = 'auto';
+              document.body.style.overflow = 'auto';
             }}
             paymentData={pixPaymentData}
             onPaymentConfirmed={() => {
@@ -1671,7 +1865,8 @@ export default function CartPage() {
       ) : null}
       {/* Modal de intenção de saída */}
       {showExitIntent && (
-        <div className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4"
+             data-modal-container="true">
           {/* Conteúdo do modal aqui */}
         </div>
       )}

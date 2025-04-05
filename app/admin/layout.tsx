@@ -79,9 +79,9 @@ export default function AdminLayout({
     return (
       <div className="flex min-h-screen bg-dark-100 text-white">
         <Sidebar />
-        <div className="flex-1 transition-all duration-300 pl-0 md:pl-56">
+        <div className="flex-1 transition-all duration-300 md:pl-16 lg:pl-56">
           <Header />
-          <main className="p-4 md:p-6 pt-24 md:pt-28 max-w-[1200px] mx-auto">
+          <main className="p-4 md:p-6 pt-20 px-4 sm:px-6 md:pl-6 max-w-full mx-auto">
             {children}
           </main>
         </div>

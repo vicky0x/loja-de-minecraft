@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { FiMenu, FiX, FiUser, FiChevronDown } from 'react-icons/fi';
+import { usePathname, useRouter } from 'next/navigation';
+import { FiMenu, FiX, FiUser, FiChevronDown, FiHome, FiShoppingBag, FiDownload, FiPackage, FiSettings, FiHelpCircle, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '@/app/contexts/AuthContext';
 
 // Nome das páginas por rota - definido fora do componente
@@ -13,18 +13,24 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/profile': 'Meu Perfil',
   '/dashboard/orders': 'Meus Pedidos',
   '/dashboard/products': 'Meus Produtos',
+  '/dashboard/downloads': 'Downloads',
   '/dashboard/announcements': 'Anúncios',
   '/dashboard/support': 'Suporte',
+  '/admin': 'Painel Admin',
 };
 
 const Header: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, logout } = useAuth();
 
   // Determinar o título da página com base na rota atual
   const pageTitle = PAGE_TITLES[pathname] || 'Dashboard';
+
+  // Verificar se o usuário é admin
+  const isAdmin = user?.role === 'admin';
 
   // Verificar se componente está montado no cliente
   useEffect(() => {
@@ -61,6 +67,17 @@ const Header: React.FC = () => {
     }
   };
 
+  // Função para lidar com logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      router.push('/auth/login');
+    }
+  };
+
   // Se não estiver montado ainda, exibir um placeholder do header
   if (!isMounted) {
     return (
@@ -84,12 +101,9 @@ const Header: React.FC = () => {
           </button>
           
           <Link href="/dashboard" className="flex items-center">
-            <span className="text-xl font-bold">Fantasy</span>
+            <span className="text-xl font-bold">FantasyStore</span>
           </Link>
         </div>
-
-        {/* Título da página (visível apenas em desktop) */}
-        <div className="hidden lg:block text-xl font-bold">{pageTitle}</div>
 
         {/* Menu de usuário */}
         <div className="flex items-center">
@@ -102,13 +116,25 @@ const Header: React.FC = () => {
               aria-haspopup="true"
             >
               {user?.profileImage ? (
-                <div className="w-10 h-10 rounded-full overflow-hidden mr-2">
+                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/50 mr-2">
                   <Image
-                    src={user.profileImage}
+                    src={user.profileImage.startsWith('http') ? user.profileImage : `${window.location.origin}${user.profileImage}`}
                     alt="Perfil"
                     width={40}
                     height={40}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
+                          <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
+                        </div>`;
+                      }
+                    }}
+                    unoptimized={true}
+                    priority={true}
                   />
                 </div>
               ) : (
@@ -124,35 +150,97 @@ const Header: React.FC = () => {
             {showUserMenu && (
               <div
                 id="user-menu"
-                className="absolute right-0 mt-2 w-48 bg-dark-300 rounded-lg shadow-lg py-1 z-50"
+                className="absolute right-0 mt-2 w-56 bg-dark-300 rounded-lg shadow-lg py-1 z-50"
               >
+                {/* Informações do usuário */}
+                <div className="px-4 py-2 border-b border-dark-400">
+                  <p className="text-xs text-gray-400">Logado como</p>
+                  <p className="text-white font-medium truncate">{user?.email || 'Usuário'}</p>
+                </div>
+
+                {/* Links comuns para todos os usuários */}
                 <Link
-                  href="/dashboard/profile"
-                  className="block px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
+                  href="/dashboard"
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
                   onClick={() => setShowUserMenu(false)}
                 >
+                  <FiHome className="mr-2" size={16} />
+                  Dashboard
+                </Link>
+                <Link
+                  href="/dashboard/profile"
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  <FiUser className="mr-2" size={16} />
                   Meu Perfil
                 </Link>
                 <Link
                   href="/dashboard/orders"
-                  className="block px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
                   onClick={() => setShowUserMenu(false)}
                 >
+                  <FiShoppingBag className="mr-2" size={16} />
                   Meus Pedidos
                 </Link>
+                <Link
+                  href="/dashboard/products"
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  <FiPackage className="mr-2" size={16} />
+                  Meus Produtos
+                </Link>
+                <Link
+                  href="/dashboard/downloads"
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  <FiDownload className="mr-2" size={16} />
+                  Downloads
+                </Link>
+                <Link
+                  href="/dashboard/support"
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  <FiHelpCircle className="mr-2" size={16} />
+                  Suporte
+                </Link>
+
+                {/* Links específicos para admin */}
+                {isAdmin && (
+                  <>
+                    <div className="border-t border-dark-400 my-1"></div>
+                    <Link
+                      href="/admin"
+                      className="flex items-center px-4 py-2 text-sm text-primary hover:bg-dark-400 hover:text-primary-light"
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      <FiSettings className="mr-2" size={16} />
+                      Painel Admin
+                    </Link>
+                  </>
+                )}
+
+                {/* Links de navegação */}
+                <div className="border-t border-dark-400 my-1"></div>
+                <Link
+                  href="/"
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  <FiHome className="mr-2" size={16} />
+                  Voltar à Loja
+                </Link>
+
+                {/* Logout */}
                 <div className="border-t border-dark-400 my-1"></div>
                 <button
-                  onClick={() => {
-                    try {
-                      localStorage.clear();
-                      window.location.href = "/auth/login";
-                    } catch (error) {
-                      console.error('Erro ao fazer logout:', error);
-                      window.location.href = "/auth/login";
-                    }
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-dark-400"
+                  onClick={handleLogout}
+                  className="flex items-center w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-dark-400"
                 >
+                  <FiLogOut className="mr-2" size={16} />
                   Sair
                 </button>
               </div>

@@ -300,17 +300,17 @@ export default function Home() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16 opacity-0 animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
             <h2 className="text-3xl md:text-4xl font-bold inline-block mb-6 relative">
-              JOGOS DISPONÍVEIS
+              CONTAS ORIGINAIS PREMIUM
               <span className="absolute -bottom-2 left-1/2 w-24 h-1 bg-gradient-to-r from-primary-dark via-primary to-primary-light transform -translate-x-1/2 rounded-full"></span>
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto">
-              Conheça alguns dos jogos em que oferecemos vantagens competitivas
+              Explore nossas contas originais de Minecraft com acesso completo e garantia vitalícia
             </p>
           </div>
           
           {/* Produtos em destaque */}
           <h3 className="text-2xl font-bold mb-6 opacity-0 animate-fade-in" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
-            Produtos em Destaque
+            Contas em Destaque
           </h3>
           
           <ProductList />
@@ -321,7 +321,7 @@ export default function Home() {
               className="inline-flex items-center text-primary hover:text-white px-6 py-3 rounded-lg bg-dark-200/50 hover:bg-primary/20 backdrop-blur-sm border border-dark-300 hover:border-primary/30 transition-all duration-300 group"
             >
               <span className="relative">
-                Ver todos os jogos disponíveis
+                ADQUIRA SUA CONTA PREMIUM AGORA!
                 <span className="absolute bottom-0 left-0 w-full h-1 bg-primary/30 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
               </span>
               <svg className="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -444,16 +444,16 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="/images/avatars/isabela.jpg" 
-                    alt="Isabela BR"
+                    src="https://images-static.trustpilot.com/feeds-consumer/consumer-profile-2/image.svg" 
+                    alt="Pedrin"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
-                      target.src = 'https://ui-avatars.com/api/?name=Isabela+BR&background=ff6000&color=fff';
+                      target.src = 'https://ui-avatars.com/api/?name=Pedrin&background=ff6000&color=fff';
                     }}
                   />
                   <div>
-                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Isabela BR</h3>
+                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Pedrin</h3>
                     <div className="flex text-yellow-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -464,11 +464,15 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "Thank you for your incredible service! I had been looking for my item for so long, it was my bfs present for our anniversary. I was glad to find it here. I am totally satisfied (and he too)"
+                  "Loja muito confiável, super rápido o envio do produto! Comprei uma conta de Minecraft Premium e foi entregue em menos de 1 minuto. E o melhor de tudo é que a garantia é real, minha conta bugou e eles me deram outra na hora!"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
-                  <span className="mr-2">Cliente verificado</span>
-                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">Minecraft</span>
+                  <span className="mr-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Cliente verificado
+                  </span>
                 </div>
                 
                 {/* Bottom Decoration */}
@@ -483,16 +487,16 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="/images/avatars/customer2.jpg" 
-                    alt="Cliente Verificado"
+                    src="https://images-static.trustpilot.com/feeds-consumer/consumer-profile-5/image.svg" 
+                    alt="João Gabriel"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
-                      target.src = 'https://ui-avatars.com/api/?name=Cliente+Verificado&background=ff6000&color=fff';
+                      target.src = 'https://ui-avatars.com/api/?name=João+Gabriel&background=ff6000&color=fff';
                     }}
                   />
                   <div>
-                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Cliente Verificado</h3>
+                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">João Gabriel</h3>
                     <div className="flex text-yellow-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -503,11 +507,15 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "Perfect service, reliable, responsive, and accurate accounts. I will return when I need more. Their Trustpilot score is well deserved, I'm very satisfied with my purchase."
+                  "simplesmente a melhor loja de todas, o suporte é bom, a entrega é muito rápida, a minha conta chegou em 15 minutos, além de darem o acesso a todos os dados da conta e ter um preço bem acessível e é a única loja que eu confio em comprar o mine e recomendo a meus amigos"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
-                  <span className="mr-2">Cliente verificado</span>
-                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">Minecraft</span>
+                  <span className="mr-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Cliente verificado
+                  </span>
                 </div>
                 
                 {/* Bottom Decoration */}
@@ -522,16 +530,16 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="/images/avatars/customer3.jpg" 
-                    alt="Cliente Verificado"
+                    src="https://images-static.trustpilot.com/feeds-consumer/consumer-profile-3/image.svg" 
+                    alt="David Luis"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
-                      target.src = 'https://ui-avatars.com/api/?name=Cliente+Verificado&background=ff6000&color=fff';
+                      target.src = 'https://ui-avatars.com/api/?name=David+Luis&background=ff6000&color=fff';
                     }}
                   />
                   <div>
-                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Cliente Verificado</h3>
+                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">David Luis</h3>
                     <div className="flex text-yellow-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -542,11 +550,15 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "Reliable store with excellent customer service. I was skeptical at first, but after my purchase I'm very satisfied with how everything went. The accounts work as promised. Highly recommended!"
+                  "Literalmente a melhor loja que já comprei. Entrega totalmente automática e um suporte maravilhoso, sem sombras de dúvida a Fantasy é a melhor loja de Minecraft. Recomendo demais comprarem😍"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
-                  <span className="mr-2">Cliente verificado</span>
-                  <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded-full text-xs">Minecraft</span>
+                  <span className="mr-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Cliente verificado
+                  </span>
                 </div>
                 
                 {/* Bottom Decoration */}

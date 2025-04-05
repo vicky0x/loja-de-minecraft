@@ -110,15 +110,6 @@ const Sidebar = () => {
           ${isCollapsed ? 'w-16' : 'w-56'} md:translate-x-0`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo para mobile (apenas visível quando não colapsado) */}
-          {!isCollapsed && (
-            <div className="flex items-center px-4 py-3 border-b border-dark-300 md:hidden">
-              <Link href="/dashboard" className="flex items-center" onClick={() => setIsSidebarOpen(false)}>
-                <span className="text-lg font-bold text-white">Fantasy</span>
-              </Link>
-            </div>
-          )}
-          
           {/* Botão de colapso */}
           <div className="sticky top-0 flex justify-end pt-3 px-3 md:block hidden bg-dark-200 z-10">
             <button 

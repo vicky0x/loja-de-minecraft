@@ -376,8 +376,8 @@ export default function Navbar() {
     }
   };
 
-  // Em páginas dashboard, não renderizar em telas pequenas
-  if (isDashboard && !isLargeScreen) {
+  // Se estamos na dashboard, não renderizar a navbar principal
+  if (isDashboard) {
     return null;
   }
 

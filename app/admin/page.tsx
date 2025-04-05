@@ -403,7 +403,6 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       {/* Cabeçalho da página */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Dashboard</h2>
         <div className="flex items-center space-x-4">
           <div>
             <span className="text-gray-400">Hoje: </span>

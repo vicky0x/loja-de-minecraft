@@ -1,0 +1,15 @@
+{
+  "watch": [
+    "app/api/**/*.ts",
+    "app/lib/**/*.ts",
+    "app/models/**/*.ts",
+    "next.config.js",
+    "middleware.ts"
+  ],
+  "ignore": [
+    "node_modules",
+    ".next"
+  ],
+  "exec": "next dev -p 3000",
+  "ext": "ts,js,json"
+} 

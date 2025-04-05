@@ -165,6 +165,7 @@ const Sidebar = () => {
         } ${isCollapsed ? 'w-16' : 'w-56'} md:translate-x-0`}
       >
         <nav className="py-4 px-2">
+          {/* Botão de colapso */}
           <div className="sticky top-0 flex justify-end mb-3 pt-2 px-2 md:block hidden bg-dark-200/95 z-10">
             <button
               onClick={toggleCollapse}

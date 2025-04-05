@@ -40,6 +40,7 @@ interface UserInfo {
   email?: string;
   username?: string;
   role?: string;
+  profileImage?: string;
 }
 
 // Definição de tipos para melhorar o TypeScript
@@ -73,7 +74,7 @@ interface DashboardState {
   userInfo: UserInfo | null;
   stats: {
     totalProducts: number;
-    pendingOrders: number;
+    totalOrders: number;
     revenue: number;
   };
   products: Product[];
@@ -89,7 +90,7 @@ export default function Dashboard() {
     userInfo: null,
     stats: {
       totalProducts: 0,
-      pendingOrders: 0,
+      totalOrders: 0,
       revenue: 0
     },
     products: [],
@@ -216,91 +217,109 @@ export default function Dashboard() {
           setState(prev => ({ ...prev, serverHealth: true }));
         }
         
-        // Carregar dados básicos com tratamento de erros
-        try {
-          // Carregar produtos com tratamento de erros
-          fetch('/api/user/products')
-            .then(response => {
-              if (!response.ok) {
-                if (response.status === 401) {
-                  console.warn('Usuário não autenticado ao buscar produtos');
-                  // Tratar erro de autenticação
-                  localStorage.removeItem('auth_token');
-                  localStorage.removeItem('isAuthenticated');
-                  
-                  // Prevenir loop
-                  if (localStorage.getItem('auth_redirect_triggered') !== 'multiple') {
-                    localStorage.setItem('auth_redirect_triggered', 'true');
-                    router.push('/auth/login');
+        // Função para carregar os dados do usuário
+        const fetchUserData = async () => {
+          try {
+            // Carregar produtos com tratamento de erros
+            fetch('/api/user/products')
+              .then(response => {
+                if (!response.ok) {
+                  if (response.status === 401) {
+                    console.warn('Usuário não autenticado ao buscar produtos');
+                    // Tratar erro de autenticação
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('isAuthenticated');
+                    
+                    // Prevenir loop
+                    if (localStorage.getItem('auth_redirect_triggered') !== 'multiple') {
+                      localStorage.setItem('auth_redirect_triggered', 'true');
+                      router.push('/auth/login');
+                    }
+                    return { products: [] };
                   }
+                  console.warn(`Erro ao buscar produtos: ${response.status}`);
                   return { products: [] };
                 }
-                console.warn(`Erro ao buscar produtos: ${response.status}`);
-                return { products: [] };
-              }
-              return response.json();
-            })
-            .then(data => {
-              if (data && Array.isArray(data.products)) {
-                setState(prev => ({
-                  ...prev,
-                  products: data.products,
-                  stats: {
-                    ...prev.stats,
-                    totalProducts: data.products.length
+                return response.json();
+              })
+              .then(data => {
+                if (data && Array.isArray(data.products)) {
+                  setState(prev => ({
+                    ...prev,
+                    products: data.products,
+                    stats: {
+                      ...prev.stats,
+                      totalProducts: data.products.length
+                    }
+                  }));
+                }
+              })
+              .catch(error => console.error('Erro ao processar dados de produtos:', error));
+            
+            // Carregar pedidos recentes com tratamento de erros
+            fetch('/api/user/orders')
+              .then(response => {
+                if (!response.ok) {
+                  if (response.status === 401) {
+                    console.warn('Usuário não autenticado ao buscar pedidos');
+                    // Tratar erro de autenticação (não duplicar o redirecionamento)
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('isAuthenticated');
+                    return { orders: [] };
                   }
-                }));
-              }
-            })
-            .catch(error => console.error('Erro ao processar dados de produtos:', error));
-          
-          // Carregar pedidos recentes com tratamento de erros
-          fetch('/api/user/orders?limit=5')
-            .then(response => {
-              if (!response.ok) {
-                if (response.status === 401) {
-                  console.warn('Usuário não autenticado ao buscar pedidos');
-                  // Tratar erro de autenticação (não duplicar o redirecionamento)
-                  localStorage.removeItem('auth_token');
-                  localStorage.removeItem('isAuthenticated');
+                  console.warn(`Erro ao buscar pedidos: ${response.status}`);
                   return { orders: [] };
                 }
-                console.warn(`Erro ao buscar pedidos: ${response.status}`);
-                return { orders: [] };
-              }
-              return response.json();
-            })
-            .then(data => {
-              if (data && Array.isArray(data.orders)) {
-                const orders = data.orders;
-                // Contar todos os pedidos feitos pelo usuário, não apenas os pendentes
-                const totalOrders = orders.length;
-                
-                const totalRevenue = orders
-                  .filter(order => order.paymentInfo?.status === 'paid' || order.status === 'completed')
-                  .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-                
-                setState(prev => ({
-                  ...prev,
-                  recentOrders: orders,
-                  stats: {
-                    ...prev.stats,
-                    pendingOrders: totalOrders, // Usar o total de pedidos em vez de apenas pendentes
-                    revenue: totalRevenue
-                  }
-                }));
-              }
-            })
-            .catch(error => {
-              console.error('Erro ao processar pedidos:', error);
-              setState(prev => ({ ...prev, recentOrders: [] }));
-            });
-          
-        } catch (error) {
-          console.error('Erro ao carregar dados iniciais:', error);
-        }
+                return response.json();
+              })
+              .then(data => {
+                if (data && Array.isArray(data.orders)) {
+                  const orders = data.orders;
+                  // Contar realmente TODOS os pedidos feitos pelo usuário
+                  const totalOrders = orders.length;
+                  
+                  const totalRevenue = orders
+                    .filter(order => order.paymentInfo?.status === 'paid' || order.status === 'completed')
+                    .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+                  
+                  // Mostrar apenas os 5 pedidos mais recentes na tabela
+                  const recentOrders = orders.slice(0, 5);
+                  
+                  setState(prev => ({
+                    ...prev,
+                    recentOrders: recentOrders,
+                    stats: {
+                      ...prev.stats,
+                      totalOrders: totalOrders, // Total real de todos os pedidos
+                      revenue: totalRevenue
+                    }
+                  }));
+                }
+              })
+              .catch(error => {
+                console.error('Erro ao processar pedidos:', error);
+                setState(prev => ({ ...prev, recentOrders: [] }));
+              });
+          } catch (error) {
+            console.error('Erro ao atualizar dados:', error);
+          }
+        };
+        
+        // Carregar dados inicialmente
+        await fetchUserData();
+        
+        // Configurar intervalo para atualizar dados a cada 30 segundos
+        const intervalId = setInterval(() => {
+          console.log('Atualizando dados do dashboard...');
+          fetchUserData();
+        }, 30000);
         
         setState(prev => ({ ...prev, isLoading: false }));
+        
+        // Limpar intervalo quando o componente for desmontado
+        return () => {
+          clearInterval(intervalId);
+        };
         
       } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
@@ -313,6 +332,38 @@ export default function Dashboard() {
     };
     
     loadDashboard();
+  }, [shouldLoadData, router]);
+
+  // Adicionar efeito para carregar os dados do usuário
+  useEffect(() => {
+    if (!shouldLoadData) return;
+    
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.user) {
+            setState(prev => ({
+              ...prev,
+              userInfo: data.user
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar informações do usuário:', error);
+      }
+    };
+    
+    fetchUserInfo();
   }, [shouldLoadData]);
 
   if (state.isLoading) {
@@ -350,10 +401,9 @@ export default function Dashboard() {
     <div className="space-y-8">
       {/* Cabeçalho da página */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
         <div className="flex items-center space-x-2">
           <span className="text-gray-400">Bem-vindo, </span>
-          <span className="font-medium">{state.userInfo?.username || 'Usuário'}</span>
+          <span className="font-medium">{state.userInfo?.name || state.userInfo?.username || 'Usuário'}</span>
         </div>
       </div>
 
@@ -377,9 +427,9 @@ export default function Dashboard() {
         <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-gray-400 text-sm">Pedidos Pendentes</h3>
-              <p className="text-2xl font-bold mt-1">{state.stats.pendingOrders}</p>
-              <p className="text-xs mt-2 text-gray-400">Pedidos aguardando processamento</p>
+              <h3 className="text-gray-400 text-sm">Pedidos Realizados</h3>
+              <p className="text-2xl font-bold mt-1">{state.stats.totalOrders}</p>
+              <p className="text-xs mt-2 text-gray-400">Total de pedidos realizados</p>
             </div>
             <div className="p-3 bg-yellow-500/10 text-yellow-500 rounded-lg">
               <FiPackage className="w-6 h-6 md:w-8 md:h-8" />
