@@ -367,10 +367,13 @@ export async function DELETE(request: NextRequest) {
         isUsed: false
       });
       
+      // Se não houver estoque, definir como null para evitar o problema de "1 unidade fantasma"
+      const stockValue = stockCount > 0 ? stockCount : null;
+      
       // Atualizar o estoque do produto
       await Product.updateOne(
         { _id: productId },
-        { $set: { stock: stockCount } }
+        { $set: { stock: stockValue } }
       );
     }
     

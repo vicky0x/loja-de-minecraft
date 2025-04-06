@@ -37,7 +37,7 @@ export default function NewProductPage() {
     status: 'indetectavel',
     useVariants: true,
     price: 0,
-    stock: 0,
+    stock: null,
   });
 
   const [variants, setVariants] = useState<Variant[]>([{

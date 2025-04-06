@@ -618,11 +618,13 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
             logger.info(`Estoque da variante ${variantId} atualizado para ${remainingStock}`);
           } else if (!hasVariants) {
             // Para produtos sem variantes, atualizar o estoque diretamente
+            // Se não houver estoque restante, definir como null para evitar o problema de "unidade fantasma"
+            const stockValue = remainingStock > 0 ? remainingStock : null;
             await productsCollection.updateOne(
               { _id: productObjectId },
-              { $set: { stock: remainingStock } }
+              { $set: { stock: stockValue } }
             );
-            logger.info(`Estoque do produto ${productId} (sem variante) atualizado para ${remainingStock}`);
+            logger.info(`Estoque do produto ${productId} (sem variante) atualizado para ${stockValue === null ? 'null (sem estoque)' : stockValue}`);
           }
         } catch (stockUpdateError) {
           logger.error(`Erro ao atualizar o estoque do produto: ${stockUpdateError}`);

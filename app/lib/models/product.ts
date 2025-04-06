@@ -98,7 +98,7 @@ const productSchema = new Schema<IProduct>(
     },
     stock: {
       type: Number,
-      default: 0,
+      default: null,
       min: [0, 'Estoque não pode ser negativo'],
     },
     price: {

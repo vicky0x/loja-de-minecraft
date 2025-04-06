@@ -192,6 +192,57 @@ async function assignProductsToUser(order: any, db: mongoose.mongo.Db) {
         }
         
         logger.info(`${stockItems.length} itens atribuídos com sucesso ao usuário ${order.userId}`);
+        
+        // Atualizar o estoque do produto após a atribuição
+        try {
+          // Verificar se o produto tem variantes
+          const productsCollection = db.collection('products');
+          const product = await productsCollection.findOne({ _id: new mongoose.Types.ObjectId(item.productId) });
+          
+          if (product) {
+            const hasVariants = product.variants && product.variants.length > 0;
+            
+            // Contar estoque restante
+            const remainingStockFilter = {
+              product: new mongoose.Types.ObjectId(item.productId),
+              isUsed: false
+            };
+            
+            // Adicionar condição de variante adequada ao filtro
+            if (hasVariants && item.variantId) {
+              remainingStockFilter['variant'] = new mongoose.Types.ObjectId(item.variantId);
+            } else if (!hasVariants) {
+              remainingStockFilter['variant'] = null;
+            }
+            
+            const remainingStock = await stockItemsCollection.countDocuments(remainingStockFilter);
+            logger.info(`Estoque restante para o produto ${item.productId}: ${remainingStock}`);
+            
+            // Atualizar o produto
+            if (hasVariants && item.variantId) {
+              // Para produtos com variantes, atualizar o estoque da variante
+              await productsCollection.updateOne(
+                { 
+                  _id: new mongoose.Types.ObjectId(item.productId), 
+                  'variants._id': new mongoose.Types.ObjectId(item.variantId) 
+                },
+                { $set: { 'variants.$.stock': remainingStock } }
+              );
+              logger.info(`Estoque da variante ${item.variantId} atualizado para ${remainingStock}`);
+            } else if (!hasVariants) {
+              // Para produtos sem variantes, atualizar o estoque diretamente
+              // Se não houver estoque restante, definir como null para evitar o problema de "unidade fantasma"
+              const stockValue = remainingStock > 0 ? remainingStock : null;
+              await productsCollection.updateOne(
+                { _id: new mongoose.Types.ObjectId(item.productId) },
+                { $set: { stock: stockValue } }
+              );
+              logger.info(`Estoque do produto ${item.productId} (sem variante) atualizado para ${stockValue === null ? 'null (sem estoque)' : stockValue}`);
+            }
+          }
+        } catch (stockUpdateError) {
+          logger.error(`Erro ao atualizar o estoque do produto: ${stockUpdateError}`);
+        }
       } catch (itemError) {
         logger.error(`Erro ao processar item ${JSON.stringify(item)}: ${itemError}`);
         continue; // Continuar com o próximo item em caso de erro

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FiUser, FiMail, FiLock, FiSave, FiAlertCircle, FiUpload, FiPhone, FiMapPin, FiShoppingBag, FiDollarSign, FiPackage, FiCreditCard, FiEdit } from 'react-icons/fi';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { ProfileImageUpload } from '@/app/components/ProfileImageUpload';
 
 interface UserProfile {
   id: string;
@@ -284,26 +285,47 @@ export default function ProfilePage() {
         // Usar a URL absoluta retornada diretamente pela API
         const imageUrl = data.imageUrl;
         console.log('Nova imagem de perfil (URL absoluta):', imageUrl);
+        console.log('Dados completos retornados pela API:', data);
         
         if (user) {
-          // Atualizar estado local
+          // Extrair e garantir que os dados de estatísticas sejam atualizados corretamente
+          const userData = data.userData || {};
+          const updatedStats = userData.stats || user.orders;
+          
+          console.log('Estatísticas atualizadas:', updatedStats);
+          
+          // Atualizar estado local com TODOS os dados retornados
           setUser({
             ...user,
-            profileImage: imageUrl
+            profileImage: imageUrl,
+            orders: updatedStats,
+            role: userData.role || user.role
           });
           
           // Também atualizar o uploadedImage
           setUploadedImage(imageUrl);
           
           // Ordem importante:
-          // 1. Atualizar localStorage
+          // 1. Atualizar localStorage com os dados completos
           try {
             const storedUser = localStorage.getItem('user');
             if (storedUser) {
-              const userData = JSON.parse(storedUser);
-              userData.profileImage = imageUrl;
-              localStorage.setItem('user', JSON.stringify(userData));
-              console.log('localStorage atualizado com nova imagem');
+              const userLocalData = JSON.parse(storedUser);
+              // Atualizar a imagem
+              userLocalData.profileImage = imageUrl;
+              
+              // Atualizar estatísticas e cargo no localStorage de forma explícita
+              if (userData.stats) {
+                console.log('Atualizando estatísticas no localStorage:', userData.stats);
+                userLocalData.orders = userData.stats;
+              }
+              
+              if (userData.role) {
+                userLocalData.role = userData.role;
+              }
+              
+              localStorage.setItem('user', JSON.stringify(userLocalData));
+              console.log('localStorage atualizado com sucesso:', userLocalData);
             }
           } catch (storageError) {
             console.error('Erro ao atualizar imagem no localStorage:', storageError);
@@ -313,23 +335,27 @@ export default function ProfilePage() {
           updateProfileImage(imageUrl);
           console.log('Contexto atualizado via updateProfileImage()');
           
-          // 3. Disparar evento para notificar outros componentes - ÚLTIMO PASSO
+          // 3. Disparar evento para notificar outros componentes
           setTimeout(() => {
             const event = new CustomEvent('profile-image-updated', {
               detail: {
                 imageUrl: imageUrl,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                userStats: updatedStats
               }
             });
             window.dispatchEvent(event);
-            console.log('Evento profile-image-updated disparado');
+            console.log('Evento profile-image-updated disparado com estatísticas');
             
-            // Forçar atualização global após um pequeno delay
+            // 4. Força uma atualização imediata dos dados, incluindo estatísticas
+            fetchUserStats(); // Chamar explicitamente para garantir dados atualizados
+            
+            // 5. Forçar atualização global com pequeno delay
             setTimeout(() => {
               console.log('Forçando refresh dos dados do usuário...');
               forceRefreshUserData();
-            }, 500);
-          }, 200);
+            }, 300);
+          }, 100);
           
           // Informar ao usuário
           setSuccess('Imagem de perfil atualizada com sucesso');
@@ -486,6 +512,36 @@ export default function ProfilePage() {
     }
   };
 
+  // Novo useEffect para reagir às mudanças nas estatísticas e garantir atualização imediata
+  useEffect(() => {
+    const handleProfileImageUpdated = (e: CustomEvent) => {
+      console.log('Evento de atualização de imagem recebido com dados:', e.detail);
+      
+      // Se o evento contiver estatísticas, atualizar imediatamente
+      if (e.detail.userStats && user) {
+        console.log('Atualizando estatísticas do componente via evento:', e.detail.userStats);
+        
+        setUser(prevUser => {
+          if (!prevUser) return prevUser;
+          
+          return {
+            ...prevUser,
+            orders: e.detail.userStats,
+            profileImage: e.detail.imageUrl || prevUser.profileImage
+          };
+        });
+      }
+    };
+    
+    // Adicionar listener para o evento customizado
+    window.addEventListener('profile-image-updated', handleProfileImageUpdated as EventListener);
+    
+    // Remover listener quando o componente for desmontado
+    return () => {
+      window.removeEventListener('profile-image-updated', handleProfileImageUpdated as EventListener);
+    };
+  }, [user]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -495,359 +551,314 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Meu Perfil</h2>
-      
-      {error && (
-        <div className="bg-red-900/30 border-l-4 border-red-500 text-red-400 p-4 mb-4">
-          <div className="flex items-center">
-            <FiAlertCircle className="h-5 w-5 mr-2" />
-            <span>{error}</span>
-          </div>
-        </div>
-      )}
-      
-      {success && (
-        <div className="bg-green-900/30 border-l-4 border-green-500 text-green-400 p-4 mb-4">
-          <div className="flex items-center">
-            <FiAlertCircle className="h-5 w-5 mr-2" />
-            <span>{success}</span>
-          </div>
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card de informações e estatísticas */}
+    <main className="min-h-screen bg-dark-100">
+      {/* Div principal */}
+      <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
-          {/* Informações de perfil */}
-          <div className="bg-dark-200 rounded-lg shadow-md p-6">
-            <div className="flex flex-col items-center mb-6">
-              <div 
-                className="relative w-24 h-24 rounded-full overflow-hidden mb-4 bg-dark-300 cursor-pointer group"
-                onClick={handleImageClick}
-              >
-                {(uploadedImage || user?.profileImage) ? (
-                  <>
-                    {/* Condicional para tratar erro de imagem antes mesmo de render */}
-                    {uploadedImage ? (
-                      // Preview de upload usa o uploadedImage (já é base64)
-                      <Image 
-                        src={uploadedImage}
-                        alt={user?.username || 'Avatar'} 
-                        fill
-                        className="object-cover"
-                        unoptimized={true}
-                        priority={true} 
-                      />
-                    ) : (
-                      // Imagem salva do usuário - garantir URL completa
-                      <Image 
-                        src={user?.profileImage || '#'}
-                        alt={user?.username || 'Avatar'} 
-                        fill
-                        className="object-cover"
-                        unoptimized={true}
-                        priority={true}
-                        onError={(e) => {
-                          console.log('Erro ao carregar imagem de perfil:', user?.profileImage);
-                          // Usar um fallback diretamente em vez de um arquivo
-                          e.currentTarget.style.display = 'none';
-                          // Mostrar a primeira letra do nome do usuário como fallback
-                          const parent = e.currentTarget.parentElement;
-                          if (parent) {
-                            parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary-dark/30">
-                              <span class="text-white text-2xl font-bold">${user?.username.charAt(0).toUpperCase()}</span>
-                            </div>`;
-                          }
-                        }}
-                      />
-                    )}
-                  </>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-primary text-2xl font-bold bg-gradient-to-br from-primary/30 to-primary-dark/30">
-                    {user?.username.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <FiEdit className="text-white w-6 h-6" />
-                </div>
-                {isUploading && (
-                  <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
-                  </div>
-                )}
-              </div>
-              <input 
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                accept="image/*"
-                className="hidden"
-              />
-              <h3 className="text-xl font-bold text-white">{user?.name || user?.username}</h3>
-              <div className="mt-2">
-                {user && renderRole(user.role)}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400 text-sm">Nome de Usuário</p>
-                <p className="font-medium text-white">{user?.username}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Email</p>
-                <p className="font-medium text-white">{user?.email}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Membro desde</p>
-                <p className="font-medium text-white">
-                  {user?.createdAt && user.createdAt !== 'undefined' 
-                    ? (() => {
-                        try {
-                          const date = new Date(user.createdAt);
-                          // Verificar se a data é válida
-                          if (!isNaN(date.getTime())) {
-                            return date.toLocaleDateString('pt-BR', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric'
-                            });
-                          } else {
-                            console.error("Data inválida:", user.createdAt);
-                            return 'Data inválida';
-                          }
-                        } catch (e) {
-                          console.error("Erro ao formatar data:", e);
-                          return 'Erro ao processar data';
-                        }
-                      })()
-                    : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Número de Membro</p>
-                <p className="font-medium text-white">{user?.memberNumber ? user.memberNumber : 'N/A'}</p>
-              </div>
-            </div>
-          </div>
+          <h2 className="text-2xl font-bold text-white">Meu Perfil</h2>
           
-          {/* Estatísticas de compras */}
-          <div className="bg-dark-200 rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold mb-6 text-white">Estatísticas de Compras</h3>
+          {error && (
+            <div className="bg-red-900/30 border-l-4 border-red-500 text-red-400 p-4 mb-4">
+              <div className="flex items-center">
+                <FiAlertCircle className="h-5 w-5 mr-2" />
+                <span>{error}</span>
+              </div>
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-900/30 border-l-4 border-green-500 text-green-400 p-4 mb-4">
+              <div className="flex items-center">
+                <FiAlertCircle className="h-5 w-5 mr-2" />
+                <span>{success}</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card de informações e estatísticas */}
+            <div className="space-y-6">
+              {/* Informações de perfil */}
+              <div className="bg-dark-200 rounded-lg shadow-md p-6">
+                <div className="flex items-center mb-6">
+                  <div className="mr-4">
+                    <ProfileImageUpload 
+                      currentImage={user?.profileImage} 
+                      onUploadSuccess={(imageUrl) => {
+                        setUploadedImage(imageUrl);
+                        setSuccess('Imagem de perfil atualizada com sucesso');
+                      }}
+                      userName={user?.username} 
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{user?.name || user?.username}</h3>
+                    <div className="mt-1">
+                      {user && renderRole(user.role)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Nome de Usuário</p>
+                    <p className="font-medium text-white text-sm truncate">{user?.username}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Email</p>
+                    <p className="font-medium text-white text-sm truncate">{user?.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Membro desde</p>
+                    <p className="font-medium text-white text-sm">
+                      {user?.createdAt && user.createdAt !== 'undefined' 
+                        ? (() => {
+                            try {
+                              const date = new Date(user.createdAt);
+                              // Verificar se a data é válida
+                              if (!isNaN(date.getTime())) {
+                                return date.toLocaleDateString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric'
+                                });
+                              } else {
+                                console.error("Data inválida:", user.createdAt);
+                                return 'Data inválida';
+                              }
+                            } catch (e) {
+                              console.error("Erro ao formatar data:", e);
+                              return 'Erro ao processar data';
+                            }
+                          })()
+                        : 'N/A'}
+                  </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Número de Membro</p>
+                    <p className="font-medium text-white text-sm">{user?.memberNumber ? user.memberNumber : 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Estatísticas de compras */}
+              <div className="bg-dark-200 rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-bold mb-4 text-white">Estatísticas</h3>
+                
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="bg-dark-300 p-3 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="p-2 rounded-full bg-blue-900/30 text-blue-400 mr-3">
+                        <FiShoppingBag className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Pedidos</p>
+                        <p className="text-base font-bold text-white">{user?.orders?.count || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-dark-300 p-3 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="p-2 rounded-full bg-green-900/30 text-green-400 mr-3">
+                        <FiPackage className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Produtos</p>
+                        <p className="text-base font-bold text-white">{user?.orders?.products || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-dark-300 p-3 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="p-2 rounded-full bg-purple-900/30 text-purple-400 mr-3">
+                        <FiDollarSign className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Total</p>
+                        <p className="text-base font-bold text-white">
+                         R$ {user?.orders?.total
+                           ? Number(user.orders.total).toFixed(2).replace('.', ',')
+                           : '0,00'}
+                       </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             
-            <div className="grid grid-cols-1 gap-4">
-              <div className="bg-dark-300 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-blue-900/30 text-blue-400 mr-3">
-                    <FiShoppingBag className="h-6 w-6" />
-                  </div>
+            {/* Formulário de edição */}
+            <div className="md:col-span-2 bg-dark-200 rounded-lg shadow-md">
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <h3 className="text-xl font-bold mb-4 text-white">Editar Perfil</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-sm text-gray-400">Pedidos Realizados</p>
-                    <p className="text-lg font-bold text-white">{user?.orders?.count || 0}</p>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
+                      Nome Completo
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiUser className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                        placeholder="Seu nome completo"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+                      E-mail
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiMail className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={user?.email || ''}
+                        readOnly
+                        className="pl-10 block w-full pr-3 py-2 bg-dark-300/50 border border-dark-400 text-gray-400 rounded-md focus:outline-none cursor-not-allowed"
+                        placeholder="seu@email.com"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="cpf" className="block text-sm font-medium text-gray-300 mb-1">
+                      CPF
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiCreditCard className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        id="cpf"
+                        name="cpf"
+                        value={formData.cpf}
+                        onChange={handleChange}
+                        className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                        placeholder="000.000.000-00"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-1">
+                      Telefone
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiPhone className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label htmlFor="address" className="block text-sm font-medium text-gray-300 mb-1">
+                      Endereço Completo
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiMapPin className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <textarea
+                        id="address"
+                        name="address"
+                        rows={3}
+                        value={formData.address}
+                        onChange={handleChange}
+                        className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                        placeholder="Rua, número, complemento, bairro, cidade, estado, CEP"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="md:col-span-2 border-t border-dark-400 pt-4">
+                    <h4 className="font-medium text-white mb-4">Alterar Senha</h4>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
+                      Nova Senha (deixe em branco para manter a atual)
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiLock className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
+                      Confirmar Nova Senha
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiLock className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                        placeholder="••••••••"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="bg-dark-300 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-green-900/30 text-green-400 mr-3">
-                    <FiPackage className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Produtos Aprovados</p>
-                    <p className="text-lg font-bold text-white">{user?.orders?.products || 0}</p>
-                  </div>
+                
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full flex justify-center items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving ? (
+                      <span className="mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-r-2 border-white"></span>
+                    ) : (
+                      <FiSave className="mr-2" />
+                    )}
+                    {saving ? 'Salvando...' : 'Salvar Alterações'}
+                  </button>
                 </div>
-              </div>
-              
-              <div className="bg-dark-300 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-purple-900/30 text-purple-400 mr-3">
-                    <FiDollarSign className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Valor Total</p>
-                    <p className="text-lg font-bold text-white">
-                      R$ {user?.orders?.total
-                        ? Number(user.orders.total).toFixed(2).replace('.', ',')
-                        : '0,00'}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              </form>
             </div>
           </div>
-        </div>
-        
-        {/* Formulário de edição */}
-        <div className="md:col-span-2 bg-dark-200 rounded-lg shadow-md">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <h3 className="text-xl font-bold mb-4 text-white">Editar Perfil</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
-                  Nome Completo
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiUser className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="Seu nome completo"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
-                  E-mail
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiMail className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={user?.email || ''}
-                    readOnly
-                    className="pl-10 block w-full pr-3 py-2 bg-dark-300/50 border border-dark-400 text-gray-400 rounded-md focus:outline-none cursor-not-allowed"
-                    placeholder="seu@email.com"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="cpf" className="block text-sm font-medium text-gray-300 mb-1">
-                  CPF
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiCreditCard className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    id="cpf"
-                    name="cpf"
-                    value={formData.cpf}
-                    onChange={handleChange}
-                    className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="000.000.000-00"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-1">
-                  Telefone
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiPhone className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
-              </div>
-              
-              <div className="md:col-span-2">
-                <label htmlFor="address" className="block text-sm font-medium text-gray-300 mb-1">
-                  Endereço Completo
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiMapPin className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <textarea
-                    id="address"
-                    name="address"
-                    rows={3}
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="Rua, número, complemento, bairro, cidade, estado, CEP"
-                  />
-                </div>
-              </div>
-              
-              <div className="md:col-span-2 border-t border-dark-400 pt-4">
-                <h4 className="font-medium text-white mb-4">Alterar Senha</h4>
-              </div>
-              
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
-                  Nova Senha (deixe em branco para manter a atual)
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiLock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
-                  Confirmar Nova Senha
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiLock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full flex justify-center items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? (
-                  <span className="mr-2 animate-spin rounded-full h-4 w-4 border-t-2 border-r-2 border-white"></span>
-                ) : (
-                  <FiSave className="mr-2" />
-                )}
-                {saving ? 'Salvando...' : 'Salvar Alterações'}
-              </button>
-            </div>
-          </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 } 

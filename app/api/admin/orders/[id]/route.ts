@@ -673,6 +673,49 @@ async function assignProductsToUser(order: any) {
             assignedProductIds.push(stockItem.product);
           }
         }
+        
+        // Atualizar o estoque do produto após atribuir os itens
+        try {
+          // Preparar filtro para contar o estoque restante
+          const remainingStockFilter = {
+            product: productObjectId,
+            isUsed: false
+          };
+          
+          // Adicionar condição de variante adequada
+          if (hasVariants && variantId) {
+            remainingStockFilter['variant'] = variantId;
+          } else if (!hasVariants) {
+            remainingStockFilter['variant'] = null;
+          }
+          
+          // Contar o estoque restante
+          const remainingStock = await stockItemsCollection.countDocuments(remainingStockFilter);
+          logger.info(`Estoque restante para o produto ${productId}: ${remainingStock}`);
+          
+          // Atualizar o produto no banco de dados
+          const productsCollection = db.collection('products');
+          
+          if (hasVariants && variantId) {
+            // Para produtos com variantes, atualizar o estoque da variante
+            await productsCollection.updateOne(
+              { _id: productObjectId, 'variants._id': new mongoose.Types.ObjectId(variantId) },
+              { $set: { 'variants.$.stock': remainingStock } }
+            );
+            logger.info(`Estoque da variante ${variantId} atualizado para ${remainingStock}`);
+          } else if (!hasVariants) {
+            // Para produtos sem variantes, atualizar o estoque diretamente
+            // Se não houver estoque restante, definir como null para evitar o problema da "unidade fantasma"
+            const stockValue = remainingStock > 0 ? remainingStock : null;
+            await productsCollection.updateOne(
+              { _id: productObjectId },
+              { $set: { stock: stockValue } }
+            );
+            logger.info(`Estoque do produto ${productId} (sem variante) atualizado para ${stockValue === null ? 'null (sem estoque)' : stockValue}`);
+          }
+        } catch (stockUpdateError) {
+          logger.error(`Erro ao atualizar o estoque do produto: ${stockUpdateError}`);
+        }
       } catch (itemError) {
         logger.error(`Erro ao processar item: ${itemError}`);
         allItemsSuccessful = false;

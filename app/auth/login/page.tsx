@@ -49,16 +49,27 @@ export default function LoginPage() {
       // Verificar se há detecção de loop
       const loopDetected = localStorage.getItem('loop_detected') === 'true';
       if (loopDetected) {
-        console.warn('Loop de redirecionamento detectado na página de login. Interrompendo ações.');
+        const loopDetectedTime = parseInt(localStorage.getItem('loop_detected_time') || '0', 10);
+        const now = Date.now();
         
-        // Remover flags problemáticas para permitir um novo login limpo
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('isAuthenticated');
-        localStorage.setItem('auth_redirect_triggered', 'false');
-        
-        // Mostrar mensagem ao usuário
-        setError('Detectamos um problema com sua sessão. Por favor, faça login novamente.');
-        return;
+        // Verificar se o loop foi detectado recentemente (últimos 60 segundos)
+        if (now - loopDetectedTime < 60000) {
+          console.warn('Loop de redirecionamento detectado na página de login. Interrompendo ações.');
+          
+          // Remover flags problemáticas para permitir um novo login limpo
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('isAuthenticated');
+          localStorage.setItem('auth_redirect_triggered', 'false');
+          
+          // Mostrar mensagem ao usuário
+          setError('Detectamos um problema com sua sessão. Por favor, faça login novamente.');
+          return;
+        } else {
+          // Reset após 60 segundos
+          localStorage.removeItem('loop_detected');
+          localStorage.removeItem('loop_detected_time');
+          localStorage.setItem('redirect_count', '0');
+        }
       }
 
       // Limpar o estado de redirecionamento múltiplo para evitar loops
@@ -66,36 +77,33 @@ export default function LoginPage() {
         localStorage.setItem('auth_redirect_triggered', 'false');
       }
       
-      // Registrar que estamos na página de login (para detecção de loops)
+      // Atualizar contador de redirecionamentos
+      const lastRedirectTimeStr = localStorage.getItem('last_redirect_time');
+      const redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
       const now = Date.now();
-      let redirectHistory: Array<{from?: string, to?: string, page?: string, timestamp: number}> = [];
       
-      try {
-        const storedHistory = localStorage.getItem('redirect_history');
-        if (storedHistory) {
-          const parsed = JSON.parse(storedHistory);
-          if (Array.isArray(parsed)) {
-            // Limpar entradas mais antigas que 10 segundos
-            redirectHistory = parsed.filter(entry => 
-              entry && typeof entry === 'object' && 
-              typeof entry.timestamp === 'number' && 
-              (now - entry.timestamp) < 10000
-            );
+      if (lastRedirectTimeStr) {
+        const lastRedirectTime = parseInt(lastRedirectTimeStr, 10);
+        // Se houve um redirecionamento recente (últimos 5 segundos)
+        if (now - lastRedirectTime < 5000) {
+          const newCount = redirectCount + 1;
+          localStorage.setItem('redirect_count', newCount.toString());
+          
+          // Detectar loop após 3 redirecionamentos rápidos
+          if (newCount >= 3) {
+            console.error('Loop de redirecionamento detectado pela página de login! Interrompendo ciclo.');
+            localStorage.setItem('loop_detected', 'true');
+            localStorage.setItem('loop_detected_time', now.toString());
+            setError('Detectamos um problema com sua sessão. Aguarde alguns segundos e tente fazer login novamente.');
+            return;
           }
+        } else {
+          // Resetar contador se o último redirecionamento foi há mais de 5 segundos
+          localStorage.setItem('redirect_count', '1');
         }
-      } catch (e) {
-        console.error('Erro ao analisar histórico de redirecionamento:', e);
-        redirectHistory = [];
       }
       
-      // Adicionar entrada atual
-      redirectHistory.push({
-        page: '/auth/login',
-        timestamp: now
-      });
-      
-      // Salvar histórico atualizado
-      localStorage.setItem('redirect_history', JSON.stringify(redirectHistory));
+      localStorage.setItem('last_redirect_time', now.toString());
       
       // Verificar se o usuário já está logado
       const token = localStorage.getItem('auth_token');
@@ -105,6 +113,13 @@ export default function LoginPage() {
       if (token && isAuthStored === 'true') {
         // Verificar se havia um checkout pendente
         const pendingCheckout = localStorage.getItem('pending_checkout');
+        
+        // Verificar se redirecionamentos estão acontecendo muito rapidamente
+        if (parseInt(localStorage.getItem('redirect_count') || '0', 10) >= 2) {
+          console.warn('Muitos redirecionamentos detectados, pausando redirecionamento automático');
+          setError('Sua sessão parece estar ativa, mas detectamos um problema. Por favor, clique em "Entrar" para continuar.');
+          return;
+        }
         
         if (pendingCheckout === 'true') {
           // Limpar a flag e redirecionar para o carrinho

@@ -125,9 +125,11 @@ export default function ProductStockPage({ params }: { params: { id: string } })
       
       // Atualizar também o estoque direto para produtos sem variantes
       if (!hasVariants) {
-        setDirectProductStock(data.pagination.total);
+        // Se o estoque for zero, definir como null para evitar o problema de "unidade fantasma"
+        const stockValue = data.pagination.total > 0 ? data.pagination.total : null;
+        setDirectProductStock(stockValue || 0); // Para exibição na interface, usar 0 se for null
         if (product) {
-          setProduct({...product, stock: data.pagination.total});
+          setProduct({...product, stock: stockValue});
         }
       }
     } catch (error) {

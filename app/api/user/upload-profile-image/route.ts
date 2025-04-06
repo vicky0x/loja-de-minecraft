@@ -4,6 +4,7 @@ import connectDB from '@/app/lib/db/mongodb';
 import User from '@/app/lib/models/user';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
+import Order from '@/app/lib/models/order';
 
 // Verificar se já existe o modelo de imagem, se não existir, criar
 let Image;
@@ -26,6 +27,41 @@ try {
   });
   
   Image = mongoose.model('Image', imageSchema);
+}
+
+// Função para obter estatísticas do usuário
+async function getUserStats(userId: string) {
+  try {
+    // Buscar todos os pedidos do usuário
+    const orders = await Order.find({
+      userId: userId,
+      status: { $in: ['paid', 'delivered', 'completed'] }
+    });
+    
+    // Calcular estatísticas
+    const count = orders.length;
+    let total = 0;
+    const productIds = new Set(); // Para contar produtos únicos
+    
+    for (const order of orders) {
+      total += order.total;
+      // Adicionar os IDs de produtos no Set para contagem única
+      order.items.forEach(item => productIds.add(item.productId.toString()));
+    }
+    
+    return {
+      count,
+      total,
+      products: productIds.size
+    };
+  } catch (error) {
+    console.error("Erro ao calcular estatísticas do usuário:", error);
+    return {
+      count: 0,
+      total: 0,
+      products: 0
+    };
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -123,13 +159,20 @@ export async function POST(req: NextRequest) {
     // Criar URL para acessar a imagem
     const imageUrl = `/api/images/${imageId}`;
     
-    // Atualizar o usuário no banco de dados
+    // Buscar estatísticas atualizadas do usuário
+    console.log('Buscando estatísticas atualizadas do usuário...');
+    const userStats = await getUserStats(userId.toString());
+    
+    // Atualizar o usuário no banco de dados com a nova imagem e estatísticas atualizadas
     console.log('Atualizando usuário com ID:', userId);
     console.log('URL da imagem a ser salva:', imageUrl);
     
     const updatedUser = await User.findByIdAndUpdate(
       userId, 
-      { profileImage: imageUrl },
+      { 
+        profileImage: imageUrl,
+        orders: userStats
+      },
       { new: true }
     );
     
@@ -159,7 +202,12 @@ export async function POST(req: NextRequest) {
       { 
         message: 'Imagem de perfil atualizada com sucesso',
         imageUrl: absoluteImageUrl,  // Retornar URL absoluta em vez de relativa
-        relativeUrl: imageUrl        // Também fornecer URL relativa se o cliente precisar
+        relativeUrl: imageUrl,       // Também fornecer URL relativa se o cliente precisar
+        userData: {
+          profileImage: absoluteImageUrl,
+          stats: userStats,
+          role: updatedUser.role
+        }
       },
       { 
         status: 200,

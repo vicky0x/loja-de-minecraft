@@ -150,6 +150,19 @@ export default function Dashboard() {
     try {
       console.log("Verificando autenticação no dashboard...");
       
+      // Verificar se há loop de redirecionamento ativo
+      const loopDetected = localStorage.getItem('loop_detected') === 'true';
+      if (loopDetected) {
+        console.warn('Loop de redirecionamento detectado. Carregando dashboard em modo emergência.');
+        // Forçar carregamento de dados sem verificação de autenticação
+        setState(prev => ({ 
+          ...prev, 
+          error: 'Modo de emergência: alguns recursos podem estar indisponíveis até que você faça login novamente.'
+        }));
+        setShouldLoadData(true);
+        return;
+      }
+      
       // Verificar no localStorage primeiro
       const token = localStorage.getItem('auth_token');
       const isAuth = localStorage.getItem('isAuthenticated');
@@ -157,12 +170,42 @@ export default function Dashboard() {
       if (!token || isAuth !== 'true') {
         console.log('Usuário não autenticado. Redirecionando para login...');
         
+        // Verificar se houve redirecionamentos recentes
+        const lastRedirectTimeStr = localStorage.getItem('last_redirect_time');
+        const redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
+        const now = Date.now();
+        
+        if (lastRedirectTimeStr) {
+          const lastRedirectTime = parseInt(lastRedirectTimeStr, 10);
+          // Se houve um redirecionamento recente (últimos 5 segundos)
+          if (now - lastRedirectTime < 5000) {
+            const newCount = redirectCount + 1;
+            localStorage.setItem('redirect_count', newCount.toString());
+            
+            // Detectar loop após 3 redirecionamentos rápidos
+            if (newCount >= 3) {
+              console.error('Loop de redirecionamento detectado pelo Dashboard! Interrompendo ciclo.');
+              localStorage.setItem('loop_detected', 'true');
+              localStorage.setItem('loop_detected_time', now.toString());
+              setState(prev => ({ 
+                ...prev, 
+                error: 'Detectamos um problema com sua sessão. Por favor, recarregue a página ou tente fazer login manualmente.',
+                isLoading: false 
+              }));
+              return;
+            }
+          } else {
+            // Resetar contador se o último redirecionamento foi há mais de 5 segundos
+            localStorage.setItem('redirect_count', '1');
+          }
+        }
+        
+        localStorage.setItem('last_redirect_time', now.toString());
+        
         // Limpar tokens inválidos
         try {
           localStorage.removeItem('auth_token');
           localStorage.removeItem('isAuthenticated');
-          localStorage.removeItem('loop_detected');
-          localStorage.removeItem('loop_detected_time');
           localStorage.removeItem('force_login_page');
           localStorage.removeItem('redirect_history');
           localStorage.removeItem('auth_redirect_triggered');

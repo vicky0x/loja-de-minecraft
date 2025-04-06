@@ -10,7 +10,6 @@ import VariantStockModal from '@/app/components/VariantStockModal';
 import { useCart } from '@/app/contexts/CartContext';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
-import { use } from 'react';
 
 interface Variant {
   _id: string;
@@ -45,9 +44,12 @@ interface Product {
 const primaryLight = "#6c63ff";  // Ajuste para a cor primária da sua aplicação
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
-  // Usar React.use para desempacotar corretamente o objeto params
-  const resolvedParams = use(params);
-  const { slug } = resolvedParams;
+  // Removendo a chamada síncrona problemática de 'use' nos parâmetros
+  // const resolvedParams = use(params);
+  // const { slug } = resolvedParams;
+  
+  // Usando diretamente o params passado como prop
+  const { slug } = params;
   
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
@@ -181,12 +183,14 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           setVariant(firstVariant);
         } else if (data.product.price !== undefined) {
           // Se não tiver variantes, criar uma variante simulada com os dados do produto
+          // Garantir que o estoque seja tratado corretamente (0 ou null como indisponível)
+          const stockValue = data.product.stock === null || data.product.stock === undefined ? 0 : data.product.stock;
           const singleVariant: Variant = {
             _id: 'single',
             name: 'Padrão',
             description: '',
             price: data.product.price,
-            stock: data.product.stock || 0,
+            stock: stockValue,
             features: []
           };
           setSelectedVariant('single');
@@ -224,12 +228,14 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
             }
           } else if (data.product.price !== undefined) {
             // Atualizar a variante simulada para produtos sem variantes
+            // Garantir que o estoque seja tratado corretamente (0 ou null como indisponível)
+            const stockValue = data.product.stock === null || data.product.stock === undefined ? 0 : data.product.stock;
             setVariant({
               _id: 'single',
               name: 'Padrão',
               description: '',
               price: data.product.price,
-              stock: data.product.stock || 0,
+              stock: stockValue,
               features: []
             });
           }
@@ -265,7 +271,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   };
 
   const increaseQuantity = () => {
-    if (variant && quantity < variant.stock) {
+    if (variant && quantity < variant.stock && variant.stock > 0) {
       setQuantity(prev => prev + 1);
     }
   };
@@ -283,7 +289,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   
   const handleAddToCart = async () => {
     try {
-      if (!variant) return false;
+      if (!variant || !variant.stock || variant.stock <= 0) return false;
       
       setIsAddingToCart(true);
       
@@ -1335,13 +1341,13 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                                 return;
                               }
                               
-                              if (variant && variant.stock > 0 && !isAddingToCart) {
+                              if (variant && variant.stock && variant.stock > 0 && !isAddingToCart) {
                                 handleAddToCart();
                               }
                             }}
-                            disabled={!variant || variant.stock <= 0 || isAddingToCart}
+                            disabled={!variant || !variant.stock || variant.stock <= 0 || isAddingToCart}
                             className={`relative py-3.5 px-5 rounded-xl flex items-center justify-center font-medium group overflow-hidden ${
-                              !variant || variant.stock <= 0 || isAddingToCart
+                              !variant || !variant.stock || variant.stock <= 0 || isAddingToCart
                                 ? 'bg-gray-600/30 text-gray-400 cursor-not-allowed'
                                 : 'bg-dark-400 text-white hover:bg-dark-500 shadow-lg'
                             }`}
@@ -1372,7 +1378,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                           {/* Botão Comprar Agora */}
                           <motion.button
                             onClick={async () => {
-                              if (variant && variant.stock > 0 && !isAddingToCart) {
+                              if (variant && variant.stock && variant.stock > 0 && !isAddingToCart) {
                                 try {
                                   console.log('Clicou em Comprar Agora');
                                   // Se não estiver autenticado, salvar URL do carrinho e redirecionar
@@ -1417,9 +1423,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                                 }
                               }
                             }}
-                            disabled={!variant || variant.stock <= 0 || isAddingToCart}
+                            disabled={!variant || !variant.stock || variant.stock <= 0 || isAddingToCart}
                             className={`relative py-3.5 px-5 rounded-xl flex items-center justify-center font-medium group overflow-hidden ${
-                              !variant || variant.stock <= 0 || isAddingToCart
+                              !variant || !variant.stock || variant.stock <= 0 || isAddingToCart
                                 ? 'bg-gray-600/30 text-gray-400 cursor-not-allowed'
                                 : 'bg-primary text-white shadow-lg'
                             }`}

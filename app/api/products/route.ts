@@ -150,7 +150,8 @@ export async function POST(request: NextRequest) {
       images,
       requirements: reqData,
       price,
-      stock
+      stock,
+      status
     } = body;
     
     // Processar os requisitos adequadamente
@@ -277,19 +278,20 @@ export async function POST(request: NextRequest) {
       category = null;
     }
     
-    // Criar o novo produto
+    // Criar novo produto
     const newProduct = new Product({
-      name,
+      name: slug,
       slug,
       description,
       shortDescription,
+      category: categoryId ? new mongoose.Types.ObjectId(categoryId) : null,
       images,
-      category,
       variants: hasVariants ? variants : [],
-      featured: !!featured,
       requirements,
+      featured: featured === 'true' || featured === true,
       price: hasDirectPrice ? price : undefined,
-      stock: hasDirectPrice ? (stock || 0) : undefined
+      stock: hasDirectPrice ? (stock !== undefined ? Number(stock) : null) : undefined,
+      status
     });
     
     await newProduct.save();

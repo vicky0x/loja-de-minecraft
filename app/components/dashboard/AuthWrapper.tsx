@@ -70,9 +70,55 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     
     const checkAuthentication = () => {
       try {
+        // Verificar se há loop de requisições em andamento
+        const loopDetected = localStorage.getItem('loop_detected') === 'true';
+        const lastRedirectTimeStr = localStorage.getItem('last_redirect_time');
+        const redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
+        const now = Date.now();
+        
+        // Se detectamos um loop recentemente
+        if (loopDetected) {
+          const loopDetectedTime = parseInt(localStorage.getItem('loop_detected_time') || '0', 10);
+          // Verificar se o loop foi detectado nos últimos 60 segundos
+          if (now - loopDetectedTime < 60000) {
+            console.warn('[AuthWrapper] Loop de redirecionamento detectado e ainda ativo');
+            setIsAuthenticated(true); // Forçar autenticação para quebrar o loop
+            return;
+          } else {
+            // Resetar detecção de loop após 60 segundos
+            localStorage.removeItem('loop_detected');
+            localStorage.removeItem('loop_detected_time');
+            localStorage.setItem('redirect_count', '0');
+          }
+        }
+        
         // Verificar token no localStorage
         const hasToken = localStorage.getItem('auth_token');
         const isAuthStored = localStorage.getItem('isAuthenticated') === 'true';
+        
+        // Atualizar contador de redirecionamentos
+        if (lastRedirectTimeStr) {
+          const lastRedirectTime = parseInt(lastRedirectTimeStr, 10);
+          // Se houve um redirecionamento recente (últimos 5 segundos)
+          if (now - lastRedirectTime < 5000) {
+            const newCount = redirectCount + 1;
+            localStorage.setItem('redirect_count', newCount.toString());
+            
+            // Detectar loop após 3 redirecionamentos rápidos
+            if (newCount >= 3) {
+              console.error('[AuthWrapper] Loop de redirecionamento detectado! Interrompendo ciclo.');
+              localStorage.setItem('loop_detected', 'true');
+              localStorage.setItem('loop_detected_time', now.toString());
+              setIsAuthenticated(true); // Forçar autenticação para quebrar o loop
+              return;
+            }
+          } else {
+            // Resetar contador se o último redirecionamento foi há mais de 5 segundos
+            localStorage.setItem('redirect_count', '1');
+          }
+        }
+        
+        localStorage.setItem('last_redirect_time', now.toString());
         
         if (hasToken && isAuthStored) {
           console.log('[AuthWrapper] Autenticação encontrada no localStorage');
