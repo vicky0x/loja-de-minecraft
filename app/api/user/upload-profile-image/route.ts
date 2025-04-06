@@ -34,8 +34,8 @@ async function getUserStats(userId: string) {
   try {
     // Buscar todos os pedidos do usuário
     const orders = await Order.find({
-      userId: userId,
-      status: { $in: ['paid', 'delivered', 'completed'] }
+      user: userId,
+      'paymentInfo.status': 'paid' // Apenas pedidos pagos
     });
     
     // Calcular estatísticas
@@ -44,9 +44,9 @@ async function getUserStats(userId: string) {
     const productIds = new Set(); // Para contar produtos únicos
     
     for (const order of orders) {
-      total += order.total;
+      total += order.totalAmount;
       // Adicionar os IDs de produtos no Set para contagem única
-      order.items.forEach(item => productIds.add(item.productId.toString()));
+      order.orderItems.forEach(item => productIds.add(item.product.toString()));
     }
     
     return {

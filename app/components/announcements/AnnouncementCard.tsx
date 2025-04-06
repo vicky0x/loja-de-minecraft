@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ReactMarkdown from 'react-markdown';
-import { FiClock, FiEdit2, FiTrash2, FiX, FiMaximize, FiUser } from 'react-icons/fi';
+import { FiClock, FiEdit2, FiTrash2, FiX, FiMaximize, FiUser, FiCheck, FiMessageSquare } from 'react-icons/fi';
 
 interface AnnouncementCardProps {
   announcement: {
@@ -51,18 +51,18 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
     switch(roleLower) {
       case 'administrador':
       case 'admin':
-        return 'bg-gradient-to-r from-purple-950 to-purple-900 text-white border-purple-700';
+        return 'bg-gradient-to-r from-primary to-primary/80 text-white border-primary/40';
       case 'moderador':
       case 'mod':
-        return 'bg-gradient-to-r from-blue-950 to-blue-900 text-white border-blue-700';
+        return 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-blue-400';
       case 'suporte':
       case 'support':
-        return 'bg-gradient-to-r from-green-950 to-green-900 text-white border-green-700';
+        return 'bg-gradient-to-r from-green-600 to-green-500 text-white border-green-400';
       case 'desenvolvedor':
       case 'dev':
-        return 'bg-gradient-to-r from-red-950 to-red-900 text-white border-red-700';
+        return 'bg-gradient-to-r from-amber-500 to-amber-400 text-white border-amber-300';
       default:
-        return 'bg-gradient-to-r from-gray-800 to-gray-700 text-white border-gray-600';
+        return 'bg-gradient-to-r from-gray-600 to-gray-500 text-white border-gray-400';
     }
   };
 
@@ -93,53 +93,71 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
 
   return (
     <>
-      <div className="relative bg-gradient-to-br from-dark-300 to-dark-200 rounded-xl shadow-xl overflow-hidden h-full border border-dark-400 hover:border-primary/30 transition-all duration-300 announcement-card">
+      <div className="relative bg-gradient-to-br from-dark-200 to-dark-300 rounded-xl shadow-xl overflow-hidden h-full border border-dark-400">
         {/* Cabeçalho com informações do autor */}
-        <div className="p-5 border-b border-dark-400 bg-dark-300/80 backdrop-blur-sm flex items-center announcement-header">
+        <div 
+          className="py-4 px-5 border-b border-dark-400 flex items-center relative" 
+          style={{
+            backgroundColor: 'transparent',
+            transition: 'none !important',
+            borderColor: '#444444 !important'
+          }}
+        >
           {announcement.authorImage ? (
-            <div className="w-16 h-16 rounded-full overflow-hidden mr-4 ring-2 ring-primary shadow-lg">
+            <div className="w-14 h-14 rounded-full overflow-hidden mr-4 ring-1 ring-primary shadow-lg relative z-10 border border-primary/30 bg-dark-300">
               <img 
                 src={announcement.authorImage} 
                 alt={announcement.authorName}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-full"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
                 }}
               />
             </div>
           ) : (
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center font-bold text-2xl mr-4 ring-2 ring-primary shadow-lg">
-              <FiUser size={28} />
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary/70 text-white flex items-center justify-center font-bold text-xl mr-4 ring-1 ring-primary shadow-lg relative z-10 border border-primary/30">
+              <FiUser size={24} />
             </div>
           )}
-          <div className="flex-1">
-            <div className="flex items-start justify-between">
-              <h2 className="font-bold text-white text-lg">
-                {announcement.title}
-              </h2>
-              <span className={`text-xs px-4 py-1.5 rounded-full font-bold ${getRoleClass(announcement.authorRole)} border shadow-md ml-2`}>
-                {getFormattedRole(announcement.authorRole)}
-              </span>
-            </div>
-            <div className="flex flex-col mt-2">
-              <span className="text-primary font-bold text-xl tracking-wide">
-                {announcement.authorName}
-              </span>
-              <div className="flex items-center text-gray-400 opacity-80 text-xs mt-1">
+          <div className="flex-1 relative z-10">
+            <div className="flex flex-col">
+              <div className="flex items-center">
+                <span className="text-white font-bold text-xl tracking-wide mr-1.5">
+                  {announcement.authorName}
+                </span>
+                {/* Selo de verificado */}
+                <div className="bg-primary/15 p-1 rounded-full border border-primary/30 flex items-center justify-center shadow-sm">
+                  <FiCheck className="text-primary" size={14} strokeWidth={3} />
+                </div>
+              </div>
+              <div className="flex items-center text-gray-400 opacity-90 text-xs mt-1">
                 <FiClock className="mr-1" size={12} />
-                <span>{formatDate(announcement.createdAt)}</span>
+                <span className="text-[11px]">{formatDate(announcement.createdAt)}</span>
               </div>
             </div>
           </div>
+          {announcement.authorRole && (
+            <span className={`text-xs px-4 py-1.5 rounded-full font-semibold ${getRoleClass(announcement.authorRole)} border shadow-md ml-auto text-[12px]`}>
+              {getFormattedRole(announcement.authorRole)}
+            </span>
+          )}
         </div>
         
         {/* Conteúdo do anúncio */}
         <div className="p-5">
+          {/* Título do anúncio */}
+          <div className="flex items-start mb-5 pb-3 border-b border-dark-400 bg-gradient-to-r from-dark-300/50 to-transparent rounded-lg p-3 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-lg"></div>
+            <h2 className="font-bold text-white text-lg md:text-xl leading-tight break-words relative z-10">
+              {announcement.title}
+            </h2>
+          </div>
+
           {/* Texto do conteúdo */}
           <div className="prose prose-invert prose-p:text-gray-200 prose-p:whitespace-pre-line prose-p:break-words max-w-none text-sm mb-5 min-h-[50px] leading-relaxed">
             <ReactMarkdown 
               components={{
-                a: ({node, ...props}) => <a {...props} className="text-primary hover:text-primary-light underline transition-colors duration-300" target="_blank" rel="noreferrer" />,
+                a: ({node, ...props}) => <a {...props} className="text-primary hover:text-primary/80 underline transition-colors duration-300" target="_blank" rel="noreferrer" />,
                 p: ({node, ...props}) => <p {...props} className="mb-3 whitespace-pre-line leading-relaxed" />,
                 ul: ({node, ...props}) => <ul {...props} className="pl-5 mb-3" />,
                 li: ({node, ...props}) => <li {...props} className="mb-1" />,
@@ -151,7 +169,7 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
           {(announcement.imageUrl || announcement.imageUrl2) && (
             <div className="mt-4 flex flex-wrap gap-4">
               {announcement.imageUrl && (
-                <div className="relative group overflow-hidden rounded-lg shadow-lg announcement-image">
+                <div className="relative overflow-hidden rounded-lg shadow-lg announcement-image">
                   <img 
                     src={announcement.imageUrl} 
                     alt={announcement.title}
@@ -162,13 +180,13 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
-                  <div className="absolute bottom-2 right-2 bg-dark-800/80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <div className="absolute bottom-2 right-2 bg-primary/80 rounded-full p-2">
                     <FiMaximize className="text-white" size={16} />
                   </div>
                 </div>
               )}
               {announcement.imageUrl2 && (
-                <div className="relative group overflow-hidden rounded-lg shadow-lg announcement-image">
+                <div className="relative overflow-hidden rounded-lg shadow-lg announcement-image">
                   <img 
                     src={announcement.imageUrl2} 
                     alt={`${announcement.title} - imagem 2`}
@@ -179,7 +197,7 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
-                  <div className="absolute bottom-2 right-2 bg-dark-800/80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <div className="absolute bottom-2 right-2 bg-primary/80 rounded-full p-2">
                     <FiMaximize className="text-white" size={16} />
                   </div>
                 </div>
@@ -203,7 +221,7 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
             <div className="mt-6 pt-4 border-t border-dark-400 flex justify-end">
               <button
                 onClick={() => onEdit(announcement)}
-                className="px-4 py-2 bg-dark-400 hover:bg-dark-500 text-white rounded-md mr-3 announcement-button transition-colors shadow-md"
+                className="px-4 py-2 bg-dark-400 text-white rounded-md mr-3 announcement-button"
                 title="Editar anúncio"
               >
                 <div className="flex items-center">
@@ -213,7 +231,7 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
               </button>
               <button
                 onClick={() => onDelete(announcement._id)}
-                className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-md announcement-button transition-colors shadow-md"
+                className="px-4 py-2 bg-red-700 text-white rounded-md announcement-button"
                 title="Excluir anúncio"
               >
                 <div className="flex items-center">
@@ -238,7 +256,7 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
                 e.stopPropagation();
                 closeZoom();
               }}
-              className="absolute top-2 right-2 bg-dark-800/90 p-2 rounded-full text-white hover:bg-primary transition-all duration-300"
+              className="absolute top-2 right-2 bg-dark-800/90 p-2 rounded-full text-white"
             >
               <FiX size={24} />
             </button>

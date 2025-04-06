@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiAlertCircle } from 'react-icons/fi';
+import categoryService from '@/app/lib/services/categoryService';
 
 interface CategoryData {
   name: string;
@@ -88,11 +89,20 @@ export default function EditCategoryPage({ params }: { params: { id: string } })
         body: JSON.stringify(categoryData),
       });
       
+      const responseData = await response.json();
+      
       if (response.ok) {
+        // Atualizar o cache de categorias se a API retornar a lista atualizada
+        if (responseData.categories) {
+          categoryService.updateCategories(responseData.categories);
+        } else {
+          // Se a API não retornar as categorias atualizadas, forçar uma nova busca
+          await categoryService.getCategories(true);
+        }
+        
         router.push('/admin/categories');
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Erro ao atualizar categoria');
+        setError(responseData.message || 'Erro ao atualizar categoria');
       }
     } catch (error) {
       console.error('Erro ao atualizar categoria:', error);

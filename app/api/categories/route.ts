@@ -72,7 +72,16 @@ export async function GET(request: NextRequest) {
       .select('-__v')
       .lean();
     
-    return NextResponse.json({ categories });
+    return NextResponse.json(
+      { categories },
+      { 
+        headers: {
+          'Cache-Control': 'no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
+    );
   } catch (error: any) {
     console.error('Erro ao listar categorias:', error);
     
@@ -153,9 +162,16 @@ export async function POST(request: NextRequest) {
     await newCategory.save();
     console.log('Categoria criada com sucesso:', newCategory);
     
+    // Buscar a lista atualizada de categorias
+    const updatedCategories = await Category.find({})
+      .sort({ name: 1 })
+      .select('-__v')
+      .lean();
+    
     return NextResponse.json({
       message: 'Categoria criada com sucesso',
       category: newCategory,
+      categories: updatedCategories
     }, { status: 201 });
   } catch (error: any) {
     console.error('Erro ao criar categoria:', error);

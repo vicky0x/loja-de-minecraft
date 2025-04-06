@@ -4,6 +4,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiAlertCircle } from 'react-icons/fi';
+import categoryService from '@/app/lib/services/categoryService';
 
 export default function NewCategoryPage() {
   const router = useRouter();
@@ -80,6 +81,14 @@ export default function NewCategoryPage() {
       console.log('Dados da resposta:', responseData);
       
       if (response.ok) {
+        // Atualizar o cache de categorias se a API retornar a lista atualizada
+        if (responseData.categories) {
+          categoryService.updateCategories(responseData.categories);
+        } else {
+          // Se a API não retornar as categorias atualizadas, forçar uma nova busca
+          await categoryService.getCategories(true);
+        }
+        
         router.push('/admin/categories');
       } else {
         setError(responseData.message || 'Erro ao criar categoria');

@@ -4,15 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiPlus, FiEdit, FiTrash2, FiSearch } from 'react-icons/fi';
-
-interface Category {
-  _id: string;
-  name: string;
-  slug: string;
-  description: string;
-  icon: string;
-  createdAt: string;
-}
+import categoryService, { Category } from '@/app/lib/services/categoryService';
 
 export default function CategoriesPage() {
   const router = useRouter();
@@ -31,15 +23,8 @@ export default function CategoriesPage() {
       setLoading(true);
       setError('');
       
-      const response = await fetch('/api/categories');
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data.categories || []);
-      } else {
-        const errorData = await response.json();
-        setError(`Erro ao carregar categorias: ${errorData.message || 'Erro desconhecido'}`);
-      }
+      const data = await categoryService.getCategories(true);
+      setCategories(data);
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
       setError('Erro ao buscar categorias. Verifique sua conexão e tente novamente.');
@@ -59,8 +44,18 @@ export default function CategoriesPage() {
       });
 
       if (response.ok) {
-        // Atualiza a lista de categorias após excluir
-        setCategories(categories.filter(category => category._id !== id));
+        const data = await response.json();
+        
+        // Atualiza o cache de categorias com a nova lista retornada pela API
+        if (data.categories) {
+          categoryService.updateCategories(data.categories);
+        } else {
+          // Se a API não retornar as categorias atualizadas, atualizar localmente
+          const updatedCategories = categories.filter(category => category._id !== id);
+          setCategories(updatedCategories);
+          categoryService.updateCategories(updatedCategories);
+        }
+        
         setSuccessMessage('Categoria excluída com sucesso');
         
         // Limpar mensagem de sucesso após 3 segundos

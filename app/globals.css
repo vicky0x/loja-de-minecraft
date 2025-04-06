@@ -1078,11 +1078,23 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
 }
 
 .announcement-header {
-  transition: all 0.4s ease-out;
+  transition: var(--transition-default);
 }
 
 .announcement-header:hover {
   background-color: var(--background-dark-400);
+}
+
+/* Nova classe para evitar o efeito hover */
+.announcement-header-static {
+  transition: none !important;
+  background-color: #14141b !important;
+  border-color: var(--background-dark-400) !important;
+}
+
+.announcement-header-static:hover {
+  background-color: #14141b !important;
+  border-color: var(--background-dark-400) !important;
 }
 
 .announcement-zoom-modal {
@@ -1575,4 +1587,24 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
 /* Indicador lateral */
 .faq-card button .w-1 {
   transition: background-color 0.3s ease;
+}
+
+/* SOBRESCRIÇÃO FORÇADA DO HOVER - PRIORIDADE MÁXIMA */
+.announcement-header-static,
+.announcement-header,
+[class*="announcement-header"],
+[class^="announcement-header"],
+div[class*="announcement-header"] {
+  transition: none !important;
+  background-color: #14141b !important;
+  border-color: var(--background-dark-400) !important;
+}
+
+.announcement-header-static:hover,
+.announcement-header:hover,
+[class*="announcement-header"]:hover,
+[class^="announcement-header"]:hover,
+div[class*="announcement-header"]:hover {
+  background-color: #14141b !important;
+  border-color: var(--background-dark-400) !important;
 }

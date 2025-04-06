@@ -180,9 +180,16 @@ export async function PUT(
       { new: true }
     );
     
+    // Buscar a lista atualizada de categorias
+    const updatedCategories = await Category.find({})
+      .sort({ name: 1 })
+      .select('-__v')
+      .lean();
+    
     return NextResponse.json({
       message: 'Categoria atualizada com sucesso',
       category: updatedCategory,
+      categories: updatedCategories
     });
   } catch (error: any) {
     console.error('Erro ao atualizar categoria:', error);
@@ -248,7 +255,7 @@ export async function DELETE(
       return NextResponse.json(
         { 
           message: 'Não é possível excluir esta categoria pois existem produtos associados a ela',
-          productsCount: productsWithCategory 
+          count: productsWithCategory
         },
         { status: 400 }
       );
@@ -257,8 +264,15 @@ export async function DELETE(
     // Excluir a categoria
     await Category.findByIdAndDelete(id);
     
+    // Buscar a lista atualizada de categorias
+    const updatedCategories = await Category.find({})
+      .sort({ name: 1 })
+      .select('-__v')
+      .lean();
+    
     return NextResponse.json({
       message: 'Categoria excluída com sucesso',
+      categories: updatedCategories
     });
   } catch (error: any) {
     console.error('Erro ao excluir categoria:', error);

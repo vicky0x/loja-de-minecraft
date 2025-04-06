@@ -12,6 +12,7 @@ import {
   FaChevronRight
 } from 'react-icons/fa';
 import { SiTrustpilot } from 'react-icons/si';
+import FooterCategories from './FooterCategories';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -183,58 +184,7 @@ export default function Footer() {
           </motion.div>
           
           {/* Bloco 3 - Categorias */}
-          <motion.div variants={itemVariants}>
-            <h3 className="text-white text-xl font-bold mb-6 relative inline-block">
-              Categorias
-              <span className="absolute -bottom-2 left-0 w-12 h-0.5 bg-gradient-to-r from-primary to-primary-light rounded-full"></span>
-            </h3>
-            <ul className="space-y-3">
-              <li className="group">
-                <Link 
-                  href="/products?category=fps" 
-                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
-                >
-                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
-                    <FaChevronRight size={12} />
-                  </span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-200">FPS</span>
-                </Link>
-              </li>
-              <li className="group">
-                <Link 
-                  href="/products?category=battle-royale" 
-                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
-                >
-                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
-                    <FaChevronRight size={12} />
-                  </span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-200">Battle Royale</span>
-                </Link>
-              </li>
-              <li className="group">
-                <Link 
-                  href="/products?category=mmorpg" 
-                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
-                >
-                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
-                    <FaChevronRight size={12} />
-                  </span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-200">MMORPG</span>
-                </Link>
-              </li>
-              <li className="group">
-                <Link 
-                  href="/products?category=sandbox" 
-                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
-                >
-                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
-                    <FaChevronRight size={12} />
-                  </span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-200">Sandbox</span>
-                </Link>
-              </li>
-            </ul>
-          </motion.div>
+          <FooterCategories />
           
           {/* Bloco 4 - Contato e Suporte */}
           <motion.div variants={itemVariants}>
