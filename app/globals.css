@@ -1090,6 +1090,7 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
   transition: none !important;
   background-color: #14141b !important;
   border-color: var(--background-dark-400) !important;
+  z-index: 5 !important;
 }
 
 .announcement-header-static:hover {
@@ -1598,6 +1599,7 @@ div[class*="announcement-header"] {
   transition: none !important;
   background-color: #14141b !important;
   border-color: var(--background-dark-400) !important;
+  z-index: 5 !important;
 }
 
 .announcement-header-static:hover,
@@ -1607,4 +1609,33 @@ div[class*="announcement-header"] {
 div[class*="announcement-header"]:hover {
   background-color: #14141b !important;
   border-color: var(--background-dark-400) !important;
+}
+
+/* Fixar problema de sobreposição de anúncios na sidebar */
+.announcement-card,
+.announcement-card *,
+[class*="announcement"] * {
+  z-index: 5 !important;
+}
+
+/* Garantir que a sidebar tem prioridade máxima */
+.sidebar, 
+[class*="sidebar"],
+div[class*="sidebar"],
+nav[class*="sidebar"],
+aside[class*="sidebar"] {
+  z-index: 20 !important;
+}
+
+/* Garantir que o header também tem prioridade */
+header, 
+[class*="header"],
+div[class*="header"] {
+  z-index: 20 !important;
+}
+
+/* Garantir que os menus dropdown tem z-index ainda maior */
+[id="admin-menu"],
+div[id="admin-menu"] {
+  z-index: 50 !important;
 }

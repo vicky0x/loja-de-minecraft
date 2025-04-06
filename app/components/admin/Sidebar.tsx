@@ -169,7 +169,7 @@ const Sidebar = () => {
   return (
     <>
       <div
-        className={`bg-dark-200/95 fixed left-0 top-16 bottom-0 z-10 border-r border-dark-300 transition-all duration-300 overflow-y-auto ${
+        className={`bg-dark-200/95 fixed left-0 top-16 bottom-0 z-20 border-r border-dark-300 transition-all duration-300 overflow-y-auto ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } ${isCollapsed ? 'w-16' : 'w-56'} md:translate-x-0`}
       >

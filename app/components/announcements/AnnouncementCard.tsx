@@ -100,11 +100,12 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
           style={{
             backgroundColor: 'transparent',
             transition: 'none !important',
-            borderColor: '#444444 !important'
+            borderColor: '#444444 !important',
+            zIndex: '1'
           }}
         >
           {announcement.authorImage ? (
-            <div className="w-14 h-14 rounded-full overflow-hidden mr-4 ring-1 ring-primary shadow-lg relative z-10 border border-primary/30 bg-dark-300">
+            <div className="w-14 h-14 rounded-full overflow-hidden mr-4 ring-1 ring-primary shadow-lg relative border border-primary/30 bg-dark-300">
               <img 
                 src={announcement.authorImage} 
                 alt={announcement.authorName}
@@ -115,11 +116,11 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
               />
             </div>
           ) : (
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary/70 text-white flex items-center justify-center font-bold text-xl mr-4 ring-1 ring-primary shadow-lg relative z-10 border border-primary/30">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary/70 text-white flex items-center justify-center font-bold text-xl mr-4 ring-1 ring-primary shadow-lg relative border border-primary/30">
               <FiUser size={24} />
             </div>
           )}
-          <div className="flex-1 relative z-10">
+          <div className="flex-1 relative">
             <div className="flex flex-col">
               <div className="flex items-center">
                 <span className="text-white font-bold text-xl tracking-wide mr-1.5">
@@ -137,7 +138,7 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
             </div>
           </div>
           {announcement.authorRole && (
-            <span className={`text-xs px-4 py-1.5 rounded-full font-semibold ${getRoleClass(announcement.authorRole)} border shadow-md ml-auto text-[12px]`}>
+            <span className={`text-xs px-4 py-1.5 rounded-full font-semibold ${getRoleClass(announcement.authorRole)} border shadow-md ml-auto text-[12px]`} style={{position: 'relative', zIndex: '1'}}>
               {getFormattedRole(announcement.authorRole)}
             </span>
           )}
