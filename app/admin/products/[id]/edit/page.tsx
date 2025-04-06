@@ -12,6 +12,7 @@ interface Variant {
   price: number;
   stock: number;
   features: string[];
+  deliveryType: string;
 }
 
 interface CategoryOption {
@@ -30,6 +31,7 @@ interface ProductData {
   variants: Variant[];
   requirements: string[];
   status: string;
+  deliveryType: string;
 }
 
 export default function EditProductPage() {
@@ -56,6 +58,7 @@ export default function EditProductPage() {
     stock: 0, // Estoque quando não usa variantes
     originalPrice: 0, // Preço original para exibir desconto
     discountPercentage: 0, // Porcentagem de desconto
+    deliveryType: 'automatic', // Tipo de entrega: automática ou manual
   });
 
   const [variants, setVariants] = useState<Variant[]>([{
@@ -64,6 +67,7 @@ export default function EditProductPage() {
     price: 0,
     stock: 0,
     features: [''],
+    deliveryType: 'automatic', // Tipo de entrega para a variante
   }]);
   
   const [images, setImages] = useState<string[]>([]);
@@ -130,6 +134,7 @@ export default function EditProductPage() {
           stock: product.stock || 0, // Estoque do produto quando não usa variantes
           originalPrice: product.originalPrice || 0, // Preço original para exibir desconto
           discountPercentage: product.discountPercentage || 0, // Porcentagem de desconto
+          deliveryType: product.deliveryType || 'automatic', // Tipo de entrega
         });
         
         if (product.variants && product.variants.length > 0) {
@@ -140,6 +145,7 @@ export default function EditProductPage() {
             price: v.price || 0,
             stock: v.stock || 0,
             features: v.features || [''],
+            deliveryType: v.deliveryType || 'automatic',
           })));
         }
         
@@ -268,6 +274,7 @@ export default function EditProductPage() {
       price: 0,
       stock: 0,
       features: [''],
+      deliveryType: 'automatic',
     }]);
   };
   
@@ -398,12 +405,13 @@ export default function EditProductPage() {
         category: productData.category,
         featured: productData.is_featured,
         status: productData.status,
+        deliveryType: productData.deliveryType,
         // Adicionar campos específicos com base no modo (variantes ou não)
         ...(productData.useVariants 
           ? { variants: variants } 
           : { 
               price: productData.price, 
-              stock: productData.stock,
+              stock: productData.deliveryType === 'manual' ? 99999 : productData.stock,
               originalPrice: productData.originalPrice > 0 ? productData.originalPrice : undefined,
               discountPercentage: productData.discountPercentage > 0 ? productData.discountPercentage : undefined
             }
@@ -935,6 +943,50 @@ export default function EditProductPage() {
                         ))}
                       </div>
                     </div>
+
+                    <div className="mb-4">
+                      <label className="block text-gray-300 mb-2">
+                        Tipo de Entrega da Variante
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center">
+                          <input
+                            type="radio"
+                            id={`variant-${index}-delivery-automatic`}
+                            name={`variant-${index}-delivery-type`}
+                            value="automatic"
+                            checked={variant.deliveryType === 'automatic'}
+                            onChange={() => {
+                              const newVariants = [...variants];
+                              newVariants[index].deliveryType = 'automatic';
+                              setVariants(newVariants);
+                            }}
+                            className="mr-2"
+                          />
+                          <label htmlFor={`variant-${index}-delivery-automatic`} className="text-gray-300">
+                            Entrega Automática
+                          </label>
+                        </div>
+                        <div className="flex items-center">
+                          <input
+                            type="radio"
+                            id={`variant-${index}-delivery-manual`}
+                            name={`variant-${index}-delivery-type`}
+                            value="manual"
+                            checked={variant.deliveryType === 'manual'}
+                            onChange={() => {
+                              const newVariants = [...variants];
+                              newVariants[index].deliveryType = 'manual';
+                              setVariants(newVariants);
+                            }}
+                            className="mr-2"
+                          />
+                          <label htmlFor={`variant-${index}-delivery-manual`} className="text-gray-300">
+                            Entrega Manual (estoque infinito)
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1030,6 +1082,46 @@ export default function EditProductPage() {
                 placeholder="Ex: Requer conexão com internet"
               />
             </div>
+          </div>
+        </div>
+        
+        {/* Adicione após o campo de status do produto */}
+        <div className="mb-6">
+          <label htmlFor="delivery-type" className="block text-gray-300 mb-2">
+            Tipo de Entrega
+          </label>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="delivery-automatic"
+                name="delivery-type"
+                value="automatic"
+                checked={productData.deliveryType === 'automatic'}
+                onChange={() => setProductData({...productData, deliveryType: 'automatic'})}
+                className="mr-2"
+              />
+              <label htmlFor="delivery-automatic" className="text-gray-300">
+                Entrega Automática (gerencia estoque)
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="delivery-manual"
+                name="delivery-type"
+                value="manual"
+                checked={productData.deliveryType === 'manual'}
+                onChange={() => setProductData({...productData, deliveryType: 'manual'})}
+                className="mr-2"
+              />
+              <label htmlFor="delivery-manual" className="text-gray-300">
+                Entrega Manual (estoque infinito)
+              </label>
+            </div>
+            <p className="text-gray-400 text-xs mt-1">
+              Na entrega manual, o produto terá estoque ilimitado e precisará ser entregue manualmente.
+            </p>
           </div>
         </div>
         

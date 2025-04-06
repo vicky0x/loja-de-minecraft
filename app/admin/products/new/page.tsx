@@ -12,6 +12,7 @@ interface Variant {
   price: number;
   stock: number;
   features: string[];
+  deliveryType: string;
 }
 
 interface CategoryOption {
@@ -38,6 +39,9 @@ export default function NewProductPage() {
     useVariants: true,
     price: 0,
     stock: null,
+    originalPrice: 0,
+    discountPercentage: 0,
+    deliveryType: 'automatic',
   });
 
   const [variants, setVariants] = useState<Variant[]>([{
@@ -46,6 +50,7 @@ export default function NewProductPage() {
     price: 0,
     stock: 0,
     features: [''],
+    deliveryType: 'automatic',
   }]);
   const [images, setImages] = useState<string[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
@@ -146,6 +151,7 @@ export default function NewProductPage() {
       price: 0,
       stock: 0,
       features: [''],
+      deliveryType: 'automatic',
     }]);
   };
 
@@ -267,23 +273,41 @@ export default function NewProductPage() {
         .filter(([_, value]) => value.trim() !== '')
         .map(([key, value]) => `${key}: ${value}`);
       
-      // Preparar dados para envio
-      const formData: any = {
-        ...productData,
-        variants: productData.useVariants ? variants : [],
-        stock: productData.useVariants ? undefined : productData.stock,
-        price: productData.useVariants ? undefined : productData.price,
+      // Preparar objeto para enviar à API
+      const productToSave = {
+        name: productData.name,
+        slug: productData.name.toLowerCase().replace(/ /g, '-'),
+        shortDescription: productData.short_description,
+        description: productData.description,
+        category: productData.category,
+        featured: productData.is_featured,
+        status: productData.status || undefined,
+        deliveryType: productData.deliveryType,
+        ...(productData.useVariants 
+          ? { variants: variants } 
+          : { 
+              price: productData.price, 
+              stock: productData.deliveryType === 'manual' ? 99999 : productData.stock,
+              originalPrice: productData.originalPrice > 0 ? productData.originalPrice : undefined,
+              discountPercentage: productData.discountPercentage > 0 ? productData.discountPercentage : undefined
+            }
+        ),
         images,
         requirements: requirementsArray,
       };
 
       // Remover categoria se não estiver selecionada
-      if (!formData.category) {
-        delete formData.category;
+      if (!productToSave.category) {
+        delete productToSave.category;
+      }
+      
+      // Remover status se estiver vazio
+      if (productData.status === '') {
+        delete productToSave.status;
       }
 
       // Excluir a propriedade useVariants pois é apenas para controle na UI
-      delete formData.useVariants;
+      delete productToSave.useVariants;
 
       // Enviar para a API
       const response = await fetch('/api/products', {
@@ -291,7 +315,7 @@ export default function NewProductPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(productToSave),
       });
 
       const data = await response.json();
@@ -488,6 +512,45 @@ export default function NewProductPage() {
               Status do cheat que será exibido aos clientes
             </p>
           </div>
+
+          <div className="mb-6">
+            <label htmlFor="delivery-type" className="block text-gray-300 mb-2">
+              Tipo de Entrega
+            </label>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  id="delivery-automatic"
+                  name="delivery-type"
+                  value="automatic"
+                  checked={productData.deliveryType === 'automatic'}
+                  onChange={() => setProductData({...productData, deliveryType: 'automatic'})}
+                  className="mr-2"
+                />
+                <label htmlFor="delivery-automatic" className="text-gray-300">
+                  Entrega Automática (gerencia estoque)
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  id="delivery-manual"
+                  name="delivery-type"
+                  value="manual"
+                  checked={productData.deliveryType === 'manual'}
+                  onChange={() => setProductData({...productData, deliveryType: 'manual'})}
+                  className="mr-2"
+                />
+                <label htmlFor="delivery-manual" className="text-gray-300">
+                  Entrega Manual (estoque infinito)
+                </label>
+              </div>
+              <p className="text-gray-400 text-xs mt-1">
+                Na entrega manual, o produto terá estoque ilimitado e precisará ser entregue manualmente.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Imagens */}
@@ -652,7 +715,7 @@ export default function NewProductPage() {
               <h3 className="text-xl font-semibold text-white mb-4">Variantes/Planos</h3>
               
               {variants.map((variant, variantIndex) => (
-                <div key={variantIndex} className="mb-8 border border-dark-400 rounded-lg p-4">
+                <div key={variantIndex} className="bg-dark-300 p-4 rounded-lg mb-4 border border-dark-400">
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="font-bold text-white">Plano #{variantIndex + 1}</h4>
                     <button
@@ -725,6 +788,50 @@ export default function NewProductPage() {
                     </div>
                   </div>
                   
+                  <div className="mb-4">
+                    <label className="block text-gray-300 mb-2">
+                      Tipo de Entrega da Variante
+                    </label>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          id={`variant-${variantIndex}-delivery-automatic`}
+                          name={`variant-${variantIndex}-delivery-type`}
+                          value="automatic"
+                          checked={variant.deliveryType === 'automatic'}
+                          onChange={() => {
+                            const newVariants = [...variants];
+                            newVariants[variantIndex].deliveryType = 'automatic';
+                            setVariants(newVariants);
+                          }}
+                          className="mr-2"
+                        />
+                        <label htmlFor={`variant-${variantIndex}-delivery-automatic`} className="text-gray-300">
+                          Entrega Automática
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          id={`variant-${variantIndex}-delivery-manual`}
+                          name={`variant-${variantIndex}-delivery-type`}
+                          value="manual"
+                          checked={variant.deliveryType === 'manual'}
+                          onChange={() => {
+                            const newVariants = [...variants];
+                            newVariants[variantIndex].deliveryType = 'manual';
+                            setVariants(newVariants);
+                          }}
+                          className="mr-2"
+                        />
+                        <label htmlFor={`variant-${variantIndex}-delivery-manual`} className="text-gray-300">
+                          Entrega Manual (estoque infinito)
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
                       Características do Plano
@@ -788,7 +895,7 @@ export default function NewProductPage() {
                 type="text"
                 id="sistema_operacional"
                 name="sistema_operacional"
-                value={requirements.sistema_operacional}
+                value={requirements.sistema_operacional || ''}
                 onChange={handleRequirementChange}
                 placeholder="Ex: Windows 10 64-bit"
                 className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -803,7 +910,7 @@ export default function NewProductPage() {
                 type="text"
                 id="processador"
                 name="processador"
-                value={requirements.processador}
+                value={requirements.processador || ''}
                 onChange={handleRequirementChange}
                 placeholder="Ex: Intel Core i5 ou equivalente"
                 className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -818,7 +925,7 @@ export default function NewProductPage() {
                 type="text"
                 id="memoria"
                 name="memoria"
-                value={requirements.memoria}
+                value={requirements.memoria || ''}
                 onChange={handleRequirementChange}
                 placeholder="Ex: 8 GB RAM"
                 className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -833,7 +940,7 @@ export default function NewProductPage() {
                 type="text"
                 id="placa_grafica"
                 name="placa_grafica"
-                value={requirements.placa_grafica}
+                value={requirements.placa_grafica || ''}
                 onChange={handleRequirementChange}
                 placeholder="Ex: NVIDIA GTX 1060 ou superior"
                 className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -848,7 +955,7 @@ export default function NewProductPage() {
                 type="text"
                 id="armazenamento"
                 name="armazenamento"
-                value={requirements.armazenamento}
+                value={requirements.armazenamento || ''}
                 onChange={handleRequirementChange}
                 placeholder="Ex: 50 GB de espaço disponível"
                 className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"

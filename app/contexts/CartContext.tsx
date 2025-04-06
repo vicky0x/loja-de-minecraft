@@ -418,8 +418,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // Clonar o array anterior para evitar mutações
           const prevItemsCopy = Array.isArray(prevItems) ? [...prevItems] : [];
           
-          // Verificar se o item já existe no carrinho (baseado no variantId)
-          const existingItemIndex = prevItemsCopy.findIndex(i => i && i.variantId === item.variantId);
+          // Verificar se o item já existe no carrinho (baseado no productId E variantId)
+          const existingItemIndex = prevItemsCopy.findIndex(i => 
+            i && i.variantId === item.variantId && i.productId === item.productId
+          );
           
           // Verificar se o item tem estoque disponível
           if (item.stock !== undefined && item.stock <= 0) {

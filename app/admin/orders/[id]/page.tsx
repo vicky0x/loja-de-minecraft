@@ -16,23 +16,33 @@ import {
   FiAlertCircle,
   FiEdit,
   FiRefreshCw,
-  FiSave
+  FiSave,
+  FiCheck,
+  FiLoader,
+  FiBox
 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'react-hot-toast';
 
 // Tipos necessários
 interface OrderItem {
-  productId: {
+  _id: string;
+  product: {
     _id: string;
     name: string;
-    price: number;
-    images?: string[];
+    images: string[];
+    deliveryType?: string;
   };
-  variantId?: string;
-  quantity: number;
-  price: number;
+  variant?: {
+    _id: string;
+    name: string;
+    deliveryType?: string;
+  };
   name: string;
+  price: number;
+  delivered?: boolean;
+  quantity: number;
 }
 
 interface User {
@@ -78,13 +88,14 @@ interface CustomerData {
 interface Order {
   _id: string;
   user: User;
-  items: OrderItem[];
+  orderItems: OrderItem[];
   totalAmount: number;
   paymentInfo: PaymentInfo;
   couponApplied?: {
     code: string;
     discount: number;
   };
+  discountAmount?: number;
   createdAt: string;
   updatedAt: string;
   statusHistory?: StatusHistoryItem[];
@@ -107,60 +118,145 @@ export default function OrderDetailPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [assigningProducts, setAssigningProducts] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   
   // Função para buscar detalhes do pedido
-  const fetchOrderDetails = async () => {
+  const fetchOrderData = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError(null); // Limpar erros anteriores
       
-      console.log('Buscando detalhes do pedido:', orderId);
+      if (!orderId) {
+        setError('ID do pedido não encontrado');
+        setLoading(false);
+        return;
+      }
       
+      // Usar o endpoint correto de admin
       const response = await fetch(`/api/admin/orders/${orderId}`);
       
-      // Tentar obter os dados mesmo se a resposta não for ok, para poder mostrar o erro
-      const data = await response.json().catch(() => ({ error: 'Erro ao processar a resposta' }));
-      console.log('Resposta da API:', data);
-      
       if (!response.ok) {
-        throw new Error(data.error || data.details || 'Erro ao carregar detalhes do pedido');
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        throw new Error(errorData.error || `Erro ao carregar dados do pedido (${response.status})`);
       }
       
-      if (!data.success) {
-        throw new Error(data.error || 'Dados retornados sem indicação de sucesso');
-      }
+      const data = await response.json();
       
-      if (!data.order) {
+      // Verificar se os dados do pedido existem
+      if (!data || !data.order) {
         throw new Error('Dados do pedido não encontrados na resposta');
       }
       
-      // Garantir que o objeto order possui todos os campos necessários
-      const safeOrder = {
-        _id: data.order._id || 'id-desconhecido',
-        user: data.order.user || { 
-          username: 'Usuário não encontrado', 
-          email: 'email@desconhecido.com' 
-        },
-        items: Array.isArray(data.order.orderItems) ? data.order.orderItems : [],
-        totalAmount: data.order.totalAmount || 0,
-        paymentInfo: data.order.paymentInfo || { status: 'pending', method: 'desconhecido' },
-        couponApplied: data.order.couponApplied,
-        createdAt: data.order.createdAt,
-        updatedAt: data.order.updatedAt,
-        statusHistory: Array.isArray(data.order.statusHistory) ? data.order.statusHistory : [],
-        notes: Array.isArray(data.order.notes) ? data.order.notes : [],
-        productAssigned: !!data.order.productAssigned,
-        customerData: data.order.customerData
+      // Processar os itens do pedido para garantir que a quantidade seja validada
+      const processedItems = data.order.orderItems.map((item: any) => {
+        // Verificar se a quantidade é válida
+        let quantity = 1; // Valor padrão
+        
+        if (typeof item.quantity === 'number' && !isNaN(item.quantity) && item.quantity > 0) {
+          quantity = Math.floor(item.quantity);
+        } else if (typeof item.quantity === 'string' && item.quantity.trim() !== '') {
+          const parsedQuantity = parseInt(item.quantity.trim(), 10);
+          if (!isNaN(parsedQuantity) && parsedQuantity > 0) {
+            quantity = parsedQuantity;
+          }
+        }
+        
+        console.log(`Admin - Item ${item._id}: Quantidade original = ${item.quantity}, Processada = ${quantity}`);
+        
+        return {
+          ...item,
+          quantity: quantity
+        };
+      });
+      
+      // Atualizar o pedido com os itens processados
+      const processedOrder = {
+        ...data.order,
+        orderItems: processedItems
       };
       
-      setOrder(safeOrder);
+      setOrder(processedOrder);
       
-      if (safeOrder.paymentInfo && safeOrder.paymentInfo.status) {
-        setUpdateStatus(safeOrder.paymentInfo.status);
+      // Se tivermos status de pagamento, atualizar o dropdown de status
+      if (processedOrder.paymentInfo && processedOrder.paymentInfo.status) {
+        setUpdateStatus(processedOrder.paymentInfo.status);
       }
+      
+      // Verificar se o pedido tem itens
+      if (processedOrder.orderItems.length > 0) {
+        try {
+          // Carregar dados completos dos produtos com tratamento de erros
+          const productPromises = processedOrder.orderItems.map(async (item: OrderItem) => {
+            if (item && item.product && item.product._id) {
+              try {
+                // Buscar dados completos e atualizados do produto
+                const productResponse = await fetch(`/api/products/${item.product._id}`);
+                if (productResponse.ok) {
+                  const productData = await productResponse.json();
+                  console.log(`Produto carregado: ${productData.product.name}, deliveryType: ${productData.product.deliveryType}`);
+                  return productData.product;
+                }
+              } catch (err) {
+                console.error(`Erro ao buscar dados do produto ${item.product._id}:`, err);
+              }
+            }
+            return null;
+          });
+
+          const productDetails = await Promise.all(productPromises);
+          
+          // Mesclar os dados de produtos com os itens do pedido
+          const enhancedItems = processedOrder.orderItems.map((item: OrderItem, index: number) => {
+            const productDetail = productDetails[index];
+            
+            if (!productDetail) return item; // Se não tiver detalhes, manter o item original
+            
+            // Determinar o tipo de entrega (produto principal ou variante)
+            let deliveryType = productDetail.deliveryType || 'automatic';
+            
+            // Se tiver variante, verificar o deliveryType da variante específica
+            if (item.variant && item.variant._id && 
+                Array.isArray(productDetail.variants) && productDetail.variants.length > 0) {
+              
+              const matchingVariant = productDetail.variants.find(
+                (v: any) => v._id === item.variant?._id
+              );
+              
+              if (matchingVariant && matchingVariant.deliveryType) {
+                deliveryType = matchingVariant.deliveryType;
+              }
+            }
+            
+            // Log para debugar o tipo de entrega
+            console.log(`Item ${item.name}: deliveryType configurado como ${deliveryType}`);
+            
+            return {
+              ...item,
+              product: {
+                ...item.product,
+                deliveryType: deliveryType
+              }
+            };
+          });
+          
+          // Atualizar o pedido com os itens enriquecidos de forma segura
+          setOrder(prevOrder => {
+            if (!prevOrder) return processedOrder; // Precaução extra
+            return {
+              ...prevOrder,
+              orderItems: enhancedItems
+            };
+          });
+        } catch (err) {
+          console.error('Erro ao processar detalhes dos produtos:', err);
+          // Em caso de erro nos detalhes dos produtos, manter os dados básicos do pedido
+        }
+      }
+      
     } catch (error) {
-      console.error('Erro ao buscar detalhes do pedido:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao carregar detalhes do pedido');
+      console.error('Erro ao carregar pedido:', error);
+      setError(error instanceof Error ? error.message : 'Não foi possível carregar os dados do pedido.');
     } finally {
       setLoading(false);
     }
@@ -169,7 +265,7 @@ export default function OrderDetailPage() {
   // Buscar detalhes do pedido
   useEffect(() => {
     if (orderId) {
-      fetchOrderDetails();
+      fetchOrderData();
     }
   }, [orderId]);
   
@@ -262,7 +358,7 @@ export default function OrderDetailPage() {
       setSaveSuccess(true);
       
       // Recarregar detalhes do pedido após atualização
-      await fetchOrderDetails();
+      await fetchOrderData();
       
       // Limpar nota após salvar
       setAdminNote('');
@@ -310,7 +406,7 @@ export default function OrderDetailPage() {
       setSaveSuccess(true);
       
       // Recarregar detalhes do pedido após atualização
-      await fetchOrderDetails();
+      await fetchOrderData();
       
       // Esconder mensagem de sucesso após 3 segundos
       setTimeout(() => {
@@ -325,7 +421,99 @@ export default function OrderDetailPage() {
     }
   };
   
-  // Renderização condicional de loading
+  // Adicionar função para marcar produto como entregue manualmente
+  const markProductAsDelivered = async (itemId: string) => {
+    try {
+      setActionLoading(true);
+      
+      const response = await fetch(`/api/orders/${orderId}/deliver-item`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          itemId, 
+          note: `Produto entregue manualmente pelo administrador em ${new Date().toLocaleString('pt-BR')}`
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao marcar produto como entregue');
+      }
+      
+      // Atualizar o estado local
+      setOrder(prevOrder => {
+        if (!prevOrder) return null;
+        const updatedItems = prevOrder.orderItems.map(item => {
+          if (item._id === itemId) {
+            return {
+              ...item,
+              delivered: true
+            };
+          }
+          return item;
+        });
+        
+        return {
+          ...prevOrder,
+          orderItems: updatedItems
+        };
+      });
+      
+      // Adicionar nota automática
+      if (order && order.orderItems) {
+        const productName = order.orderItems.find(item => item._id === itemId)?.name || 'desconhecido';
+        await addNote(`Produto ${productName} marcado como entregue manualmente.`);
+      }
+      
+      // Atualizar página
+      fetchOrderData();
+      
+      toast.success('Produto marcado como entregue com sucesso!');
+    } catch (error) {
+      console.error('Erro ao marcar produto como entregue:', error);
+      toast.error('Erro ao marcar produto como entregue');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  
+  // Função para adicionar nota ao pedido
+  const addNote = async (content: string) => {
+    if (!content.trim() || !order) return;
+    
+    try {
+      // Usar a rota PUT existente, enviando apenas a nota sem alterar o status
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          status: order.paymentInfo.status, // Manter o status atual
+          notes: content // Adicionar apenas a nota
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao adicionar nota');
+      }
+      
+      // Atualizar pedido após adicionar nota
+      fetchOrderData();
+    } catch (error) {
+      console.error('Erro ao adicionar nota:', error);
+    }
+  };
+  
+  // Função para buscar notas do pedido
+  const fetchNotes = () => {
+    // Como é uma função de verificação, deixamos vazia mas definida
+    // Pode ser implementada posteriormente quando necessário buscar notas do pedido
+    console.log('Função fetchNotes chamada para o pedido:', orderId);
+  };
+  
+  // Se o componente estiver em estado de loading ou erro, retorna os respectivos componentes
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[60vh]">
@@ -334,7 +522,6 @@ export default function OrderDetailPage() {
     );
   }
   
-  // Renderização condicional de erro
   if (error) {
     return (
       <div className="space-y-4">
@@ -378,7 +565,8 @@ export default function OrderDetailPage() {
       </div>
     );
   }
-  
+
+  // O componente principal que é renderizado quando temos os dados do pedido
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
@@ -680,78 +868,140 @@ export default function OrderDetailPage() {
         </div>
       </div>
       
-      {/* Produtos do Pedido */}
-      <div className="bg-dark-200 rounded-lg shadow-md overflow-hidden">
-        <div className="p-6 pb-4">
-          <h3 className="text-lg font-semibold text-white mb-2 flex items-center">
-            <FiPackage className="mr-2" />
-            Produtos
-          </h3>
-          <p className="text-gray-400 text-sm">
-            {order.productAssigned ? 'Produtos já foram atribuídos ao cliente' : 'Produtos ainda não foram atribuídos ao cliente'}
-          </p>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-dark-300 text-gray-300 text-sm">
+      {/* Tabela de itens do pedido */}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold mb-4">Itens do Pedido</h3>
+        <div className="bg-dark-200 rounded-lg overflow-hidden shadow">
+          <table className="min-w-full divide-y divide-dark-400">
+            <thead className="bg-dark-300">
               <tr>
-                <th className="px-4 py-3">Produto</th>
-                <th className="px-4 py-3">Plano/Variante</th>
-                <th className="px-4 py-3 text-center">Quantidade</th>
-                <th className="px-4 py-3 text-right">Preço</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Produto
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Tipo de Entrega
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Código
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Ações
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-300">
-              {order.items.map((item, index) => (
-                <tr key={index} className="hover:bg-dark-300/50 transition-colors">
-                  <td className="px-4 py-3">
+            <tbody className="divide-y divide-dark-400">
+              {order.orderItems.map((item: OrderItem) => (
+                <tr key={item._id}>
+                  {/* Produto */}
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      {item.productId && item.productId.images && item.productId.images.length > 0 ? (
-                        <img 
-                          src={item.productId.images[0]} 
-                          alt={item.productId?.name || 'Produto'} 
-                          className="w-10 h-10 object-cover rounded mr-3" 
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-dark-400 rounded mr-3 flex items-center justify-center text-gray-500">
-                          <FiPackage size={20} />
+                      <div className="flex-shrink-0 h-10 w-10 relative">
+                        {item.product && item.product.images && item.product.images.length > 0 ? (
+                          <img 
+                            className="h-10 w-10 rounded-md object-cover" 
+                            src={item.product.images[0]} 
+                            alt={item.name}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center">
+                            <FiBox className="text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-white">{item.name}</div>
+                        {item.variant && (
+                          <div className="text-xs text-gray-500">
+                            Variante: {item.variant.name}
+                          </div>
+                        )}
+                        <div className="text-xs text-primary mt-1">
+                          R$ {item.price.toFixed(2)}
                         </div>
-                      )}
-                      <div>
-                        <p className="font-medium text-white">
-                          {item.productId?.name || item.name || 'Produto'}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          ID: {item.productId?._id || 'N/A'}
-                        </p>
+                        
+                        {/* Mostrar quantidade */}
+                        <div className="mt-1">
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                            Qtd: {processQuantity(item)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-white">
-                    {typeof item.variantId === 'string' && item.variantId
-                      ? item.variantId 
-                      : 'Padrão'}
+                  
+                  {/* Tipo de Entrega */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {/* Verifica se o tipo de entrega existe e é uma string válida */}
+                    {typeof item.product?.deliveryType === 'string' ? (
+                      item.product.deliveryType === 'automatic' ? (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          Automática
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                          Manual
+                        </span>
+                      )
+                    ) : (
+                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        Automática
+                      </span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-white text-center">
-                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-dark-400 text-white text-sm font-medium">
-                      {item.quantity || 1}
-                    </span>
+                  
+                  {/* Status */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {item.delivered ? (
+                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        Entregue
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                        Pendente
+                      </span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-right text-white">
-                    R$ {(item.price || 0).toFixed(2).replace('.', ',')}
+                  
+                  {/* Código */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {item.code ? (
+                      <div className="text-sm text-gray-300 font-mono">{item.code}</div>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">Não atribuído</div>
+                    )}
+                  </td>
+                  
+                  {/* Ações */}
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {!item.delivered && item.product?.deliveryType === 'manual' && (
+                      <button
+                        onClick={() => handleMarkAsDelivered(item._id)}
+                        disabled={isSaving}
+                        className="text-primary hover:text-primary-dark focus:outline-none disabled:opacity-50"
+                      >
+                        {isSaving && markingItemId === item._id ? (
+                          <span className="flex items-center">
+                            <span className="animate-spin h-4 w-4 mr-2 border-b-2 border-primary rounded-full"></span>
+                            Processando...
+                          </span>
+                        ) : (
+                          <span className="flex items-center">
+                            <FiCheckCircle className="mr-1" />
+                            Marcar como entregue
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-dark-300">
-              <tr>
-                <td colSpan={3} className="px-4 py-3 text-right font-medium text-white">Total:</td>
-                <td className="px-4 py-3 text-right font-semibold text-white">
-                  R$ {order.totalAmount.toFixed(2).replace('.', ',')}
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </div>

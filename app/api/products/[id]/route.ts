@@ -154,7 +154,8 @@ export async function PUT(
       stock,
       images,
       originalPrice,
-      discountPercentage
+      discountPercentage,
+      deliveryType
     } = data;
     
     // Log de depuração
@@ -163,6 +164,7 @@ export async function PUT(
     console.log('Tipo do status:', typeof status);
     console.log('Preço original:', originalPrice);
     console.log('Desconto:', discountPercentage);
+    console.log('Tipo de entrega recebido:', deliveryType);
     
     // Validações básicas
     if (!name || !description) {
@@ -259,9 +261,55 @@ export async function PUT(
       ...(stock !== undefined ? { stock: Number(stock) } : {}),
       // Adicionar preço original e porcentagem de desconto
       ...(originalPrice !== undefined && originalPrice !== '' ? { originalPrice: Number(originalPrice) } : {}),
-      ...(discountPercentage !== undefined && discountPercentage !== '' ? { discountPercentage: Number(discountPercentage) } : {})
+      ...(discountPercentage !== undefined && discountPercentage !== '' ? { discountPercentage: Number(discountPercentage) } : {}),
+      // Garantir que o deliveryType seja sempre incluído na atualização
+      deliveryType: deliveryType || 'automatic'
     };
     
+    // Adicionar log detalhado para depuração
+    console.log('Atualizando produto com:', {
+      id,
+      nome: name,
+      deliveryType: deliveryType || 'não especificado',
+      currentDeliveryType: product.deliveryType,
+      stock: stock || 'não especificado',
+      currentStock: product.stock
+    });
+
+    // Verificar se estamos alterando o tipo de entrega
+    if (product.deliveryType !== deliveryType) {
+      console.log(`ALTERAÇÃO CRÍTICA: Alterando tipo de entrega de ${product.deliveryType} para ${deliveryType}`);
+      
+      // Se estiver alterando de manual para automatic, verificar o estoque
+      if (product.deliveryType === 'manual' && deliveryType === 'automatic') {
+        if (product.stock === 99999) {
+          console.log('CORREÇÃO: Redefinindo estoque de infinito (99999) para zero (0)');
+          updateObject.stock = 0;
+        }
+      } else if (product.deliveryType === 'automatic' && deliveryType === 'manual') {
+        // Se estiver alterando de automatic para manual, definir estoque como infinito
+        console.log('CORREÇÃO: Alterando de automático para manual, definindo estoque como infinito');
+        updateObject.stock = 99999;
+      }
+    }
+
+    // Garantir que a lógica de estoque esteja correta baseada no tipo de entrega final
+    const finalDeliveryType = deliveryType || product.deliveryType;
+    if (finalDeliveryType === 'automatic') {
+      if (updateObject.stock === 99999) {
+        console.log('CORREÇÃO: Produto automático não pode ter estoque infinito, redefinindo para zero');
+        updateObject.stock = 0;
+      } else if (!('stock' in updateObject)) {
+        // Se o estoque não foi especificado mas o produto é automático, inicializar com valor anterior ou zero
+        updateObject.stock = product.stock !== 99999 ? product.stock : 0;
+        console.log(`CORREÇÃO: Produto automático sem estoque definido, inicializando com ${updateObject.stock}`);
+      }
+    } else if (finalDeliveryType === 'manual') {
+      // Produtos com entrega manual sempre têm estoque infinito
+      updateObject.stock = 99999;
+      console.log('CORREÇÃO: Produto manual deve ter estoque infinito (99999)');
+    }
+
     // Atualizar o produto
     const updatedProduct = await Product.findByIdAndUpdate(
       id,

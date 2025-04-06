@@ -86,7 +86,8 @@ async function getModels() {
       const productSchema = new mongoose.Schema({
         name: String,
         price: Number,
-        images: [String]
+        images: [String],
+        deliveryType: String
       });
       
       User = mongoose.models.User || mongoose.model('User', userSchema);
@@ -185,6 +186,108 @@ async function verifyAdmin(request: NextRequest) {
   }
 }
 
+// Função auxiliar para garantir que a URL da imagem seja válida
+function ensureValidImageUrl(imageUrl: string): string {
+  if (!imageUrl) return '';
+  
+  // Se a URL já começar com http ou https, retornar como está
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Se for um caminho relativo começando com /uploads, adicionar o domínio base
+  if (imageUrl.startsWith('/uploads/')) {
+    // Em ambiente de desenvolvimento, usar localhost
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    return `${baseUrl}${imageUrl}`;
+  }
+  
+  // Caso específico para imagens que começam com /api
+  if (imageUrl.startsWith('/api/')) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    return `${baseUrl}${imageUrl}`;
+  }
+  
+  // Se não for nenhum dos casos acima, retornar a URL original
+  return imageUrl;
+}
+
+// Função robusta para processar a quantidade do produto
+function processQuantity(item: any): number {
+  // Log para diagnóstico detalhado
+  logger.info(`Processando quantidade do item ${item._id}: valor original = ${JSON.stringify({
+    quantity: item.quantity,
+    type: typeof item.quantity,
+    rawValue: item.quantity,
+    docValue: item._doc ? item._doc.quantity : undefined,
+    hasNestedOrder: !!item.orderItem,
+    hasProductQuantity: item.product && typeof item.product.quantity === 'number'
+  })}`);
+  
+  // ESTRATÉGIA 1: Verificar a propriedade direta
+  if (typeof item.quantity === 'number' && !isNaN(item.quantity) && item.quantity > 0) {
+    logger.info(`Quantidade encontrada na propriedade direta: ${item.quantity}`);
+    return Math.floor(item.quantity);
+  }
+  
+  // ESTRATÉGIA 2: Verificar no objeto MongoDB original
+  if (item._doc && typeof item._doc.quantity === 'number' && !isNaN(item._doc.quantity) && item._doc.quantity > 0) {
+    logger.info(`Quantidade encontrada no objeto _doc: ${item._doc.quantity}`);
+    return Math.floor(item._doc.quantity);
+  }
+  
+  // ESTRATÉGIA 3: Verificar propriedades aninhadas
+  // Em alguns casos, a quantidade pode estar em item.orderItem.quantity
+  if (item.orderItem && typeof item.orderItem.quantity === 'number' && !isNaN(item.orderItem.quantity) && item.orderItem.quantity > 0) {
+    logger.info(`Quantidade encontrada em orderItem.quantity: ${item.orderItem.quantity}`);
+    return Math.floor(item.orderItem.quantity);
+  }
+  
+  // ESTRATÉGIA 4: Verificar se está no objeto produto
+  if (item.product && typeof item.product.quantity === 'number' && !isNaN(item.product.quantity) && item.product.quantity > 0) {
+    logger.info(`Quantidade encontrada em product.quantity: ${item.product.quantity}`);
+    return Math.floor(item.product.quantity);
+  }
+  
+  // ESTRATÉGIA 5: Tentar converter de string
+  if (typeof item.quantity === 'string' && item.quantity.trim() !== '') {
+    const parsedValue = parseInt(item.quantity.trim(), 10);
+    if (!isNaN(parsedValue) && parsedValue > 0) {
+      logger.info(`Quantidade convertida de string: ${parsedValue}`);
+      return parsedValue;
+    }
+  }
+  
+  // ESTRATÉGIA 6: Verificar como subpropriedades do item
+  const itemObject = typeof item.toObject === 'function' ? item.toObject() : item;
+  for (const key in itemObject) {
+    // Pular propriedades padrão que sabemos que não são a quantidade
+    if (['_id', 'product', 'variant', 'name', 'price', 'delivered'].includes(key)) continue;
+    
+    // Verificar se esta propriedade parece ser a quantidade
+    if (typeof itemObject[key] === 'number' && !isNaN(itemObject[key]) && itemObject[key] > 0) {
+      logger.info(`Quantidade encontrada em propriedade alternativa ${key}: ${itemObject[key]}`);
+      return Math.floor(itemObject[key]);
+    }
+  }
+  
+  // ESTRATÉGIA 7: Último recurso - buscar em metadados
+  if (item.metadata) {
+    for (const key in item.metadata) {
+      if (typeof item.metadata[key] === 'number' && !isNaN(item.metadata[key]) && item.metadata[key] > 0) {
+        logger.info(`Quantidade encontrada em metadata.${key}: ${item.metadata[key]}`);
+        return Math.floor(item.metadata[key]);
+      }
+    }
+  }
+  
+  // Se chegamos aqui, não encontramos uma quantidade válida
+  logger.warn(`Quantidade inválida para o item ${item._id}, usando valor padrão 1. 
+               Objeto de item: ${JSON.stringify(item, (key, value) => 
+                 key === '_id' || key === 'product' ? '[Referência]' : value, 2)}`);
+  return 1;
+}
+
 // GET - Obter detalhes de um pedido específico
 export async function GET(
   request: NextRequest,
@@ -224,7 +327,7 @@ export async function GET(
         .populate('user', 'username email name cpf phone address')
         .populate({
           path: 'orderItems.product',
-          select: 'name price images'
+          select: 'name price images deliveryType variants'
         })
         .lean();
 
@@ -235,6 +338,46 @@ export async function GET(
           success: false,
           order: null
         }, { status: 404 });
+      }
+
+      // Carregar também os dados mais recentes dos produtos para verificar o deliveryType atual
+      if (order.orderItems && order.orderItems.length > 0) {
+        const updatedOrderItems = await Promise.all(order.orderItems.map(async (item: any) => {
+          if (item.product && item.product._id) {
+            // Buscar os dados mais recentes do produto
+            const product = await mongoose.model('Product').findById(item.product._id).lean();
+            
+            if (product) {
+              // Verificar o tipo de entrega do produto ou da variante
+              let deliveryType = product.deliveryType || 'automatic';
+              
+              // Se houver variante, verificar o deliveryType da variante específica
+              if (item.variant && product.variants && product.variants.length > 0) {
+                const variant = product.variants.find((v: any) => 
+                  v._id.toString() === item.variant.toString()
+                );
+                
+                if (variant && variant.deliveryType) {
+                  deliveryType = variant.deliveryType;
+                }
+              }
+              
+              // Atualizar o item com o tipo de entrega correto
+              return {
+                ...item,
+                product: {
+                  ...item.product,
+                  deliveryType: deliveryType
+                }
+              };
+            }
+          }
+          
+          return item;
+        }));
+        
+        // Substituir os itens do pedido pelos atualizados
+        order.orderItems = updatedOrderItems;
       }
 
       // Formatar o pedido para garantir que todos os campos estejam presentes
@@ -257,19 +400,35 @@ export async function GET(
           phone: '',
           address: ''
         },
-        orderItems: Array.isArray(order.orderItems) ? order.orderItems.map((item: any) => ({
-          _id: item._id ? item._id.toString() : 'item-' + Math.random().toString(36).substr(2, 9),
-          product: item.product ? {
-            _id: item.product._id ? item.product._id.toString() : 'produto-desconhecido',
-            name: item.product.name || 'Produto sem nome',
-            price: item.product.price || 0,
-            images: Array.isArray(item.product.images) ? item.product.images : []
-          } : null,
-          variantId: item.variantId || '',
-          quantity: item.quantity || 1,
-          price: item.price || 0,
-          name: item.name || 'Item sem nome'
-        })) : [],
+        orderItems: Array.isArray(order.orderItems) ? order.orderItems.map((item: any) => {
+          // Processar o produto
+          const formattedProduct = item.product ? {
+            _id: item.product._id.toString(),
+            name: item.product.name || '',
+            slug: item.product.slug || '',
+            status: item.product.status || 'unknown',
+            price: typeof item.product.price === 'number' ? item.product.price : 0,
+            deliveryType: item.product.deliveryType || 'manual',
+            images: Array.isArray(item.product.images) 
+              ? item.product.images.map((img: string) => ensureValidImageUrl(img)) 
+              : []
+          } : null;
+
+          // Garantir quantidade correta
+          let quantity = processQuantity(item);
+
+          // Adicionar logs para diagnóstico
+          logger.info(`[API:ADMIN:ORDER] Item ${item._id}: Quantidade processada = ${quantity}`);
+
+          return {
+            _id: item._id.toString(),
+            product: formattedProduct,
+            price: item.price || 0,
+            name: item.name || '',
+            delivered: !!item.delivered,
+            quantity: quantity
+          };
+        }) : [],
         totalAmount: order.totalAmount || 0,
         paymentInfo: {
           method: order.paymentInfo?.method || 'desconhecido',

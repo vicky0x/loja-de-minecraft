@@ -14,7 +14,8 @@ import {
   FiChevronRight,
   FiFilter,
   FiSearch,
-  FiCopy
+  FiCopy,
+  FiImage
 } from 'react-icons/fi';
 
 interface ProductItem {
@@ -178,6 +179,24 @@ export default function ProductsPage() {
         </button>
       </div>
 
+      {/* Aviso sobre entregas manuais */}
+      <div className="bg-amber-900/30 border border-amber-500/30 rounded-xl p-4 shadow-lg">
+        <div className="flex items-start">
+          <div className="flex-shrink-0 bg-amber-500/20 p-2 rounded-full mr-3">
+            <FiClock className="text-amber-400 text-xl" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-amber-400 font-semibold text-lg mb-1">Informação sobre Entregas Manuais</h3>
+            <p className="text-white text-sm leading-relaxed">
+              Se você comprou um produto com <strong>entrega manual</strong>, ele será entregue em até <strong>24 horas</strong> após a confirmação do pagamento e aparecerá nesta página.
+            </p>
+            <p className="text-white/80 text-sm mt-2">
+              Nossa equipe trabalha para fazer a entrega em <strong>poucos minutos</strong>. Fique tranquilo, não é necessário entrar em contato com o suporte para solicitar informações sobre a entrega.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Filtros e pesquisa */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -251,15 +270,22 @@ export default function ProductsPage() {
               >
                 <div className="relative aspect-video">
                   {product.image ? (
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="relative h-32 w-full rounded overflow-hidden bg-dark-400">
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const imgElement = e.target as HTMLImageElement;
+                          imgElement.src = '/placeholder-image.jpg';
+                          imgElement.onerror = null; // Prevent infinite loop
+                        }}
+                      />
+                    </div>
                   ) : (
-                    <div className="w-full h-full bg-dark-400 flex justify-center items-center">
-                      <FiPackage className="text-4xl text-gray-500" />
+                    <div className="h-32 w-full rounded bg-dark-400 flex items-center justify-center">
+                      <FiImage size={32} className="text-gray-500" />
                     </div>
                   )}
                   <div className="absolute top-2 right-2">

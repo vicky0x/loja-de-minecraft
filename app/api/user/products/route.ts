@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         slug: item.product.slug,
         status: mapStatusToPortuguese(item.product.status), // Converter para formato visível
         image: item.product.images && item.product.images.length > 0 
-          ? item.product.images[0]
+          ? ensureValidImageUrl(item.product.images[0])
           : null,
         shortDescription: item.product.shortDescription,
         assignedAt: item.assignedAt,
@@ -137,6 +137,32 @@ export async function GET(request: NextRequest) {
       }
       
       return 'Padrão';
+    }
+    
+    // Função auxiliar para garantir que a URL da imagem seja válida
+    function ensureValidImageUrl(imageUrl) {
+      if (!imageUrl) return null;
+      
+      // Se a URL já começar com http ou https, retornar como está
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      
+      // Se for um caminho relativo começando com /uploads, adicionar o domínio base
+      if (imageUrl.startsWith('/uploads/')) {
+        // Em ambiente de desenvolvimento, usar localhost
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        return `${baseUrl}${imageUrl}`;
+      }
+      
+      // Caso específico para imagens que começam com /api
+      if (imageUrl.startsWith('/api/')) {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        return `${baseUrl}${imageUrl}`;
+      }
+      
+      // Se não for nenhum dos casos acima, retornar a URL original
+      return imageUrl;
     }
     
     // Dados para retornar

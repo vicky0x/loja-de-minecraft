@@ -96,29 +96,57 @@ export async function POST(request: NextRequest) {
           );
         }
         
+        // Validar e processar a quantidade
+        let itemQuantity = 1; // Valor padrão
+        
+        if (typeof item.quantity === 'number' && !isNaN(item.quantity) && item.quantity > 0) {
+          itemQuantity = Math.floor(item.quantity);
+        } else if (typeof item.quantity === 'string' && item.quantity.trim() !== '') {
+          const parsedQty = parseInt(item.quantity.trim(), 10);
+          if (!isNaN(parsedQty) && parsedQty > 0) {
+            itemQuantity = parsedQty;
+          }
+        }
+        
+        logger.info(`Produto: ${product.name}, Variante: ${variant.name}, Quantidade: ${itemQuantity}`);
+        
         // Adicionar item ao pedido com variante
         const orderItem = {
           product: new mongoose.Types.ObjectId(product._id),
           variant: variant._id.toString(),
           price: item.price || variant.price,
           name: `${product.name} - ${variant.name}`,
-          quantity: item.quantity || 1
+          quantity: itemQuantity
         };
         
         orderItems.push(orderItem);
-        totalAmount += orderItem.price * orderItem.quantity;
+        totalAmount += orderItem.price * itemQuantity;
       } else {
+        // Validar e processar a quantidade para produtos sem variantes
+        let itemQuantity = 1; // Valor padrão
+        
+        if (typeof item.quantity === 'number' && !isNaN(item.quantity) && item.quantity > 0) {
+          itemQuantity = Math.floor(item.quantity);
+        } else if (typeof item.quantity === 'string' && item.quantity.trim() !== '') {
+          const parsedQty = parseInt(item.quantity.trim(), 10);
+          if (!isNaN(parsedQty) && parsedQty > 0) {
+            itemQuantity = parsedQty;
+          }
+        }
+        
+        logger.info(`Produto: ${product.name}, Quantidade: ${itemQuantity}`);
+        
         // Para produtos sem variantes, usar o preço e nome diretamente do produto
         const orderItem = {
           product: new mongoose.Types.ObjectId(product._id),
           variant: null, // Variante nula para produtos sem variantes
           price: item.price || product.price,
           name: product.name,
-          quantity: item.quantity || 1
+          quantity: itemQuantity
         };
         
         orderItems.push(orderItem);
-        totalAmount += orderItem.price * orderItem.quantity;
+        totalAmount += orderItem.price * itemQuantity;
       }
     }
     

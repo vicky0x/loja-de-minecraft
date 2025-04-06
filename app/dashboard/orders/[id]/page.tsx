@@ -26,15 +26,26 @@ interface Product {
   description?: string;
   image?: string | null;
   images?: string[];
+  deliveryType?: string;
 }
 
 interface OrderItem {
   _id: string;
-  product: Product;
+  product: {
+    _id: string;
+    name: string;
+    images: string[];
+    deliveryType?: string;
+  };
+  variant?: {
+    _id: string;
+    name: string;
+    deliveryType?: string;
+  };
   price: number;
   name: string;
-  variant: string;
-  quantity?: number;
+  delivered?: boolean;
+  quantity: number;
 }
 
 interface Coupon {
@@ -161,7 +172,7 @@ export default function OrderDetailPage() {
         };
       }
       
-      // Garantir valores padrão para campos essenciais
+      // Garantir valores padrão para campos essenciais e validar quantidade
       const processedOrder = {
         ...orderData,
         _id: orderData._id || orderId,
@@ -171,37 +182,47 @@ export default function OrderDetailPage() {
         createdAt: orderData.createdAt || new Date().toISOString(),
         updatedAt: orderData.updatedAt || new Date().toISOString(),
         productAssigned: orderData.productAssigned || false,
-        orderItems: orderData.orderItems.map((item: any) => ({
-          _id: item._id || '',
-          name: item.name || 'Produto',
-          variant: item.variant || '',
-          price: item.price || 0,
-          product: item.product || {
-            _id: '',
-            name: item.name || 'Produto',
-            price: item.price || 0,
-            description: '',
-            image: null
+        orderItems: orderData.orderItems.map((item: any) => {
+          // Processar quantidade adequadamente
+          let quantity = 1; // Valor padrão
+
+          // Verificar se existe uma quantidade válida
+          if (typeof item.quantity === 'number' && !isNaN(item.quantity) && item.quantity > 0) {
+            quantity = Math.floor(item.quantity);
+          } else if (typeof item.quantity === 'string' && item.quantity.trim() !== '') {
+            const parsedQuantity = parseInt(item.quantity.trim(), 10);
+            if (!isNaN(parsedQuantity) && parsedQuantity > 0) {
+              quantity = parsedQuantity;
+            }
           }
-        })),
-        paymentInfo: {
-          id: orderData.paymentInfo.id || '',
-          status: orderData.paymentInfo.status || 'pending',
-          method: orderData.paymentInfo.method || orderData.paymentMethod || 'pix',
-          receiptUrl: orderData.paymentInfo.receiptUrl || '',
-          pixQrCode: orderData.paymentInfo.pixQrCode || '',
-          pixQrCodeBase64: orderData.paymentInfo.pixQrCodeBase64 || '',
-          pixCopyPaste: orderData.paymentInfo.pixCopyPaste || '',
-          expirationDate: orderData.paymentInfo.expirationDate || null
-        }
+
+          console.log(`Processando item ${item._id || 'novo'}: quantidade original = ${item.quantity}, processada = ${quantity}`);
+
+          return {
+            _id: item._id || '',
+            name: item.name || 'Produto',
+            variant: item.variant || '',
+            price: item.price || 0,
+            product: item.product || {
+              _id: '',
+              name: item.name || 'Produto',
+              price: item.price || 0,
+              description: '',
+              image: null,
+              deliveryType: item.product?.deliveryType,
+              images: item.product?.images || []
+            },
+            delivered: item.delivered,
+            quantity: quantity // Usar a quantidade processada
+          };
+        })
       };
       
-      console.log('Dados do pedido processados e validados');
       setOrder(processedOrder);
-    } catch (err) {
-      console.error('Erro ao buscar detalhes do pedido:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao carregar detalhes do pedido');
-    } finally {
+      setLoading(false);
+    } catch (error) {
+      console.error('Erro ao buscar detalhes do pedido:', error);
+      setError(error instanceof Error ? error.message : 'Erro desconhecido');
       setLoading(false);
     }
   };
@@ -561,65 +582,111 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {/* Itens do Pedido */}
-      <div className="space-y-4">
-        <div className="bg-dark-200 rounded-lg shadow-md overflow-hidden mt-6">
-          <div className="p-6 border-b border-dark-300">
-            <h3 className="text-lg font-semibold">Itens do Pedido</h3>
+      {/* Seção de Produtos */}
+      <div className="py-4">
+        <h3 className="text-lg font-semibold mb-4 text-white">Produtos</h3>
+        
+        {/* NOVO: Aviso de Entrega Manual */}
+        {order.orderItems.some(item => 
+          item.product?.deliveryType === 'manual' || 
+          item.variant?.deliveryType === 'manual'
+        ) && (
+          <div className="mb-6 bg-amber-900/30 border border-amber-500/30 rounded-xl p-4 shadow-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 bg-amber-500/20 p-2 rounded-full mr-3">
+                <FiClock className="text-amber-400 text-xl" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-amber-400 font-semibold text-lg mb-1">Entrega Manual</h3>
+                <p className="text-white text-sm leading-relaxed">
+                  Este pedido possui produtos com <strong>entrega manual</strong> e será entregue em até <strong>24 horas</strong> após a confirmação do pagamento.
+                </p>
+                <p className="text-white/80 text-sm mt-2">
+                  Nossa equipe trabalha para fazer a entrega em <strong>poucos minutos</strong>. Fique tranquilo, não é necessário entrar em contato com o suporte para solicitar informações sobre a entrega.
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-dark-300">
-              <thead className="bg-dark-300">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Produto
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Variante
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Quantidade
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Preço
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-dark-200 divide-y divide-dark-300">
-                {order.orderItems.map((item) => (
-                  <tr key={item._id} className="hover:bg-dark-300/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-3">
-                        {item.product?.images?.[0] && (
-                          <div className="h-10 w-10 rounded bg-dark-400 overflow-hidden flex-shrink-0">
-                            <Image 
-                              src={item.product.images[0]} 
-                              alt={item.product.name} 
-                              width={40} 
-                              height={40} 
-                              className="object-cover h-full w-full"
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <div className="text-sm font-medium text-white">{item.product.name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {item.variant || 'Padrão'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {item.quantity || 1}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      R$ {item.price.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        )}
+        
+        <div className="space-y-4">
+          {order.orderItems.map((item: OrderItem) => (
+            <div 
+              key={item._id} 
+              className="bg-dark-300 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-dark-400"
+            >
+              <div className="flex items-center gap-3">
+                {/* Imagem do produto */}
+                <div className="h-16 w-16 rounded overflow-hidden bg-dark-400 flex-shrink-0">
+                  {item.product ? (
+                    <img
+                      src={
+                        item.product.images && item.product.images.length > 0
+                          ? item.product.images[0]
+                          : item.product.image || '/placeholder-image.jpg'
+                      }
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        console.log('Erro ao carregar imagem:', e);
+                        (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                        (e.target as HTMLImageElement).onerror = null; // Prevenir loop infinito
+                      }}
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <FiPackage size={24} className="text-gray-500" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Nome e preço */}
+                <div>
+                  <h4 className="font-medium text-white">{item.name}</h4>
+                  <p className="text-primary">R$ {item.price.toFixed(2)}</p>
+                  
+                  {/* Tipo de entrega e status */}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {/* Destacar a quantidade do produto com estilo melhorado */}
+                    <span className="px-2 py-1 bg-dark-400 text-white text-xs font-medium rounded-full flex items-center">
+                      <span className="mr-1">Quantidade:</span> 
+                      <span className="font-bold text-primary">{item.quantity}</span>
+                    </span>
+                    
+                    {/* Tipo de entrega */}
+                    {typeof item.product?.deliveryType === 'string' ? (
+                      item.product.deliveryType === 'automatic' ? (
+                        <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs rounded-full">
+                          Entrega Automática
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-amber-600/20 text-amber-400 text-xs rounded-full">
+                          Entrega Manual
+                        </span>
+                      )
+                    ) : (
+                      <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs rounded-full">
+                        Entrega Automática
+                      </span>
+                    )}
+                    
+                    {/* Status de entrega (somente para entrega manual) */}
+                    {typeof item.product?.deliveryType === 'string' && item.product.deliveryType === 'manual' && (
+                      item.delivered ? (
+                        <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded-full">
+                          Entregue
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 text-xs rounded-full">
+                          Aguardando Entrega
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

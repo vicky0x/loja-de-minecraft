@@ -157,7 +157,17 @@ export async function createPixPayment(paymentData: any): Promise<PixPaymentResp
     // SOLUÇÃO RADICAL: Ignorar completamente a biblioteca do Mercado Pago e usar fetch diretamente
     
     // 1. Extrair dados essenciais
-    const transaction_amount = Number(paymentData.transaction_amount || 0);
+    let transaction_amount = Number(paymentData.transaction_amount || 0);
+    
+    // Garantir que o valor tenha apenas duas casas decimais para evitar erros do Mercado Pago
+    transaction_amount = Number(transaction_amount.toFixed(2));
+    
+    // Garantir que o valor seja pelo menos 0.01 (valor mínimo aceito pelo Mercado Pago)
+    if (transaction_amount < 0.01) {
+      transaction_amount = 0.01;
+      logger.warn(`Valor ajustado para o mínimo de R$ 0.01 pois o valor original era muito pequeno: ${paymentData.transaction_amount}`);
+    }
+    
     const description = String(paymentData.description || '');
     const external_reference = String(paymentData.external_reference || '');
     
@@ -225,6 +235,7 @@ export async function createPixPayment(paymentData: any): Promise<PixPaymentResp
     // 6. Log para debug antes de enviar
     logger.info('Enviando requisição direta para API do Mercado Pago:', JSON.stringify(paymentRequest));
     logger.info('Campos enviados:', Object.keys(paymentRequest).join(', '));
+    logger.info(`Valor formatado: R$ ${transaction_amount} (original: ${paymentData.transaction_amount})`);
     
     // 7. Chamar a API diretamente via fetch
     const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {

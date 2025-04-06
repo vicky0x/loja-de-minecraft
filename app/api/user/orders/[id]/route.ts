@@ -11,6 +11,80 @@ const logger = {
   warn: (message: string, ...args: any[]) => console.warn(`[API:USER:ORDER-DETAIL WARN] ${message}`, ...args)
 };
 
+// Função para processar e validar a quantidade do produto
+function processQuantity(item: any): number {
+  // Log para debug
+  logger.info(`Processando quantidade do item ${item._id}: valor original = ${JSON.stringify({
+    quantity: item.quantity,
+    type: typeof item.quantity,
+    rawValue: item.quantity,
+    docValue: item._doc ? item._doc.quantity : undefined
+  })}`);
+  
+  // ESTRATÉGIA 1: Verificar a propriedade direta
+  if (typeof item.quantity === 'number' && !isNaN(item.quantity) && item.quantity > 0) {
+    logger.info(`Quantidade encontrada na propriedade direta: ${item.quantity}`);
+    return Math.floor(item.quantity);
+  }
+  
+  // ESTRATÉGIA 2: Verificar no objeto MongoDB original
+  if (item._doc && typeof item._doc.quantity === 'number' && !isNaN(item._doc.quantity) && item._doc.quantity > 0) {
+    logger.info(`Quantidade encontrada no objeto _doc: ${item._doc.quantity}`);
+    return Math.floor(item._doc.quantity);
+  }
+  
+  // ESTRATÉGIA 3: Verificar propriedades aninhadas
+  // Em alguns casos, a quantidade pode estar em item.orderItem.quantity
+  if (item.orderItem && typeof item.orderItem.quantity === 'number' && !isNaN(item.orderItem.quantity) && item.orderItem.quantity > 0) {
+    logger.info(`Quantidade encontrada em orderItem.quantity: ${item.orderItem.quantity}`);
+    return Math.floor(item.orderItem.quantity);
+  }
+  
+  // ESTRATÉGIA 4: Verificar se está no objeto produto
+  if (item.product && typeof item.product.quantity === 'number' && !isNaN(item.product.quantity) && item.product.quantity > 0) {
+    logger.info(`Quantidade encontrada em product.quantity: ${item.product.quantity}`);
+    return Math.floor(item.product.quantity);
+  }
+  
+  // ESTRATÉGIA 5: Tentar converter de string
+  if (typeof item.quantity === 'string' && item.quantity.trim() !== '') {
+    const parsedValue = parseInt(item.quantity.trim(), 10);
+    if (!isNaN(parsedValue) && parsedValue > 0) {
+      logger.info(`Quantidade convertida de string: ${parsedValue}`);
+      return parsedValue;
+    }
+  }
+  
+  // ESTRATÉGIA 6: Verificar como subpropriedades do item
+  const itemObject = typeof item.toObject === 'function' ? item.toObject() : item;
+  for (const key in itemObject) {
+    // Pular propriedades padrão que sabemos que não são a quantidade
+    if (['_id', 'product', 'variant', 'name', 'price', 'delivered'].includes(key)) continue;
+    
+    // Verificar se esta propriedade parece ser a quantidade
+    if (typeof itemObject[key] === 'number' && !isNaN(itemObject[key]) && itemObject[key] > 0) {
+      logger.info(`Quantidade encontrada em propriedade alternativa ${key}: ${itemObject[key]}`);
+      return Math.floor(itemObject[key]);
+    }
+  }
+  
+  // ESTRATÉGIA 7: Último recurso - buscar em metadados
+  if (item.metadata) {
+    for (const key in item.metadata) {
+      if (typeof item.metadata[key] === 'number' && !isNaN(item.metadata[key]) && item.metadata[key] > 0) {
+        logger.info(`Quantidade encontrada em metadata.${key}: ${item.metadata[key]}`);
+        return Math.floor(item.metadata[key]);
+      }
+    }
+  }
+  
+  // Se chegamos aqui, não encontramos uma quantidade válida
+  logger.warn(`Quantidade inválida para o item ${item._id}, usando valor padrão 1. 
+               Objeto de item: ${JSON.stringify(item, (key, value) => 
+                 key === '_id' || key === 'product' ? '[Referência]' : value, 2)}`);
+  return 1;
+}
+
 // Carregar modelos necessários de forma segura
 try {
   // Importar modelos se não estiverem no cache
@@ -53,7 +127,7 @@ export async function GET(
 
     // Buscar pedido com informações completas
     const order = await Order.findById(orderId)
-      .populate('orderItems.product', 'name price description images')
+      .populate('orderItems.product', 'name price description images deliveryType')
       .populate('couponApplied', 'code discount')
       .lean();
 
@@ -80,17 +154,29 @@ export async function GET(
       ...order,
       _id: order._id.toString(),
       user: order.user.toString(),
-      orderItems: Array.isArray(order.orderItems) ? order.orderItems.map((item: any) => ({
-        ...item,
-        _id: item._id ? item._id.toString() : null,
-        product: item.product ? {
-          _id: item.product._id ? item.product._id.toString() : null,
-          name: item.product.name || '',
-          price: item.product.price || 0,
-          description: item.product.description || '',
-          image: item.product.images && item.product.images.length > 0 ? item.product.images[0] : null
-        } : null
-      })) : [],
+      orderItems: Array.isArray(order.orderItems) ? order.orderItems.map((item: any) => {
+        // Processar quantidade usando a função robusta
+        const processedQuantity = processQuantity(item);
+        
+        return {
+          ...item,
+          _id: item._id ? item._id.toString() : null,
+          quantity: processedQuantity,
+          product: item.product ? {
+            _id: item.product._id ? item.product._id.toString() : null,
+            name: item.product.name || '',
+            price: item.product.price || 0,
+            description: item.product.description || '',
+            deliveryType: item.product.deliveryType || 'manual',
+            images: item.product.images && Array.isArray(item.product.images) 
+              ? item.product.images.map((img: string) => ensureValidImageUrl(img))
+              : [],
+            image: item.product.images && item.product.images.length > 0 
+              ? ensureValidImageUrl(item.product.images[0]) 
+              : null
+          } : null
+        };
+      }) : [],
       couponApplied: order.couponApplied ? {
         _id: order.couponApplied._id ? order.couponApplied._id.toString() : null,
         code: order.couponApplied.code || '',
@@ -119,4 +205,30 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+// Função auxiliar para garantir que a URL da imagem seja válida
+function ensureValidImageUrl(imageUrl: string): string {
+  if (!imageUrl) return '';
+  
+  // Se a URL já começar com http ou https, retornar como está
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Se for um caminho relativo começando com /uploads, adicionar o domínio base
+  if (imageUrl.startsWith('/uploads/')) {
+    // Em ambiente de desenvolvimento, usar localhost
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    return `${baseUrl}${imageUrl}`;
+  }
+  
+  // Caso específico para imagens que começam com /api
+  if (imageUrl.startsWith('/api/')) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    return `${baseUrl}${imageUrl}`;
+  }
+  
+  // Se não for nenhum dos casos acima, retornar a URL original
+  return imageUrl;
 } 

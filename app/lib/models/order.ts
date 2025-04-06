@@ -17,6 +17,8 @@ export interface IOrderItem {
   variant?: string;
   price: number;
   name: string;
+  delivered?: boolean; // Status de entrega para produtos com entrega manual
+  quantity: number; // Quantidade de itens deste produto no pedido
 }
 
 // Interface para metadata
@@ -91,6 +93,22 @@ const orderItemSchema = new Schema<IOrderItem>({
     type: String,
     required: true,
   },
+  delivered: {
+    type: Boolean,
+    default: false,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+    default: 1,
+    validate: {
+      validator: function(v: number) {
+        return Number.isInteger(v) && v > 0;
+      },
+      message: props => `${props.value} não é uma quantidade válida! Deve ser um número inteiro positivo.`
+    }
+  }
 });
 
 const orderSchema = new Schema<IOrder>(
@@ -175,6 +193,7 @@ orderSchema.index({ user: 1 });
 orderSchema.index({ 'paymentInfo.status': 1 });
 orderSchema.index({ 'paymentInfo.id': 1 });
 orderSchema.index({ 'paymentInfo.externalReference': 1 });
+orderSchema.index({ 'orderItems.delivered': 1 }); // Adicionar índice para o status de entrega
 
 // Verificar se o modelo já existe antes de criar um novo
 const Order = mongoose.models.Order || mongoose.model<IOrder>('Order', orderSchema);

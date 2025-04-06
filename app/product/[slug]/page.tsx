@@ -18,6 +18,7 @@ interface Variant {
   price: number;
   stock: number;
   features: string[];
+  deliveryType?: 'automatic' | 'manual';
 }
 
 interface Product {
@@ -38,6 +39,7 @@ interface Product {
   featured: boolean;
   requirements: string[];
   status: 'indetectavel' | 'detectavel' | 'manutencao' | 'beta';
+  deliveryType?: 'automatic' | 'manual';
 }
 
 // Cor primária mais clara para efeitos de luz
@@ -151,7 +153,7 @@ export default function ProductPage() {
     }
   }, [isAuthenticated, checkAuth]);
 
-  async function fetchProduct() {
+  const fetchProduct = async () => {
     if (!slug) {
       setError('URL de produto inválida');
       setLoading(false);
@@ -209,7 +211,7 @@ export default function ProductPage() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   // Função para atualizar os dados do estoque do produto
   const refreshProductStock = async () => {
@@ -548,6 +550,31 @@ export default function ProductPage() {
             <span className="text-white">{product.name}</span>
           </div>
         </motion.div>
+
+        {/* NOVO: Aviso de entrega manual */}
+        {product.deliveryType === 'manual' && (
+          <motion.div 
+            className="mb-6 bg-amber-900/30 border border-amber-500/30 rounded-xl p-4 shadow-lg"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="flex items-start">
+              <div className="flex-shrink-0 bg-amber-500/20 p-2 rounded-full mr-3">
+                <FiClock className="text-amber-400 text-xl" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-amber-400 font-semibold text-lg mb-1">Entrega Manual</h3>
+                <p className="text-white text-sm leading-relaxed">
+                  Este produto possui <strong>entrega manual</strong> e será entregue em até <strong>24 horas</strong> após a confirmação do pagamento.
+                </p>
+                <p className="text-white/80 text-sm mt-2">
+                  Nossa equipe trabalha para fazer a entrega em <strong>poucos minutos</strong>. Fique tranquilo, não é necessário entrar em contato com o suporte para solicitar informações sobre a entrega.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Aviso de estoque limitado no topo */}
         <motion.div 
@@ -1091,6 +1118,16 @@ export default function ProductPage() {
                                       </div>
                                     </div>
                                   </div>
+                                  
+                                  {/* NOVO: Badge de entrega manual para variantes */}
+                                  {variantItem.deliveryType === 'manual' && (
+                                    <div className="mt-2 bg-amber-900/20 border border-amber-500/20 rounded-lg p-2">
+                                      <div className="flex items-center text-xs text-amber-400">
+                                        <FiClock className="mr-1.5 flex-shrink-0" />
+                                        <span>Entrega manual em até 24h</span>
+                                      </div>
+                                    </div>
+                                  )}
                                   
                                   {variantItem.features && variantItem.features.length > 0 && (
                                     <motion.ul 
