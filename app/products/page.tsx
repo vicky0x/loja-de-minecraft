@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FiSearch, FiFilter, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
-import ProductCard from '../components/ProductCard';
 import Link from 'next/link';
+import ProductList from '../components/ProductList';
 
 interface Variant {
   _id: string;
@@ -336,52 +336,58 @@ export default function ProductsPage() {
           )}
         </div>
         
-        {/* Mensagem de erro */}
-        {error && (
-          <div className="bg-red-900/30 border-l-4 border-red-500 p-4 text-red-400">
-            <p className="font-medium">Erro</p>
-            <p>{error}</p>
-          </div>
-        )}
-        
-        {/* Indicador de carregamento */}
+        {/* Status da Busca */}
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            <p className="mt-2 text-gray-400">Carregando produtos...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <div className="mb-4 text-red-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-red-400">{error}</p>
+            <button 
+              onClick={() => fetchProducts()} 
+              className="mt-4 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-12 bg-dark-200 rounded-lg">
+            <div className="mb-4 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">Nenhum produto encontrado</h3>
+            <p className="text-gray-400 mb-4">Tente ajustar os filtros ou fazer outra busca.</p>
+            <button 
+              onClick={() => {
+                setSelectedCategory('');
+                setSearchTerm('');
+                setStatusFilter('all');
+                setSortBy('createdAt');
+                setSortDir('desc');
+                router.push('/products');
+              }}
+              className="px-4 py-2 bg-dark-300 hover:bg-dark-400 text-white rounded-md transition-colors"
+            >
+              Limpar filtros
+            </button>
           </div>
         ) : (
-          <>
-            {/* Lista de produtos */}
-            {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
-                {filteredProducts.map((product, index) => (
-                  <div 
-                    key={product._id}
-                    style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: 'forwards' }}
-                  >
-                    <ProductCard product={product} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-dark-200 rounded-lg p-8 flex flex-col items-center justify-center shadow-md">
-                <p className="text-lg text-gray-400 mb-4">Nenhum produto encontrado para os filtros selecionados</p>
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedCategory('');
-                    setStatusFilter('all');
-                    setSortBy('createdAt');
-                    setSortDir('desc');
-                    router.push('/products');
-                  }}
-                  className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md transition-colors"
-                >
-                  Limpar filtros
-                </button>
-              </div>
-            )}
-          </>
+          <div className="mt-6">
+            <ProductList 
+              selectedIds={filteredProducts.map(p => p._id)} 
+              limit={filteredProducts.length} 
+              showTitle={false} 
+            />
+          </div>
         )}
       </div>
     </div>

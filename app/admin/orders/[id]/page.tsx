@@ -120,6 +120,7 @@ export default function OrderDetailPage() {
   const [assigningProducts, setAssigningProducts] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
+  const [markingItemId, setMarkingItemId] = useState<string | null>(null);
   
   // Função para buscar detalhes do pedido
   const fetchOrderData = async () => {
@@ -425,6 +426,7 @@ export default function OrderDetailPage() {
   const markProductAsDelivered = async (itemId: string) => {
     try {
       setActionLoading(true);
+      setMarkingItemId(itemId);
       
       const response = await fetch(`/api/orders/${orderId}/deliver-item`, {
         method: 'POST',
@@ -475,6 +477,46 @@ export default function OrderDetailPage() {
       toast.error('Erro ao marcar produto como entregue');
     } finally {
       setActionLoading(false);
+      setMarkingItemId(null);
+    }
+  };
+  
+  // Função para processar a quantidade dos itens
+  const processQuantity = (item: OrderItem): number => {
+    try {
+      // Verificar se a quantidade já é um número válido
+      if (typeof item.quantity === 'number' && !isNaN(item.quantity) && item.quantity > 0) {
+        return Math.floor(item.quantity);
+      }
+      
+      // Se for um objeto (como visto nos logs), tentar extrair o valor
+      if (typeof item.quantity === 'object' && item.quantity !== null) {
+        const qtyObj = item.quantity as any;
+        
+        // Verificar se tem propriedade quantity
+        if (typeof qtyObj.quantity === 'number' && !isNaN(qtyObj.quantity)) {
+          return Math.floor(qtyObj.quantity);
+        }
+        
+        // Verificar se tem propriedade rawValue
+        if (typeof qtyObj.rawValue === 'number' && !isNaN(qtyObj.rawValue)) {
+          return Math.floor(qtyObj.rawValue);
+        }
+      }
+      
+      // Se for string, tentar converter
+      if (typeof item.quantity === 'string' && item.quantity.trim() !== '') {
+        const parsedQty = parseInt(item.quantity.trim(), 10);
+        if (!isNaN(parsedQty) && parsedQty > 0) {
+          return parsedQty;
+        }
+      }
+      
+      // Valor padrão se nada funcionar
+      return 1;
+    } catch (error) {
+      console.error('Erro ao processar quantidade:', error);
+      return 1; // Valor padrão em caso de erro
     }
   };
   

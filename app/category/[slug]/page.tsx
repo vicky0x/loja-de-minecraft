@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiGrid, FiList, FiShoppingBag, FiFilter, FiX, FiArrowLeft, FiTag, FiPackage, FiStar, FiCheck, FiArrowRight, FiChevronDown } from 'react-icons/fi';
+import ProductList from '../../components/ProductList';
 
 interface Category {
   _id: string;
@@ -342,38 +344,42 @@ export default function CategoryPage() {
             <p className="text-gray-400">Não há produtos disponíveis nesta categoria no momento.</p>
           </motion.div>
         ) : (
-          <motion.div 
-            className={viewMode === 'grid' 
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
-              : "space-y-6"
-            }
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            {filteredProducts.map((product, index) => {
-              const productPrice = getProductPrice(product);
-              const productStock = getProductStock(product);
-              const discount = calculateDiscount(productPrice);
-              
-              return viewMode === 'grid' ? (
-                // Visualização em grid
-                <motion.div 
-                  key={product._id}
-                  className="bg-dark-300/40 rounded-xl overflow-hidden shadow-lg border border-dark-400/20 backdrop-blur-sm hover:shadow-xl hover:border-dark-400/40 transition-all duration-300 group relative"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ 
-                    opacity: 1, 
-                    y: 0,
-                    transition: { delay: 0.1 + (index * 0.05) } 
-                  }}
-                  whileHover={{
-                    y: -5,
-                    transition: { duration: 0.2 }
-                  }}
-                >
-                  <Link href={`/product/${product.slug}`}>
-                    <div className="relative aspect-[4/3] overflow-hidden bg-dark-400/20">
+          viewMode === 'grid' ? (
+            // Usar o componente ProductList para visualização em grid
+            <ProductList 
+              selectedIds={filteredProducts.map(p => p._id)} 
+              limit={filteredProducts.length} 
+              showTitle={false} 
+            />
+          ) : (
+            // Visualização em lista (mantém o código existente)
+            <motion.div 
+              className="space-y-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              {filteredProducts.map((product, index) => {
+                const productPrice = getProductPrice(product);
+                const productStock = getProductStock(product);
+                const discount = calculateDiscount(productPrice);
+                
+                return (
+                  <motion.div 
+                    key={product._id}
+                    className="bg-dark-300/40 rounded-xl overflow-hidden shadow-lg border border-dark-400/20 backdrop-blur-sm hover:shadow-xl hover:border-dark-400/40 transition-all duration-300 group relative flex"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ 
+                      opacity: 1, 
+                      y: 0,
+                      transition: { delay: 0.1 + (index * 0.05) } 
+                    }}
+                    whileHover={{
+                      y: -3,
+                      transition: { duration: 0.2 }
+                    }}
+                  >
+                    <Link href={`/product/${product.slug}`} className="flex-shrink-0 w-40 h-40 sm:w-60 sm:h-60 relative overflow-hidden">
                       {product.images && product.images.length > 0 ? (
                         <img 
                           src={product.images[0]} 
@@ -381,7 +387,7 @@ export default function CategoryPage() {
                           className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                        <div className="w-full h-full flex items-center justify-center text-gray-500 bg-dark-400/20">
                           <FiPackage size={40} />
                         </div>
                       )}
@@ -397,147 +403,62 @@ export default function CategoryPage() {
                           -{discount}%
                         </div>
                       )}
-                      
-                      <div className={`absolute bottom-3 right-3 text-xs font-medium px-2 py-1 rounded-full shadow-md ${
-                        productStock <= 0 ? 'bg-red-600 text-white' :
-                        productStock <= 5 ? 'bg-yellow-600 text-white' :
-                        'bg-green-600 text-white'
-                      }`}>
-                        {productStock <= 0 ? 'Esgotado' :
-                         productStock <= 5 ? `Últimas ${productStock} unidades` :
-                         'Em estoque'}
-                      </div>
-                    </div>
-                  </Link>
-                  
-                  <div className="p-4">
-                    <Link 
-                      href={`/product/${product.slug}`}
-                      className="block text-lg font-medium text-white hover:text-primary truncate transition-colors"
-                    >
-                      {product.name}
                     </Link>
                     
-                    {product.shortDescription && (
-                      <p className="text-gray-400 text-sm mt-1 line-clamp-2">
-                        {product.shortDescription}
-                      </p>
-                    )}
-                    
-                    <div className="mt-4 flex items-baseline justify-between">
+                    <div className="flex-1 p-6 flex flex-col justify-between">
                       <div>
-                        <span className="text-primary font-bold text-xl">R$ {productPrice.toFixed(2).replace('.', ',')}</span>
-                        {discount > 0 && (
-                          <span className="text-gray-500 line-through text-sm ml-2">
-                            R$ {(productPrice * 1.6).toFixed(2).replace('.', ',')}
-                          </span>
+                        <Link 
+                          href={`/product/${product.slug}`}
+                          className="block text-xl font-medium text-white hover:text-primary transition-colors"
+                        >
+                          {product.name}
+                        </Link>
+                        
+                        {product.shortDescription && (
+                          <p className="text-gray-400 mt-2 line-clamp-3">
+                            {product.shortDescription}
+                          </p>
                         )}
                       </div>
                       
-                      <Link 
-                        href={`/product/${product.slug}`}
-                        className="text-white bg-primary hover:bg-primary-dark p-2 rounded-full transition-colors"
-                      >
-                        <FiShoppingBag size={16} />
-                      </Link>
-                    </div>
-                  </div>
-                </motion.div>
-              ) : (
-                // Visualização em lista
-                <motion.div 
-                  key={product._id}
-                  className="bg-dark-300/40 rounded-xl overflow-hidden shadow-lg border border-dark-400/20 backdrop-blur-sm hover:shadow-xl hover:border-dark-400/40 transition-all duration-300 group relative flex"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ 
-                    opacity: 1, 
-                    y: 0,
-                    transition: { delay: 0.1 + (index * 0.05) } 
-                  }}
-                  whileHover={{
-                    y: -3,
-                    transition: { duration: 0.2 }
-                  }}
-                >
-                  <Link href={`/product/${product.slug}`} className="flex-shrink-0 w-40 h-40 sm:w-60 sm:h-60 relative overflow-hidden">
-                    {product.images && product.images.length > 0 ? (
-                      <img 
-                        src={product.images[0]} 
-                        alt={product.name}
-                        className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-500 bg-dark-400/20">
-                        <FiPackage size={40} />
-                      </div>
-                    )}
-                    
-                    {product.featured && (
-                      <div className="absolute top-3 left-3 bg-primary text-white text-xs font-medium px-2 py-1 rounded-full shadow-md">
-                        Destaque
-                      </div>
-                    )}
-                    
-                    {discount > 0 && (
-                      <div className="absolute top-3 right-3 bg-green-600 text-white text-xs font-medium px-2 py-1 rounded-full shadow-md">
-                        -{discount}%
-                      </div>
-                    )}
-                  </Link>
-                  
-                  <div className="flex-1 p-6 flex flex-col justify-between">
-                    <div>
-                      <Link 
-                        href={`/product/${product.slug}`}
-                        className="block text-xl font-medium text-white hover:text-primary transition-colors"
-                      >
-                        {product.name}
-                      </Link>
-                      
-                      {product.shortDescription && (
-                        <p className="text-gray-400 mt-2 line-clamp-3">
-                          {product.shortDescription}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="mt-6 flex items-center justify-between">
-                      <div>
-                        <div className="flex items-baseline">
-                          <span className="text-primary font-bold text-2xl">R$ {productPrice.toFixed(2).replace('.', ',')}</span>
-                          {discount > 0 && (
-                            <span className="text-gray-500 line-through text-sm ml-2">
-                              R$ {(productPrice * 1.6).toFixed(2).replace('.', ',')}
+                      <div className="mt-6 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-baseline">
+                            <span className="text-primary font-bold text-2xl">R$ {productPrice.toFixed(2).replace('.', ',')}</span>
+                            {discount > 0 && (
+                              <span className="text-gray-500 line-through text-sm ml-2">
+                                R$ {(productPrice * 1.6).toFixed(2).replace('.', ',')}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="mt-2">
+                            <span className={`text-sm font-medium px-2 py-1 rounded-full inline-block ${
+                              productStock <= 0 ? 'bg-red-900/20 text-red-400 border border-red-500/20' :
+                              productStock <= 5 ? 'bg-yellow-900/20 text-yellow-400 border border-yellow-500/20' :
+                              'bg-green-900/20 text-green-400 border border-green-500/20'
+                            }`}>
+                              {productStock <= 0 ? 'Esgotado' :
+                               productStock <= 5 ? `Apenas ${productStock} unidades` :
+                               'Em estoque'}
                             </span>
-                          )}
+                          </div>
                         </div>
                         
-                        <div className="mt-2">
-                          <span className={`text-sm font-medium px-2 py-1 rounded-full inline-block ${
-                            productStock <= 0 ? 'bg-red-900/20 text-red-400 border border-red-500/20' :
-                            productStock <= 5 ? 'bg-yellow-900/20 text-yellow-400 border border-yellow-500/20' :
-                            'bg-green-900/20 text-green-400 border border-green-500/20'
-                          }`}>
-                            {productStock <= 0 ? 'Esgotado' :
-                             productStock <= 5 ? `Apenas ${productStock} unidades` :
-                             'Em estoque'}
-                          </span>
-                        </div>
+                        <Link 
+                          href={`/product/${product.slug}`}
+                          className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors flex items-center"
+                        >
+                          <span>Ver produto</span>
+                          <FiArrowRight className="ml-2" />
+                        </Link>
                       </div>
-                      
-                      <Link 
-                        href={`/product/${product.slug}`}
-                        className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors flex items-center"
-                      >
-                        <span>Ver produto</span>
-                        <FiArrowRight className="ml-2" />
-                      </Link>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )
         )}
       </div>
     </div>

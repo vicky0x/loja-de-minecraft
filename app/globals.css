@@ -1639,3 +1639,109 @@ div[class*="header"] {
 div[id="admin-menu"] {
   z-index: 50 !important;
 }
+
+/* Animações para contador de vendas e avaliações */
+@keyframes countUp {
+  0% {
+    opacity: 0.5;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ratingPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeNumberChange {
+  0% {
+    opacity: 0.3;
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sales-count {
+  display: inline-block;
+  animation: fadeNumberChange 0.5s ease-out;
+}
+
+.rating-value {
+  display: inline-flex;
+  align-items: center;
+  animation: ratingPulse 1s ease-out;
+}
+
+.customer-counter {
+  position: relative;
+  overflow: hidden;
+}
+
+.customer-counter-number {
+  display: inline-block;
+  animation: countUp 0.7s ease-out;
+}
+
+.customer-counter-icon {
+  animation: ratingPulse 2s infinite;
+}
+
+.rating-star {
+  display: inline-flex;
+  color: #FFD700;
+  position: relative;
+}
+
+.rating-star.filled {
+  color: #FFD700;
+}
+
+.rating-star.half {
+  position: relative;
+}
+
+.rating-star.half::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, #FFD700 50%, transparent 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Animação para incremento do contador de clientes */
+@keyframes clientCounterIncrement {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.8) translateY(5px);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.1) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.increment-animation {
+  animation: clientCounterIncrement 0.7s ease-out;
+}

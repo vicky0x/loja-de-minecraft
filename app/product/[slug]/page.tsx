@@ -654,7 +654,7 @@ export default function ProductPage() {
                 repeat: Infinity
               }}
             >
-              Estoque limitado! Apenas 2 unidades disponíveis.
+              Estoque limitado!
             </motion.span>
           </motion.div>
         </motion.div>
@@ -1350,7 +1350,7 @@ export default function ProductPage() {
                                   }}
                                 >
                                   Estoque limitado!
-                                </motion.span> Apenas {variant.stock} unidades disponíveis.
+                                </motion.span> Poucas unidades disponíveis.
                               </span>
                             </motion.div>
                           )}

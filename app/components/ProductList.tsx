@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { FiStar } from 'react-icons/fi';
 
 interface Product {
   _id: string;
@@ -19,6 +20,8 @@ interface Product {
 
 interface FormattedProduct extends Product {
   image: string;
+  rating?: number;
+  ratingCount?: number;
 }
 
 interface ProductListProps {
@@ -37,6 +40,13 @@ export default function ProductList({
   const [products, setProducts] = useState<FormattedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ratings, setRatings] = useState<{[key: string]: number}>({});
+  const [ratingCounts, setRatingCounts] = useState<{[key: string]: number}>({});
+  const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
+  const [lastHourlyUpdate, setLastHourlyUpdate] = useState<number>(Date.now());
+  
+  // Estado para rastrear quais elementos estão animando
+  const [animatingRatings, setAnimatingRatings] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     async function fetchProducts() {
@@ -64,6 +74,143 @@ export default function ProductList({
 
     fetchProducts();
   }, [selectedIds, limit]);
+
+  // Efeito para inicializar contadores fake de avaliações
+  useEffect(() => {
+    if (products.length > 0) {
+      const initialRatings: {[key: string]: number} = {};
+      const initialRatingCounts: {[key: string]: number} = {};
+      
+      // Ordenar produtos por preço para calcular as avaliações proporcionalmente inversas ao preço
+      const sortedProducts = [...products].sort((a, b) => a.price - b.price);
+      const totalProducts = sortedProducts.length;
+      
+      sortedProducts.forEach((product, index) => {
+        // Cria valores baseados no ID do produto para garantir consistência em todas as páginas
+        // Converte os primeiros 8 caracteres do ID para um número para usar como seed
+        const baseSeed = parseInt(product._id.substring(0, 8), 16);
+        
+        // Avaliação entre 4.7 e 5.0, consistente para o mesmo produto em qualquer página
+        // Produtos mais baratos tendem a ter avaliações um pouco melhores
+        const position = totalProducts > 1 ? index / (totalProducts - 1) : 0;
+        const ratingBonus = 0.3 * (1 - position); // 0.3 para o mais barato, 0 para o mais caro
+        initialRatings[product._id] = 4.7 + ((baseSeed % 20) / 100) + ratingBonus;
+        
+        // Contagem de avaliações - produtos mais baratos têm muito mais avaliações
+        // Escala de 300 a 50, com base na posição relativa do produto no ranking de preço
+        const maxCount = 500;
+        const minCount = 50;
+        const countRange = maxCount - minCount;
+        
+        // Calcular inversamente proporcional ao preço
+        // Produtos mais baratos (início do array) têm mais avaliações
+        const countMultiplier = 1 - (index / totalProducts);
+        initialRatingCounts[product._id] = Math.floor(minCount + (countRange * countMultiplier));
+      });
+      
+      setRatings(initialRatings);
+      setRatingCounts(initialRatingCounts);
+    }
+  }, [products]);
+
+  // Efeito para incrementar contadores de forma consistente em todas as páginas
+  useEffect(() => {
+    // Armazenar as contagens no localStorage para manter consistência entre páginas
+    const storedCounts = localStorage.getItem('productRatingCounts');
+    if (storedCounts) {
+      try {
+        const parsedCounts = JSON.parse(storedCounts);
+        setRatingCounts(prevCounts => ({
+          ...prevCounts,
+          ...parsedCounts
+        }));
+      } catch (e) {
+        console.error('Erro ao carregar contagens salvas:', e);
+      }
+    }
+
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+      const timeDiff = now - lastUpdateTime;
+      const hourlyDiff = now - lastHourlyUpdate;
+      
+      // Simular atualizações horárias - a cada 60 segundos para teste
+      // Em produção, pode-se ajustar para 60 * 60 * 1000 (1 hora)
+      if (hourlyDiff >= 60 * 1000) {
+        setLastHourlyUpdate(now);
+        
+        // Incrementar contagens de avaliações para todos os produtos
+        setRatingCounts(prev => {
+          const newCounts = {...prev};
+          
+          // Ordenar produtos por preço para incrementar proporcionalmente
+          const sortedProducts = [...products].sort((a, b) => a.price - b.price);
+          const totalProducts = sortedProducts.length;
+          
+          sortedProducts.forEach((product, index) => {
+            // Produtos mais baratos recebem mais incrementos de avaliações
+            const position = totalProducts > 1 ? index / (totalProducts - 1) : 0;
+            const incrementMultiplier = 1 - position;
+            
+            // Usar o ID do produto como seed para o incremento, garantindo consistência
+            const productSeed = parseInt(product._id.substring(0, 4), 16);
+            const date = new Date();
+            const daySeed = date.getDate() + date.getMonth() * 30;
+            
+            // Base de incremento entre 1 e 4, multiplicado pelo fator de preço
+            const baseIncrement = 1 + ((productSeed + daySeed) % 4);
+            const increment = Math.max(1, Math.round(baseIncrement * incrementMultiplier * 3));
+            
+            newCounts[product._id] = (prev[product._id] || 0) + increment;
+          });
+          
+          // Salvar as novas contagens no localStorage para persistência entre páginas
+          localStorage.setItem('productRatingCounts', JSON.stringify(newCounts));
+          
+          return newCounts;
+        });
+      }
+      
+      // Atualizações visuais menores a cada poucos segundos
+      if (timeDiff >= 5000) {
+        setLastUpdateTime(now);
+        
+        // Seleciona um produto aleatório para animação visual
+        const randomProductIndex = Math.floor(Math.random() * products.length);
+        if (randomProductIndex < products.length && products[randomProductIndex]) {
+          const productId = products[randomProductIndex]._id;
+          
+          // Ajusta a avaliação média ligeiramente
+          setRatings(prev => {
+            const currentRating = prev[productId] || 4.85;
+            // Manter entre 4.7 e 5.0
+            const newRating = Math.max(4.7, Math.min(5.0, currentRating + (Math.random() * 0.1 - 0.05)));
+            
+            // Ativa a animação
+            setAnimatingRatings(prev => ({
+              ...prev,
+              [productId]: true
+            }));
+            
+            // Desativa a animação após 500ms
+            setTimeout(() => {
+              setAnimatingRatings(prev => ({
+                ...prev,
+                [productId]: false
+              }));
+            }, 500);
+            
+            return {
+              ...prev,
+              [productId]: parseFloat(newRating.toFixed(1))
+            };
+          });
+        }
+      }
+    }, 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [products, lastUpdateTime, lastHourlyUpdate]);
 
   // Função para buscar produtos por IDs específicos
   async function fetchProductsByIds(ids: string[]): Promise<FormattedProduct[]> {
@@ -146,6 +293,13 @@ export default function ProductList({
     };
   }
 
+  // Função para obter a cor da classificação com base no valor
+  const getRatingColorClass = (rating: number): string => {
+    if (rating >= 4.9) return 'text-amber-400';
+    if (rating >= 4.8) return 'text-yellow-500';
+    return 'text-yellow-600';
+  };
+
   if (loading) {
     return (
       <div>
@@ -159,6 +313,9 @@ export default function ProductList({
               <div className="relative w-full pt-[100%] bg-dark-300/50"></div>
               <div className="flex flex-col flex-grow px-5 py-4">
                 <div className="h-5 bg-dark-300/70 rounded mb-2"></div>
+                <div className="flex items-center mt-1 mb-2">
+                  <div className="h-4 w-20 bg-dark-300/70 rounded mr-2"></div>
+                </div>
                 <div className="h-7 w-24 bg-dark-300/70 rounded mt-auto"></div>
               </div>
               <div className="px-5 pb-5">
@@ -179,6 +336,7 @@ export default function ProductList({
   return (
     <div>
       {showTitle && <h3 className="text-2xl font-bold mb-6">{title}</h3>}
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {products.map((product) => {
           // Verificação adicional de segurança
@@ -192,7 +350,17 @@ export default function ProductList({
             const animationDelay = productId !== 'unknown' 
               ? `${0.1 * parseInt(productId.substring(0, 2), 16) % 10 * 0.1}s` 
               : '0s';
+            
+            // Pegar valores atuais de avaliações
+            const rating = ratings[productId] || 4.85;
+            const ratingCount = ratingCounts[productId] || 0;
+            
+            // Verificar se este item está atualmente animando
+            const isAnimatingRating = animatingRatings[productId];
               
+            // Obter a cor da classificação
+            const ratingColorClass = getRatingColorClass(rating);
+            
             return (
               <div 
                 key={productId}
@@ -248,6 +416,26 @@ export default function ProductList({
                   <h3 className="text-base font-medium text-white mb-1 group-hover:text-primary transition-colors duration-300">
                     {product.name}
                   </h3>
+                  
+                  {/* Ratings */}
+                  <div className="flex items-center mt-1 mb-2">
+                    <div className="flex items-center">
+                      <div className="text-amber-400 flex items-center">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <FiStar 
+                            key={star} 
+                            className={`${star <= Math.round(rating) ? 'fill-current' : 'text-amber-400/30'} ${
+                              isAnimatingRating && star <= Math.round(rating) ? 'animate-pulse scale-110 duration-300' : ''
+                            } transition-all`} 
+                            size={14}
+                          />
+                        ))}
+                      </div>
+                      <span className={`ml-2 text-sm rating-value ${isAnimatingRating ? 'animate-pulse text-amber-400 font-medium' : 'text-gray-300'}`}>
+                        <span className="font-bold">{rating.toFixed(1)}</span> <span className="text-gray-400">({ratingCount} avaliações)</span>
+                      </span>
+                    </div>
+                  </div>
                   
                   <div className="mt-auto pt-1">
                     <div className="flex items-baseline">
