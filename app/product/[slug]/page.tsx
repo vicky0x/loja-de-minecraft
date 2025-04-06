@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft, FiShoppingCart, FiPackage, FiCheck, FiClock, FiShield, FiDownload, FiAward, FiStar, FiLock, FiUser, FiTrendingUp, FiX, FiInfo, FiAlertOctagon, FiTool, FiCode, FiEye, FiHeart } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import VariantStockModal from '@/app/components/VariantStockModal';
@@ -43,13 +43,9 @@ interface Product {
 // Cor primária mais clara para efeitos de luz
 const primaryLight = "#6c63ff";  // Ajuste para a cor primária da sua aplicação
 
-export default function ProductPage({ params }: { params: { slug: string } }) {
-  // Removendo a chamada síncrona problemática de 'use' nos parâmetros
-  // const resolvedParams = use(params);
-  // const { slug } = resolvedParams;
-  
-  // Usando diretamente o params passado como prop
-  const { slug } = params;
+export default function ProductPage() {
+  const params = useParams();
+  const slug = params?.slug as string;
   
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
@@ -111,17 +107,19 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   }, []);
 
   useEffect(() => {
-    fetchProduct();
+    if (slug) {
+      fetchProduct();
 
-    // Configurar atualização automática do estoque a cada 2 minutos
-    const intervalId = setInterval(() => {
-      if (product) {
-        refreshProductStock();
-        setLastStockUpdate(new Date());
-      }
-    }, 120000);  // 2 minutos
-    
-    return () => clearInterval(intervalId);
+      // Configurar atualização automática do estoque a cada 2 minutos
+      const intervalId = setInterval(() => {
+        if (product) {
+          refreshProductStock();
+          setLastStockUpdate(new Date());
+        }
+      }, 120000);  // 2 minutos
+      
+      return () => clearInterval(intervalId);
+    }
   }, [slug]);
 
   // Fazer verificação de autenticação ao montar o componente
@@ -154,6 +152,12 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   }, [isAuthenticated, checkAuth]);
 
   async function fetchProduct() {
+    if (!slug) {
+      setError('URL de produto inválida');
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -209,9 +213,10 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
   // Função para atualizar os dados do estoque do produto
   const refreshProductStock = async () => {
-    if (!product) return;
+    if (!product || !slug) return;
     
     try {
+      setIsRefreshingStock(true);
       const response = await fetch(`/api/products/${product._id}`);
       
       if (response.ok) {
@@ -243,6 +248,8 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       }
     } catch (error) {
       console.error('Erro ao atualizar estoque:', error);
+    } finally {
+      setIsRefreshingStock(false);
     }
   };
 

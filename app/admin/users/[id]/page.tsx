@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import React from 'react';
@@ -78,9 +78,9 @@ interface UserDetail {
   timeline: TimelineItem[];
 }
 
-export default function UserDetailPage({ params }: { params: { id: string } }) {
-  // Não usar React.use() para obter o ID dos parâmetros
-  const userId = params.id;
+export default function UserDetailPage() {
+  const params = useParams();
+  const userId = params?.id as string;
   
   const router = useRouter();
   const [user, setUser] = useState<UserDetail | null>(null);

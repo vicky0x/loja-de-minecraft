@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiPlus, FiTrash2, FiUpload, FiX, FiSave, FiLoader, FiShield, FiClock, FiAward, FiSlash } from 'react-icons/fi';
 import RichTextEditor from '@/app/components/RichTextEditor';
-import { use } from 'react';
 
 interface Variant {
   name: string;
@@ -33,10 +32,10 @@ interface ProductData {
   status: string;
 }
 
-export default function EditProductPage({ params }: { params: { id: string } }) {
+export default function EditProductPage() {
   const router = useRouter();
-  const resolvedParams = use(params);
-  const { id } = resolvedParams;
+  const params = useParams();
+  const id = params?.id as string;
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

@@ -1,18 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiLoader } from 'react-icons/fi';
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage() {
   const router = useRouter();
-  const { id } = params;
+  const params = useParams();
+  const id = params?.id as string;
+  
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!id) {
+      setError('ID do produto inválido');
+      setLoading(false);
+      return;
+    }
+    
     async function fetchProduct() {
       try {
         setLoading(true);

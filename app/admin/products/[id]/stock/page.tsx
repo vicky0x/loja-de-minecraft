@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiUpload, FiTrash2, FiDownload, FiSearch, FiFilter, FiPlus } from 'react-icons/fi';
-import { use } from 'react';
 
 interface StockItem {
   _id: string;
@@ -27,10 +26,10 @@ interface Variant {
   stock: number;
 }
 
-export default function ProductStockPage({ params }: { params: { id: string } }) {
+export default function ProductStockPage() {
   const router = useRouter();
-  const resolvedParams = use(params);
-  const id = resolvedParams.id;
+  const params = useParams();
+  const id = params?.id as string;
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>('');

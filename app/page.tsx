@@ -6,6 +6,31 @@ import React, { useState, useEffect } from 'react';
 import ProductList from './components/ProductList';
 
 export default function Home() {
+  // Estado para armazenar os IDs dos produtos em destaque
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Buscar os IDs dos produtos em destaque
+  useEffect(() => {
+    async function fetchFeaturedProductIds() {
+      try {
+        const response = await fetch('/api/featuredProducts');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.featuredProducts)) {
+            setSelectedProductIds(data.featuredProducts);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar produtos em destaque:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchFeaturedProductIds();
+  }, []);
+
   // Jogos populares
   const popularGames = [
     {
@@ -321,25 +346,26 @@ export default function Home() {
           </div>
           
           {/* Produtos em destaque */}
-          <h3 className="text-2xl font-bold mb-6 opacity-0 animate-fade-in" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
-            Contas Minecraft em Destaque
-          </h3>
+          <div className="opacity-0 animate-fade-in" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
+            <ProductList 
+              selectedIds={selectedProductIds.length > 0 ? selectedProductIds : undefined}
+              showTitle={true}
+              title="Contas Minecraft em Destaque" 
+              limit={4}
+            />
+          </div>
           
-          <ProductList />
-
-          <div className="text-center mt-12 opacity-0 animate-fade-in" style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}>
-            <a 
+          {/* Call to Action */}
+          <div className="text-center mt-12 opacity-0 animate-fade-in" style={{ animationDelay: '0.7s', animationFillMode: 'forwards' }}>
+            <Link 
               href="/products" 
-              className="inline-flex items-center text-primary hover:text-white px-6 py-3 rounded-lg bg-dark-200/50 hover:bg-primary/20 backdrop-blur-sm border border-dark-300 hover:border-primary/30 transition-all duration-300 group"
+              className="px-8 py-3 bg-dark-300 text-white rounded-lg inline-flex items-center hover:bg-dark-400 transition-colors"
             >
-              <span className="relative">
-                ADQUIRA SUA CONTA MINECRAFT PREMIUM AGORA!
-                <span className="absolute bottom-0 left-0 w-full h-1 bg-primary/30 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
-              </span>
-              <svg className="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              Ver Todos os Produtos
+              <svg className="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -380,7 +406,7 @@ export default function Home() {
                       <span className="text-primary text-2xl group-hover:text-white transition-colors duration-300">
                         {stat.icon === 'star' && (
                           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.07-3.292z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.784.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.07-3.292z" />
                           </svg>
                         )}
                         {stat.icon === 'support' && (
@@ -684,7 +710,7 @@ export default function Home() {
                     <div className="flex text-yellow-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.176 0l-2.8 2.034c-.784.57-1.838-.197-1.538-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.784.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
                       ))}
                     </div>

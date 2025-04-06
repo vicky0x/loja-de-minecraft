@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiAlertCircle } from 'react-icons/fi';
 import categoryService from '@/app/lib/services/categoryService';
@@ -12,9 +12,10 @@ interface CategoryData {
   icon: string;
 }
 
-export default function EditCategoryPage({ params }: { params: { id: string } }) {
+export default function EditCategoryPage() {
   const router = useRouter();
-  const { id } = params;
+  const params = useParams();
+  const id = params?.id as string;
   
   const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

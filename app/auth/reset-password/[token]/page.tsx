@@ -2,18 +2,13 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
-interface ResetPasswordPageProps {
-  params: {
-    token: string;
-  };
-}
-
-export default function ResetPasswordPage({ params }: ResetPasswordPageProps) {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const { token } = params;
+  const params = useParams();
+  const token = params?.token as string;
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

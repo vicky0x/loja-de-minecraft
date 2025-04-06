@@ -22,9 +22,9 @@ interface ProductDetail {
   statusClass: string;
 }
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage() {
   const router = useRouter();
-  const routeParams = useParams();
+  const params = useParams();
   const [productId, setProductId] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
@@ -35,12 +35,12 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   
   // Buscar o ID do produto a partir dos parâmetros da rota
   useEffect(() => {
-    if (routeParams && routeParams.id) {
+    if (params && params.id) {
       // O parâmetro id pode ser um array no Next.js, então garantimos que pegamos o primeiro valor
-      const id = Array.isArray(routeParams.id) ? routeParams.id[0] : routeParams.id;
+      const id = Array.isArray(params.id) ? params.id[0] : params.id;
       setProductId(id);
     }
-  }, [routeParams]);
+  }, [params]);
   
   // Buscar detalhes do produto do usuário quando o ID estiver disponível
   useEffect(() => {

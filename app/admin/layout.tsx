@@ -35,7 +35,7 @@ export default function AdminLayout({
         console.error('Erro ao ler autenticação do localStorage:', error);
       }
     };
-    
+  
     // Verificar localStorage imediatamente
     checkLocalStorage();
     
@@ -51,7 +51,7 @@ export default function AdminLayout({
         console.log('Usuário não autenticado, redirecionando para login');
         // Usando window.location para evitar loops de redirecionamento
         window.location.href = '/auth/login';
-      } 
+      }
       // Se estiver autenticado mas não for admin
       else if (hasValidAuth && !hasAdminRole) {
         console.log('Usuário não é admin, redirecionando para dashboard');

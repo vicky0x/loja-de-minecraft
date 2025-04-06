@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiGrid, FiList, FiShoppingBag, FiFilter, FiX, FiArrowLeft, FiTag, FiPackage, FiStar, FiCheck, FiArrowRight, FiChevronDown } from 'react-icons/fi';
@@ -40,10 +39,10 @@ interface Product {
   status?: string;
 }
 
-export default function CategoryPage({ params }: { params: { slug: string } }) {
-  // Usar React.use para desempacotar corretamente o objeto params
-  const resolvedParams = use(params);
-  const { slug } = resolvedParams;
+export default function CategoryPage() {
+  // Usar o hook useParams em vez de receber params como props
+  const params = useParams();
+  const slug = params?.slug as string;
 
   const router = useRouter();
   const [category, setCategory] = useState<Category | null>(null);
