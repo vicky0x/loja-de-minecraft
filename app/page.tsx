@@ -427,6 +427,221 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Por que comprar conosco */}
+      <section className="py-24 relative overflow-hidden bg-dark-200">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,96,0,0.05),transparent_70%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(#ff6000_1px,transparent_1px)] [background-size:40px_40px] opacity-5"></div>
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+        <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-16 opacity-0 animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
+            <h2 className="text-3xl md:text-4xl font-bold inline-block mb-6 relative">
+              Por que comprar conosco?
+              <span className="absolute -bottom-2 left-1/2 w-24 h-1 bg-gradient-to-r from-primary-dark via-primary to-primary-light transform -translate-x-1/2 rounded-full"></span>
+            </h2>
+            <p className="text-gray-300 max-w-2xl mx-auto">
+              Descubra alguns dos benefícios ao comprar uma conta em nosso site!
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+            {/* Bloco de comparação */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-dark-100 border border-dark-300 rounded-xl overflow-hidden">
+              <div className="p-6 border-b md:border-b-0 md:border-r border-dark-300">
+                <div className="p-2 mb-6 inline-flex items-center justify-center bg-dark-300/50 rounded-lg">
+                  <div className="px-3 py-1 bg-primary/20 text-primary rounded-md text-center font-semibold">
+                    RECOMENDADO
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 mb-5">
+                  <div className="w-8 h-8 relative">
+                    <Image 
+                      src="/fantasy_logo.png" 
+                      alt="Fantasy Store Logo" 
+                      width={32} 
+                      height={32} 
+                      className="object-contain"
+                    />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Fantasy Store</h3>
+                </div>
+                
+                <ul className="space-y-4 text-gray-200">
+                  <li className="flex items-start space-x-3">
+                    <span className="text-green-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span>Contas antigas (mais de 1 ano de criação)</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-green-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span>Contas com medalhas raras antigas</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-green-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span>Integridade verde (conta confiável)</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-green-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span>Menor risco de cheaters</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="p-6">
+                <div className="p-2 mb-6 inline-flex items-center justify-center bg-dark-300/50 rounded-lg">
+                  <div className="px-3 py-1 bg-dark-400 text-gray-300 rounded-md text-center font-semibold">
+                    Comprando direto na Mojang
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 mb-5 opacity-0">
+                  <span className="text-xl">🐻</span>
+                  <h3 className="text-xl font-bold text-white">Outras lojas</h3>
+                </div>
+                
+                <ul className="space-y-4 text-gray-300">
+                  <li className="flex items-start space-x-3">
+                    <span className="text-red-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </span>
+                    <span>Conta recente</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-red-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </span>
+                    <span>Sem medalhas</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-red-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </span>
+                    <span>Integridade que cai fácil</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-red-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </span>
+                    <span>Alto risco de cair com cheaters</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            
+            {/* Benefícios adicionais */}
+            <div className="bg-dark-100 border border-dark-300 rounded-xl p-8">
+              <h3 className="text-2xl font-bold text-white mb-6">Benefícios exclusivos Fantasy Store</h3>
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <li className="flex items-start space-x-3">
+                  <span className="bg-primary/20 p-2 rounded-lg text-primary">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="font-medium text-white">Entrega instantânea</p>
+                    <p className="text-sm text-gray-300">Receba sua conta em menos de 1 minuto após a confirmação</p>
+                  </div>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <span className="bg-primary/20 p-2 rounded-lg text-primary">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="font-medium text-white">Garantia de até 365 dias</p>
+                    <p className="text-sm text-gray-300">Proteção contra problemas de acesso</p>
+                  </div>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <span className="bg-primary/20 p-2 rounded-lg text-primary">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="font-medium text-white">Pagamento seguro</p>
+                    <p className="text-sm text-gray-300">Múltiplas formas de pagamento com total segurança</p>
+                  </div>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <span className="bg-primary/20 p-2 rounded-lg text-primary">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="font-medium text-white">Suporte 24/7</p>
+                    <p className="text-sm text-gray-300">Equipe dedicada para ajudar com qualquer problema</p>
+                  </div>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <span className="bg-primary/20 p-2 rounded-lg text-primary">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="font-medium text-white">Instruções detalhadas</p>
+                    <p className="text-sm text-gray-300">Guias completos para configuração da sua conta</p>
+                  </div>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <span className="bg-primary/20 p-2 rounded-lg text-primary">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="font-medium text-white">Melhor preço do Brasil</p>
+                    <p className="text-sm text-gray-300">Contas premium com valores imbatíveis</p>
+                  </div>
+                </li>
+              </ul>
+              
+              <div className="mt-8 text-center">
+                <a 
+                  href="/products" 
+                  className="inline-flex items-center text-white px-6 py-3 rounded-lg bg-primary hover:bg-primary-dark transition-all duration-300 group"
+                >
+                  <span>CONFERIR CONTAS DISPONÍVEIS</span>
+                  <svg className="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section className="py-24 relative overflow-hidden">
         {/* Background Effects */}
@@ -469,7 +684,7 @@ export default function Home() {
                     <div className="flex text-yellow-400">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <svg key={star} className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.176 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.176 0l-2.8 2.034c-.784.57-1.838-.197-1.538-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
                       ))}
                     </div>
