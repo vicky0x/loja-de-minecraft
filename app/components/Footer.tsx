@@ -63,11 +63,11 @@ export default function Footer() {
           {/* Bloco 1 - Sobre */}
           <motion.div variants={itemVariants}>
             <h3 className="text-white text-xl font-bold mb-6 relative inline-block">
-              Fantasy Store
+              Fantasy Store Minecraft
               <span className="absolute -bottom-2 left-0 w-12 h-0.5 bg-gradient-to-r from-primary to-primary-light rounded-full"></span>
             </h3>
             <p className="text-slate-300 mb-6 leading-relaxed">
-              Oferecemos os melhores cheats para seus jogos favoritos com segurança e suporte garantido.
+              A melhor loja de contas Minecraft Premium do Brasil. Oferecemos contas originais Java e Bedrock com garantia de até 365 dias e entrega imediata.
             </p>
             <div className="flex space-x-5">
               <motion.a 
@@ -78,7 +78,7 @@ export default function Footer() {
                 variants={socialIconVariants}
                 initial="initial"
                 whileHover="hover"
-                aria-label="Instagram"
+                aria-label="Instagram - Fantasy Store Minecraft"
               >
                 <span className="block w-6 h-6">
                   <FaInstagram size={24} />
@@ -92,7 +92,7 @@ export default function Footer() {
                 variants={socialIconVariants}
                 initial="initial"
                 whileHover="hover"
-                aria-label="Discord"
+                aria-label="Discord - Comunidade Minecraft"
               >
                 <span className="block w-6 h-6">
                   <FaDiscord size={24} />
@@ -106,7 +106,7 @@ export default function Footer() {
                 variants={socialIconVariants}
                 initial="initial"
                 whileHover="hover"
-                aria-label="YouTube"
+                aria-label="YouTube - Tutoriais Minecraft"
               >
                 <span className="block w-6 h-6">
                   <FaYoutube size={24} />
@@ -120,7 +120,7 @@ export default function Footer() {
                 variants={socialIconVariants}
                 initial="initial"
                 whileHover="hover"
-                aria-label="TrustPilot"
+                aria-label="Avaliações - Loja de Minecraft"
               >
                 <span className="block w-6 h-6">
                   <SiTrustpilot size={24} />
@@ -144,7 +144,7 @@ export default function Footer() {
                   <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
                     <FaChevronRight size={12} />
                   </span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-200">Produtos</span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Contas Minecraft</span>
                 </Link>
               </li>
               <li className="group">
@@ -178,6 +178,28 @@ export default function Footer() {
                     <FaChevronRight size={12} />
                   </span>
                   <span className="group-hover:translate-x-1 transition-transform duration-200">Meus Pedidos</span>
+                </Link>
+              </li>
+              <li className="group">
+                <Link 
+                  href="/products?type=minecraft-java" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Minecraft Java</span>
+                </Link>
+              </li>
+              <li className="group">
+                <Link 
+                  href="/products?type=minecraft-bedrock" 
+                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
+                >
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
+                    <FaChevronRight size={12} />
+                  </span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Minecraft Bedrock</span>
                 </Link>
               </li>
             </ul>
@@ -249,8 +271,26 @@ export default function Footer() {
             viewport={{ once: true }}
             className="text-slate-300 font-light"
           >
-            © {currentYear} Fantasy Store. Todos os direitos reservados.
+            © {currentYear} Fantasy Store - Loja de Contas Minecraft Premium. Todos os direitos reservados.
           </motion.p>
+          
+          {/* Texto adicional com palavras-chave relevantes para SEO */}
+          <motion.p 
+            initial={{ y: 10, opacity: 0 }}
+            whileInView={{ 
+              y: 0, 
+              opacity: 1, 
+              transition: { delay: 0.3, duration: 0.5 } 
+            }}
+            viewport={{ once: true }}
+            className="text-slate-400 text-xs max-w-4xl mx-auto mt-4 px-4"
+          >
+            Fantasy Store é especializada em venda de contas Minecraft Original Premium com garantia de até 365 dias. 
+            Fornecemos contas Minecraft Java Edition e Bedrock Edition com entrega automática imediata. 
+            Compre Minecraft Original pelo menor preço do Brasil com total segurança. 
+            Minecraft é marca registrada da Mojang Studios e Microsoft. Não somos afiliados a Mojang ou Microsoft.
+          </motion.p>
+          
           <div className="mt-4 flex flex-wrap justify-center gap-5 text-sm">
             <motion.div
               initial={{ opacity: 0, y: 5 }}
@@ -311,6 +351,27 @@ export default function Footer() {
                 className="text-slate-400 hover:text-primary transition-all duration-300 relative group"
               >
                 <span>Política de Reembolso</span>
+                <span className="absolute left-0 right-0 bottom-0 h-px w-0 bg-gradient-to-r from-primary to-primary-light group-hover:w-full transition-all duration-300"></span>
+              </Link>
+            </motion.div>
+            <span className="text-slate-600">•</span>
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              whileInView={{ 
+                opacity: 1, 
+                y: 0, 
+                transition: { 
+                  delay: 0.9, 
+                  duration: 0.5 
+                } 
+              }}
+              viewport={{ once: true }}
+            >
+              <Link 
+                href="/garantia-minecraft" 
+                className="text-slate-400 hover:text-primary transition-all duration-300 relative group"
+              >
+                <span>Garantia Minecraft</span>
                 <span className="absolute left-0 right-0 bottom-0 h-px w-0 bg-gradient-to-r from-primary to-primary-light group-hover:w-full transition-all duration-300"></span>
               </Link>
             </motion.div>

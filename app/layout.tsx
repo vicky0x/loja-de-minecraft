@@ -13,8 +13,35 @@ import CharlaWidgetWrapper from './components/CharlaWidgetWrapper';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Fantasy Store",
-  description: "Loja de cheats para jogos",
+  title: "Fantasy Store - Contas Minecraft Premium Original | Menor Preço",
+  description: "Loja especializada em Contas Minecraft Premium originais com garantia de até 365 dias. Compre Minecraft Java e Bedrock com entrega automática e imediata.",
+  keywords: "loja minecraft, contas minecraft, minecraft premium, minecraft original, minecraft java, minecraft bedrock, comprar minecraft, minecraft barato, garantia minecraft",
+  authors: [{ name: "Fantasy Store" }],
+  generator: "Next.js",
+  openGraph: {
+    title: "Fantasy Store - Contas Minecraft Premium Original | Menor Preço",
+    description: "Loja especializada em Contas Minecraft Premium originais com garantia de até 365 dias. Compre Minecraft Java e Bedrock com entrega automática e imediata.",
+    url: "https://fantasystore.com.br",
+    siteName: "Fantasy Store Minecraft",
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fantasy Store - Contas Minecraft Premium Original | Menor Preço",
+    description: "Loja especializada em Contas Minecraft Premium originais com garantia de até 365 dias. Compre Minecraft Java e Bedrock com entrega automática e imediata.",
+  },
+  alternates: {
+    canonical: "https://fantasystore.com.br",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export default function RootLayout({

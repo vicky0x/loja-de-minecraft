@@ -50,13 +50,13 @@ export default function Home() {
   const features = [
     {
       icon: 'shield',
-      title: 'Anti-Ban',
-      description: 'Nossa tecnologia avançada de bypass mantém sua conta segura e evita banimentos'
+      title: 'Entrega Imediata',
+      description: 'Receba sua conta Minecraft Premium imediatamente após a confirmação do pagamento'
     },
     {
       icon: 'update',
-      title: 'Atualizações Constantes',
-      description: 'Atualizamos nossos cheats regularmente para acompanhar as mudanças nos jogos'
+      title: 'Garantia de até 365 dias',
+      description: 'Todas as nossas contas possuem garantia de até 365 dias em caso de problemas'
     },
     {
       icon: 'support',
@@ -65,8 +65,8 @@ export default function Home() {
     },
     {
       icon: 'interface',
-      title: 'Interface Intuitiva',
-      description: 'Fácil de usar com configurações personalizáveis para personalizar sua experiência'
+      title: 'Acesso Completo',
+      description: 'Contas com acesso completo ao e-mail e possibilidade de alterar todos os dados'
     }
   ];
 
@@ -76,7 +76,7 @@ export default function Home() {
       value: '98', 
       label: 'Taxa de Satisfação', 
       suffix: '%', 
-      description: 'Clientes satisfeitos com nossos serviços',
+      description: 'Clientes satisfeitos com nossas contas Minecraft',
       icon: 'star'
     },
     { 
@@ -86,15 +86,15 @@ export default function Home() {
       icon: 'support'
     },
     { 
-      value: '4k+', 
+      value: '10k+', 
       label: 'Contas Vendidas', 
-      description: 'Jogadores utilizando nossos produtos',
+      description: 'Jogadores utilizando nossas contas Minecraft',
       icon: 'users'
     },
     { 
-      value: '4+', 
+      value: '5+', 
       label: 'Anos de Experiência', 
-      description: 'Fornecendo soluções de alta qualidade',
+      description: 'Fornecendo as melhores contas Minecraft do Brasil',
       icon: 'calendar'
     }
   ];
@@ -102,16 +102,28 @@ export default function Home() {
   // Perguntas frequentes
   const faqs = [
     { 
-      question: 'O que são contas de Minecraft?', 
-      answer: 'Contas de Minecraft são acessos a contas originais com acesso completo ao jogo, permitindo acesso a recursos premium e evitando restrições de acesso.' 
+      question: 'O que são contas Minecraft Premium?', 
+      answer: 'Contas Minecraft Premium são contas originais que oferecem acesso completo ao jogo, permitindo jogar em todos os servidores, trocar de skin e aproveitar todas as funcionalidades do Minecraft Java ou Bedrock Edition.' 
     },
     { 
       question: 'Como funciona o processo de compra?', 
-      answer: 'Após a compra, você receberá um acesso à sua área de cliente onde poderá baixar o software e receber instruções detalhadas de instalação e uso.' 
+      answer: 'Após a confirmação do pagamento, você receberá automaticamente os dados de acesso da sua conta Minecraft Premium em nosso sistema e por e-mail. A entrega é imediata e 100% automática.' 
     },
     { 
-      question: 'Vocês oferecem suporte técnico?', 
-      answer: 'Sim, oferecemos suporte técnico 24/7 para todos os nossos clientes através de nossa plataforma de tickets e Discord.' 
+      question: 'As contas têm garantia?', 
+      answer: 'Sim! Todas as nossas contas Minecraft possuem garantia de até 365 dias. Se acontecer qualquer problema com sua conta, nós substituímos por outra imediatamente, sem custos adicionais.' 
+    },
+    { 
+      question: 'Posso alterar os dados da conta após a compra?', 
+      answer: 'Sim, você receberá acesso completo à conta, incluindo o e-mail, permitindo alterar a senha, nome de usuário, skin e todos os outros dados da conta Minecraft.' 
+    },
+    { 
+      question: 'A conta é original/legítima?', 
+      answer: 'Sim, todas as nossas contas Minecraft são 100% originais e legítimas, compradas diretamente da Mojang/Microsoft, permitindo acesso completo a todas as funcionalidades do jogo.' 
+    },
+    { 
+      question: 'Qual a diferença entre Minecraft Java e Bedrock?', 
+      answer: 'Minecraft Java é a versão para computadores (Windows, Mac e Linux) com maior compatibilidade com mods e servidores. Minecraft Bedrock é a versão multiplataforma (PC, console e mobile) com suporte a crossplay entre diferentes dispositivos.' 
     }
   ];
 
@@ -183,11 +195,11 @@ export default function Home() {
                 Fantasy Store
               </h1>
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold mb-6 tracking-wide">
-                Minecraft <span className="text-primary">Premium</span>
+                Contas Minecraft <span className="text-primary">Premium</span>
               </h2>
               <p className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
                 Compre contas originais Minecraft Java e Bedrock com acesso completo.
-                Entrega automática e garantia permanente pelo menor preço do Brasil.
+                Entrega automática e garantia de até 365 dias pelo menor preço do Brasil.
               </p>
             </div>
             
@@ -300,28 +312,28 @@ export default function Home() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16 opacity-0 animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
             <h2 className="text-3xl md:text-4xl font-bold inline-block mb-6 relative">
-              CONTAS ORIGINAIS PREMIUM
+              CONTAS MINECRAFT ORIGINAL
               <span className="absolute -bottom-2 left-1/2 w-24 h-1 bg-gradient-to-r from-primary-dark via-primary to-primary-light transform -translate-x-1/2 rounded-full"></span>
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto">
-              Explore nossas contas originais de Minecraft com acesso completo e garantia vitalícia
+              Explore nossas contas originais de Minecraft com acesso completo e garantia de até 365 dias
             </p>
           </div>
           
           {/* Produtos em destaque */}
           <h3 className="text-2xl font-bold mb-6 opacity-0 animate-fade-in" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
-            Contas em Destaque
+            Contas Minecraft em Destaque
           </h3>
           
           <ProductList />
 
           <div className="text-center mt-12 opacity-0 animate-fade-in" style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}>
             <a 
-              href="/games" 
+              href="/products" 
               className="inline-flex items-center text-primary hover:text-white px-6 py-3 rounded-lg bg-dark-200/50 hover:bg-primary/20 backdrop-blur-sm border border-dark-300 hover:border-primary/30 transition-all duration-300 group"
             >
               <span className="relative">
-                ADQUIRA SUA CONTA PREMIUM AGORA!
+                ADQUIRA SUA CONTA MINECRAFT PREMIUM AGORA!
                 <span className="absolute bottom-0 left-0 w-full h-1 bg-primary/30 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
               </span>
               <svg className="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,7 +359,7 @@ export default function Home() {
               <span className="absolute -bottom-2 left-1/2 w-24 h-1 bg-gradient-to-r from-primary-dark via-primary to-primary-light transform -translate-x-1/2 rounded-full"></span>
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto">
-              Estatísticas que comprovam nossa qualidade e confiabilidade
+              Estatísticas que comprovam nossa qualidade e confiabilidade como a melhor loja de Minecraft do Brasil
             </p>
           </div>
           
@@ -507,7 +519,7 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "simplesmente a melhor loja de todas, o suporte é bom, a entrega é muito rápida, a minha conta chegou em 15 minutos, além de darem o acesso a todos os dados da conta e ter um preço bem acessível e é a única loja que eu confio em comprar o mine e recomendo a meus amigos"
+                  "simplesmente a melhor loja de contas Minecraft de todas, o suporte é bom, a entrega é muito rápida, a minha conta chegou em 15 minutos, além de darem o acesso a todos os dados da conta e ter um preço bem acessível e é a única loja que eu confio em comprar o mine e recomendo a meus amigos"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
                   <span className="mr-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs flex items-center">
@@ -550,7 +562,7 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "Literalmente a melhor loja que já comprei. Entrega totalmente automática e um suporte maravilhoso, sem sombras de dúvida a Fantasy é a melhor loja de Minecraft. Recomendo demais comprarem😍"
+                  "Literalmente a melhor loja de Minecraft que já comprei. Entrega totalmente automática e um suporte maravilhoso, sem sombras de dúvida a Fantasy é a melhor loja de contas Minecraft Premium. Recomendo demais comprarem😍"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
                   <span className="mr-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs flex items-center">
