@@ -7,8 +7,16 @@ import connectDB from '@/app/lib/db/mongodb';
 import jwt from 'jsonwebtoken';
 
 // Segredo usado para assinar os tokens JWT
-// Garantir que o segredo seja consistente mesmo se não estiver definido no ambiente
-const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'fantasy_cheats_jwt_secret_7a23e6';
+// Obter do ambiente, com fallback para erro em produção e valor padrão em desenvolvimento
+const JWT_SECRET = process.env.JWT_SECRET || 
+  (process.env.NODE_ENV === 'production' 
+    ? undefined 
+    : 'fantasystore_dev_jwt_secret_insecure');
+
+// Verificar se temos JWT_SECRET em produção
+if (process.env.NODE_ENV === 'production' && !JWT_SECRET) {
+  console.error('ERRO CRÍTICO: JWT_SECRET não está definido no ambiente de produção!');
+}
 
 // Interface para os dados do usuário autenticado
 export interface AuthUser {
@@ -26,7 +34,7 @@ export interface AuthUser {
   phone?: string;
 }
 
-// Interface para o resultado da autenticação
+// Resultado da verificação de autenticação
 export interface AuthResult {
   isAuthenticated: boolean;
   user: AuthUser | null;
@@ -34,7 +42,7 @@ export interface AuthResult {
 
 // Nome do cookie de autenticação
 const AUTH_TOKEN_NAME = 'auth_token';
-const LEGACY_TOKEN_NAME = 'fantasy_cheats_auth';
+const LEGACY_TOKEN_NAME = 'fantasystore_auth';
 const AUTH_EXPIRY = 60 * 60 * 24 * 7; // 7 dias em segundos
 
 /**
@@ -79,6 +87,11 @@ export const checkAuth = async (req: NextRequest): Promise<AuthResult> => {
       return { isAuthenticated: false, user: null };
     }
     
+    if (!JWT_SECRET) {
+      console.error('Erro de autenticação: JWT_SECRET não definido');
+      return { isAuthenticated: false, user: null };
+    }
+    
     try {
       // Verificar token usando jsonwebtoken
       let decoded;
@@ -106,6 +119,7 @@ export const checkAuth = async (req: NextRequest): Promise<AuthResult> => {
               if (decodedWithoutVerify && (decodedWithoutVerify.id || decodedWithoutVerify.userId)) {
                 decoded = decodedWithoutVerify;
                 userId = decodedWithoutVerify.id || decodedWithoutVerify.userId;
+                console.warn('Aviso: Token verificado em modo de desenvolvimento sem validar assinatura');
               } else {
                 throw new Error('Token inválido mesmo após decodificação sem verificação');
               }
@@ -126,64 +140,44 @@ export const checkAuth = async (req: NextRequest): Promise<AuthResult> => {
       let userIdStr: string;
       
       try {
-        // Cache para evitar conversões repetidas do mesmo userId
-        // Converter o userId para string de forma otimizada
-        if (typeof userId === 'object' && userId !== null) {
-          if (Buffer.isBuffer(userId) || (userId.buffer || userId.data || userId.type === 'Buffer')) {
-            // Converter buffer para string de forma eficiente
-            const buffer = userId.buffer || userId.data || userId;
-            userIdStr = Buffer.from(buffer).toString('hex');
-          } else {
-            userIdStr = userId.toString();
-          }
-        } else {
-          userIdStr = String(userId);
-        }
-        
-        // Verificar se é um ObjectId válido
-        if (!/^[0-9a-fA-F]{24}$/.test(userIdStr)) {
-          return { isAuthenticated: false, user: null };
-        }
-      } catch (conversionError) {
+        userIdStr = userId.toString();
+      } catch (error) {
+        console.error('Erro ao converter userId para string:', error);
         return { isAuthenticated: false, user: null };
       }
       
-      // Conectar ao banco de dados
+      // Buscar informações do usuário
       await connectDB();
-      
-      // Buscar usuário pelo ID (sem a senha)
-      const user = await User.findById(userIdStr).select('-password');
+      const user = await User.findById(userIdStr);
       
       if (!user) {
+        console.error(`Usuário com ID ${userIdStr} não encontrado no banco de dados`);
         return { isAuthenticated: false, user: null };
       }
       
-      // Converter o documento do Mongoose para um objeto plano para evitar erros de serialização
-      const userObj = user.toObject();
-      
-      return {
-        isAuthenticated: true,
-        user: {
-          _id: userObj._id,
-          id: userObj._id.toString(), // Garantir que ambos id e _id estejam disponíveis
-          username: userObj.username,
-          email: userObj.email,
-          name: userObj.name || '',
-          role: userObj.role,
-          profileImage: userObj.profileImage || '',
-          memberNumber: userObj.memberNumber,
-          createdAt: userObj.createdAt,
-          cpf: userObj.cpf || '',
-          address: userObj.address || '',
-          phone: userObj.phone || ''
-        }
+      // Converter campos para formato adequado
+      const authUser: AuthUser = {
+        _id: user._id.toString(),
+        id: user._id.toString(),
+        username: user.username,
+        email: user.email,
+        role: user.role as 'admin' | 'user',
+        name: user.name,
+        profileImage: user.profileImage,
+        memberNumber: user.memberNumber,
+        createdAt: user.createdAt,
+        cpf: user.cpf,
+        address: user.address,
+        phone: user.phone
       };
       
-    } catch (tokenError) {
-      // Token inválido ou expirado
+      return { isAuthenticated: true, user: authUser };
+    } catch (error) {
+      console.error('Erro ao verificar autenticação:', error);
       return { isAuthenticated: false, user: null };
     }
   } catch (error) {
+    console.error('Erro ao verificar autenticação:', error);
     return { isAuthenticated: false, user: null };
   }
 };
@@ -195,6 +189,10 @@ export const checkAuth = async (req: NextRequest): Promise<AuthResult> => {
  */
 export async function createToken(userId: string) {
   try {
+    if (!JWT_SECRET) {
+      throw new Error('JWT_SECRET não está definido no ambiente');
+    }
+    
     const secret = new TextEncoder().encode(JWT_SECRET);
     
     // Garantir que o userId seja uma string válida
@@ -228,6 +226,7 @@ export async function createToken(userId: string) {
       
       return token;
     } catch (joseError) {
+      console.warn('Erro ao criar token com jose, tentando com jsonwebtoken:', joseError);
       // Fallback: tentar criar com jsonwebtoken
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
       return token;
@@ -236,15 +235,6 @@ export async function createToken(userId: string) {
     console.error('Erro ao criar token:', error);
     throw error;
   }
-}
-
-/**
- * Verifica se o usuário tem perfil de administrador
- * @param user Objeto do usuário autenticado
- * @returns boolean indicando se é admin
- */
-export function isAdmin(user: AuthUser | null): boolean {
-  return !!user && user.role === 'admin';
 }
 
 /**
@@ -258,21 +248,27 @@ export async function setAuthCookie(token: string) {
     secure: process.env.NODE_ENV === 'production',
     maxAge: AUTH_EXPIRY,
     path: '/',
-    sameSite: 'lax',
+    sameSite: 'strict', // Mudando para strict para melhor segurança CSRF
   });
 }
 
 /**
- * Remove cookie de autenticação
+ * Remove cookies de autenticação
  */
-export async function removeAuthCookie() {
+export async function clearAuthCookie() {
   const cookieStore = await cookies();
   cookieStore.delete(AUTH_TOKEN_NAME);
+  cookieStore.delete(LEGACY_TOKEN_NAME);
 }
 
 // Função para verificar JWT usando jose (para compatibilidade com Edge Runtime)
 export async function verifyToken(token: string) {
   try {
+    if (!JWT_SECRET) {
+      console.error('JWT_SECRET não está definido no ambiente');
+      return null;
+    }
+    
     const secret = new TextEncoder().encode(JWT_SECRET);
     
     try {
@@ -307,4 +303,14 @@ export async function verifyToken(token: string) {
   } catch (error) {
     return null;
   }
+}
+
+/**
+ * Verifica se um usuário é administrador
+ * @param user Objeto do usuário
+ * @returns Boolean indicando se é admin ou não
+ */
+export function isAdmin(user: AuthUser | null) {
+  if (!user) return false;
+  return user.role === 'admin';
 } 

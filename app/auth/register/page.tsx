@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, FormEvent, useRef, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { FaUser } from 'react-icons/fa';
+import { FaUser, FaCheck, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -19,9 +18,13 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Estado para validação de username
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid' | 'blocked'>('idle');
+  const [usernameMessage, setUsernameMessage] = useState('');
+  
+  // Referência para o timeout de debounce
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Verificar se o usuário já está autenticado
   useEffect(() => {
@@ -42,43 +45,93 @@ export default function RegisterPage() {
     checkAuth();
   }, [router]);
   
+  // Função para verificar se um username está disponível
+  const checkUsername = useCallback(async (username: string) => {
+    if (!username || username.length < 3) {
+      setUsernameStatus('invalid');
+      setUsernameMessage('Nome de usuário deve ter pelo menos 3 caracteres');
+      return;
+    }
+    
+    // Lista de palavras bloqueadas
+    const blockedWords = [
+      // Políticos e figuras controversas
+      'lula', 'bolsonaro', 'trump', 'biden', 'hitler', 'mussolini', 'stalin', 'lenin',
+      // Palavrões e ofensas (português e inglês)
+      'puta', 'caralho', 'foda', 'buceta', 'viado', 'corno', 'porra', 'merda', 
+      'fuck', 'shit', 'bitch', 'ass', 'dick', 'pussy', 'whore',
+      // Termos relacionados a golpes
+      'admin', 'moderador', 'staff', 'suporte', 'support', 'scam', 'hacker', 
+      'golpe', 'fake', 'roubo', 'virus', 'hack', 'free', 'gratis'
+    ];
+    
+    // Verificar se o username contém alguma palavra bloqueada
+    const containsBlockedWord = blockedWords.some(word => 
+      username.toLowerCase().includes(word.toLowerCase())
+    );
+    
+    if (containsBlockedWord) {
+      setUsernameStatus('blocked');
+      setUsernameMessage('Este nome de usuário não é permitido');
+      return;
+    }
+    
+    setUsernameStatus('checking');
+    
+    try {
+      const response = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        if (data.available) {
+          setUsernameStatus('valid');
+          setUsernameMessage('Nome de usuário disponível');
+        } else {
+          setUsernameStatus('invalid');
+          setUsernameMessage(data.message || 'Este nome de usuário já está em uso');
+        }
+      } else {
+        setUsernameStatus('invalid');
+        setUsernameMessage(data.message || 'Erro ao verificar nome de usuário');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar nome de usuário:', error);
+      setUsernameStatus('invalid');
+      setUsernameMessage('Erro ao verificar disponibilidade');
+    }
+  }, []);
+  
+  // Implementação simples de debounce sem lodash
+  const debouncedCheckUsername = useCallback((username: string) => {
+    // Limpar o timer anterior se existir
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Definir novo timer
+    debounceTimerRef.current = setTimeout(() => {
+      checkUsername(username);
+    }, 500);
+  }, [checkUsername]);
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-  };
-  
-  const handleImageClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Verificar se é uma imagem
-    if (!file.type.startsWith('image/')) {
-      setError('O arquivo deve ser uma imagem (JPG, PNG ou GIF)');
-      return;
-    }
-
-    // Verificar tamanho (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setError('A imagem deve ter no máximo 2MB');
-      return;
-    }
-
-    setError('');
-    setProfileImage(file);
     
-    // Converter para base64 para visualização prévia
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setPreviewUrl(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    // Verificar username enquanto o usuário digita
+    if (name === 'username') {
+      if (!value) {
+        setUsernameStatus('idle');
+        setUsernameMessage('');
+      } else {
+        setUsernameStatus('checking');
+        setUsernameMessage('Verificando disponibilidade...');
+        debouncedCheckUsername(value);
+      }
+    }
   };
   
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -100,24 +153,26 @@ export default function RegisterPage() {
       return;
     }
     
+    if (usernameStatus !== 'valid') {
+      setError('Nome de usuário inválido ou indisponível');
+      return;
+    }
+    
     setIsLoading(true);
     setError('');
     setSuccess('');
     
     try {
-      // Usar FormData para incluir a imagem, se existir
-      const submitData = new FormData();
-      submitData.append('email', formData.email);
-      submitData.append('username', formData.username);
-      submitData.append('password', formData.password);
-      
-      if (profileImage) {
-        submitData.append('profileImage', profileImage);
-      }
-      
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        body: submitData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          username: formData.username,
+          password: formData.password
+        }),
       });
       
       const data = await response.json();
@@ -163,17 +218,48 @@ export default function RegisterPage() {
             <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1">
               Nome de usuário
             </label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              autoComplete="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              placeholder="brian"
-              className="w-full bg-dark-200 border border-dark-300 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+            <div className="relative">
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                placeholder="seu_username"
+                className={`w-full bg-dark-200 border ${
+                  usernameStatus === 'valid' 
+                    ? 'border-green-500' 
+                    : usernameStatus === 'invalid' || usernameStatus === 'blocked'
+                    ? 'border-red-500'
+                    : 'border-dark-300'
+                } rounded-md py-2 px-3 pr-10 text-white focus:outline-none focus:ring-1 focus:ring-primary`}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                {usernameStatus === 'checking' && (
+                  <div className="animate-spin h-4 w-4 border-2 border-primary rounded-full border-t-transparent"></div>
+                )}
+                {usernameStatus === 'valid' && (
+                  <FaCheck className="text-green-500" />
+                )}
+                {usernameStatus === 'invalid' && (
+                  <FaTimes className="text-red-500" />
+                )}
+                {usernameStatus === 'blocked' && (
+                  <FaExclamationTriangle className="text-red-500" />
+                )}
+              </div>
+            </div>
+            {usernameMessage && (
+              <p className={`mt-1 text-sm ${
+                usernameStatus === 'valid' 
+                  ? 'text-green-400' 
+                  : 'text-red-400'
+              }`}>
+                {usernameMessage}
+              </p>
+            )}
           </div>
           
           <div>
@@ -227,47 +313,10 @@ export default function RegisterPage() {
             />
           </div>
           
-          <div className="relative w-32 h-32 cursor-pointer mx-auto mt-4 rounded-full overflow-hidden border-2 border-primary-dark/50 transition-all duration-300 hover:border-primary-dark" onClick={handleImageClick}>
-            {previewUrl ? (
-              <Image
-                src={previewUrl}
-                alt="Preview da imagem"
-                width={128}
-                height={128}
-                className="object-cover w-full h-full"
-                style={{ objectFit: 'cover', objectPosition: 'center' }}
-                onError={(e) => {
-                  console.log('Erro ao carregar imagem de pré-visualização');
-                  e.currentTarget.style.display = 'none';
-                  // Mostrar o ícone padrão como fallback
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
-                      <span><FaUser size={48} className="text-white/70" /></span>
-                    </div>`;
-                  }
-                }}
-                unoptimized={true}
-                priority={true}
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
-                <span><FaUser size={48} className="text-white/70" /></span>
-              </div>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageChange}
-              ref={fileInputRef}
-            />
-          </div>
-          
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-3 bg-primary hover:bg-primary-dark text-white rounded-md font-medium transition-colors"
+            disabled={isLoading || usernameStatus === 'checking' || usernameStatus === 'invalid' || usernameStatus === 'blocked'}
+            className="w-full py-3 bg-primary hover:bg-primary-dark text-white rounded-md font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Criando conta...' : 'Criar conta'}
           </button>

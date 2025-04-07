@@ -699,7 +699,12 @@ export default function CartPage() {
           // Atualizar o estado com um pequeno delay para dar tempo de renderizar
           setTimeout(() => {
             if (isMounted.current) {
-              window.dispatchEvent(new Event('auth-state-changed'));
+              try {
+                window.dispatchEvent(new Event('auth-state-changed'));
+              } catch (eventError) {
+                console.error('Erro ao disparar evento auth-state-changed:', eventError);
+                // Continuar mesmo se o evento falhar
+              }
               
               // Continuar com o fluxo normal após um breve momento
               setTimeout(() => {

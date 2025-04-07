@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/app/lib/db/mongodb';
+import Logger from '@/app/lib/logger';
+
+const logger = new Logger('api/system/reset-db');
 
 export async function GET() {
-  // Não permitir em produção
-  if (process.env.NODE_ENV === 'production') {
+  // Não permitir em produção, proteção dupla
+  if (process.env.NODE_ENV === 'production' || process.env.DISABLE_DEV_ROUTES === 'true') {
+    logger.error('Tentativa de acesso à rota de reset de banco de dados em ambiente de produção');
     return NextResponse.json(
       { message: 'Esta operação não é permitida em ambiente de produção' },
       { status: 403 }
@@ -13,6 +17,7 @@ export async function GET() {
   try {
     // Conectar ao MongoDB
     const mongoose = await connectDB();
+    logger.info('Iniciando limpeza de coleções do banco de dados');
     
     // Lista das coleções que queremos limpar
     const collections = ['users', 'products', 'orders', 'categories', 'coupons'];
@@ -21,9 +26,9 @@ export async function GET() {
     for (const collection of collections) {
       try {
         await mongoose.connection.db.collection(collection).deleteMany({});
-        console.log(`Coleção ${collection} foi limpa`);
+        logger.info(`Coleção ${collection} foi limpa com sucesso`);
       } catch (err) {
-        console.log(`Erro ao limpar coleção ${collection}:`, err);
+        logger.error(`Erro ao limpar coleção ${collection}:`, err);
       }
     }
     
@@ -32,7 +37,7 @@ export async function GET() {
       message: 'Banco de dados limpo com sucesso'
     });
   } catch (error: any) {
-    console.error('Erro ao limpar banco de dados:', error);
+    logger.error('Erro ao limpar banco de dados:', error);
     
     return NextResponse.json({
       success: false,

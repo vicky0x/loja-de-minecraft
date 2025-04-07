@@ -4,69 +4,85 @@ import connectDBModule from '@/app/lib/db/mongodb';
 import User from '@/app/lib/models/user';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
-import { SignJWT } from 'jose';
-import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 
-// Verificar se já existe o modelo de imagem, se não existir, criar
-let Image;
-try {
-  Image = mongoose.model('Image');
-} catch (error) {
-  // Criar esquema para armazenar imagens
-  const imageSchema = new mongoose.Schema({
-    filename: String,
-    contentType: String,
-    data: Buffer,
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    uploadDate: {
-      type: Date,
-      default: Date.now
-    }
-  });
-  
-  Image = mongoose.model('Image', imageSchema);
+// Funções de validação
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function isValidUsername(username: string): boolean {
+  // Apenas letras, números, _ e -, entre 3-20 caracteres
+  const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+  return usernameRegex.test(username);
+}
+
+function isValidPassword(password: string): boolean {
+  // Mínimo 6 caracteres, pelo menos 1 letra e 1 número
+  if (password.length < 6) return false;
+  return /[A-Za-z]/.test(password) && /[0-9]/.test(password);
+}
+
+// Lista de palavras bloqueadas para usernames
+const blockedWords = [
+  // Políticos e figuras controversas
+  'lula', 'bolsonaro', 'trump', 'biden', 'hitler', 'mussolini', 'stalin', 'lenin',
+  // Palavrões e ofensas (português e inglês)
+  'puta', 'caralho', 'foda', 'buceta', 'viado', 'corno', 'porra', 'merda', 
+  'fuck', 'shit', 'bitch', 'ass', 'dick', 'pussy', 'whore',
+  // Termos relacionados a golpes
+  'admin', 'moderador', 'staff', 'suporte', 'support', 'scam', 'hacker', 
+  'golpe', 'fake', 'roubo', 'virus', 'hack', 'free', 'gratis'
+];
+
+function isBlockedUsername(username: string): boolean {
+  return blockedWords.some(word => 
+    username.toLowerCase().includes(word.toLowerCase())
+  );
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar se a requisição é multipart/form-data
-    const contentType = request.headers.get('content-type') || '';
-    
-    let username, email, password;
-    let profileImage = null;
-    
-    if (contentType.includes('multipart/form-data')) {
-      // Processar como FormData
-      const formData = await request.formData();
-      username = formData.get('username') as string;
-      email = formData.get('email') as string;
-      password = formData.get('password') as string;
-      
-      // Verificar se há imagem de perfil
-      profileImage = formData.get('profileImage') as File | null;
-    } else {
-      // Tentar processar como JSON para compatibilidade
-      try {
-        const jsonData = await request.json();
-        username = jsonData.username;
-        email = jsonData.email;
-        password = jsonData.password;
-      } catch (jsonError) {
-        console.error('Erro ao processar dados JSON:', jsonError);
-        return NextResponse.json(
-          { message: 'Formato de dados inválido' },
-          { status: 400 }
-        );
-      }
-    }
+    const jsonData = await request.json();
+    const { username, email, password } = jsonData;
 
+    // Validações dos campos
     if (!username || !email || !password) {
       return NextResponse.json(
         { message: 'Todos os campos são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Validar email
+    if (!isValidEmail(email)) {
+      return NextResponse.json(
+        { message: 'O formato do e-mail é inválido' },
+        { status: 400 }
+      );
+    }
+
+    // Validar username
+    if (!isValidUsername(username)) {
+      return NextResponse.json(
+        { message: 'Nome de usuário inválido. Use apenas letras, números, _ e - (3-20 caracteres)' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar palavras bloqueadas
+    if (isBlockedUsername(username)) {
+      return NextResponse.json(
+        { message: 'Este nome de usuário não é permitido' },
+        { status: 400 }
+      );
+    }
+
+    // Validar senha
+    if (!isValidPassword(password)) {
+      return NextResponse.json(
+        { message: 'A senha deve ter pelo menos 6 caracteres, incluindo letras e números' },
         { status: 400 }
       );
     }
@@ -112,95 +128,20 @@ export async function POST(request: NextRequest) {
       role: 'user'
     };
 
-    // Processar imagem de perfil, se fornecida
-    let imageUrl = '';
-    if (profileImage && typeof profileImage === 'object' && 'type' in profileImage) {
-      console.log('Processando imagem de perfil...');
-      
-      // Verificar tipo de arquivo
-      if (!profileImage.type.startsWith('image/')) {
-        return NextResponse.json(
-          { message: 'O arquivo deve ser uma imagem' },
-          { status: 400 }
-        );
-      }
-      
-      // Verificar tamanho (2MB)
-      if (profileImage.size > 2 * 1024 * 1024) {
-        return NextResponse.json(
-          { message: 'A imagem deve ter no máximo 2MB' },
-          { status: 400 }
-        );
-      }
-      
-      // Ler os bytes da imagem
-      const bytes = await profileImage.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      
-      // Gerar um ID único para a imagem
-      const imageId = uuidv4();
-      const filename = `${imageId}.${profileImage.type.split('/')[1]}`;
-      
-      // Definir URL da imagem
-      imageUrl = `/api/images/${imageId}`;
-      
-      // Adicionar URL da imagem aos dados do usuário
-      userData.profileImage = imageUrl;
-      
-      // Criar imagem temporária no modelo - será atualizada após criar o usuário
-      const newImage = new Image({
-        filename: filename,
-        contentType: profileImage.type,
-        data: buffer
-      });
-      
-      // Salvar a imagem no banco de dados
-      await newImage.save();
-      console.log('Imagem de perfil salva temporariamente:', imageId);
-    }
-
     // Criar novo usuário
     const user = await User.create(userData);
-    
-    // Se houver imagem, atualizar a referência do usuário
-    if (imageUrl && Image) {
-      const userObjectId = new mongoose.Types.ObjectId(user._id);
-      await Image.findOneAndUpdate(
-        { filename: new RegExp(`^${imageUrl.split('/').pop()}`) },
-        { userId: userObjectId }
-      );
-    }
-
-    // Gerar token JWT
-    const token = await new SignJWT({
-      id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('24h')
-      .sign(new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key'));
-
-    // Definir o cookie de autenticação
-    cookies().set('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 horas
-    });
 
     // Retornar dados do usuário (sem a senha)
     return NextResponse.json({
+      success: true,
+      message: 'Conta criada com sucesso',
       user: {
         id: user._id,
         username: user.username,
         email: user.email,
-        role: user.role,
-        profileImage: userData.profileImage
+        role: user.role
       }
-    });
+    }, { status: 201 });
   } catch (error) {
     console.error('Erro ao criar conta:', error);
     return NextResponse.json(

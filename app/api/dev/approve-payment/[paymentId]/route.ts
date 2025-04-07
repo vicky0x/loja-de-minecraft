@@ -9,7 +9,9 @@ export async function POST(
   { params }: { params: { paymentId: string } }
 ) {
   // Verificar se estamos no ambiente de desenvolvimento
-  if (process.env.NODE_ENV !== 'development') {
+  // Proteção dupla: verifica NODE_ENV e também a variável DISABLE_DEV_ROUTES
+  if (process.env.NODE_ENV !== 'development' || process.env.DISABLE_DEV_ROUTES === 'true') {
+    logger.error('Tentativa de acesso a rota de desenvolvimento em ambiente de produção');
     return NextResponse.json(
       { error: 'Esta rota só está disponível em ambiente de desenvolvimento' },
       { status: 403 }

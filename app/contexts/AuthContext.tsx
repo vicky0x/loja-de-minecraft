@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 // Interface para o usuário
 interface User {
@@ -90,6 +91,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingProfileImage, setPendingProfileImage] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const router = useRouter();
   
   // Ref para controlar o tempo da última atualização completa dos dados do usuário
   const lastFullUpdateRef = useRef<number>(Date.now());
@@ -498,87 +501,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   // Função para fazer logout
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
-      console.log('AuthContext: Iniciando logout...');
+      console.log("Iniciando processo de logout");
       
-      // Limpar cookies localmente
-      if (typeof document !== 'undefined') {
-        console.log('AuthContext: Limpando cookies do navegador...');
-        document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie = "isAuthenticated=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie = "userId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie = "userEmail=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie = "userRole=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      // Remover dados do localStorage
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('username');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userRole');
+      
+      // Chamar a API de logout
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('Erro na resposta da API de logout:', response.status);
+      } else {
+        console.log('API de logout respondeu com sucesso');
       }
       
-      // Limpar localStorage
-      if (typeof window !== 'undefined') {
-        console.log('AuthContext: Limpando localStorage...');
-        localStorage.removeItem('user');
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('authExpiry');
-        localStorage.removeItem('cartItems');
-      }
-      
-      // Fazer requisição para API de logout
-      try {
-        const response = await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        });
-        
-        console.log('AuthContext: Resposta da API de logout:', response.status);
-      } catch (apiError) {
-        console.error('AuthContext: Erro ao fazer requisição para API de logout:', apiError);
-      }
-      
-      // Atualizar o estado
+      // Atualizar o estado mesmo se a API falhar
       setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
       
-      // Atualizar o cache
-      userCacheRef.current = {
-        data: null,
-        timestamp: Date.now(),
-        hash: '',
-      };
-      
-      // Disparar evento para notificar mudança no estado de autenticação
-      if (typeof window !== 'undefined') {
-        console.log('AuthContext: Disparando evento auth-state-changed após logout');
-        window.dispatchEvent(new Event('auth-state-changed'));
-        
-        // Verificar se estamos na dashboard e forçar redirecionamento
-        const currentPath = window.location.pathname;
-        if (currentPath.startsWith('/dashboard')) {
-          console.log('AuthContext: Redirecionando da dashboard para login');
-          window.location.href = '/auth/login?logout=success';
-        }
+      // Dispatch evento para outros componentes de forma segura
+      try {
+        const event = new CustomEvent('auth-change', { 
+          detail: { isAuthenticated: false, user: null }
+        });
+        window.dispatchEvent(event);
+      } catch (eventError) {
+        console.error("Erro ao disparar evento auth-change:", eventError);
+        // Continuar mesmo se o evento falhar
       }
       
-      console.log('AuthContext: Logout bem-sucedido');
+      // Redirecionar para a página inicial
+      router.push('/');
+      
+      console.log("Processo de logout concluído");
     } catch (error) {
-      console.error('AuthContext: Erro ao fazer logout:', error);
+      console.error("Erro durante logout:", error);
       
-      // Em caso de erro, tentar redirecionamento de fallback
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login?error=logout_failed';
-      }
+      // Mesmo com erro, tentar limpar o estado
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
       
-      throw error;
+      // Redirecionar para a página inicial mesmo com erro
+      router.push('/');
     }
-  };
+  }, [router]);
 
   const contextValue = {
     user,
     loading,
-    isAuthenticated: !!user,
+    isAuthenticated,
     refreshUserData: () => refreshUserData(false), // Versão sem força por padrão
     forceRefreshUserData: () => refreshUserData(true), // Versão com força explícita 
     setUser,

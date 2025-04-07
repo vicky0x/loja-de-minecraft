@@ -9,20 +9,33 @@ const nextConfig = {
         port: '3000',
         pathname: '/api/images/**',
       },
+      {
+        protocol: 'https',
+        hostname: process.env.VERCEL_URL || 'fantasystore.com.br',
+        port: '',
+        pathname: '/api/images/**',
+      },
     ],
-    unoptimized: true, // Para facilitar o uso com as imagens da API
+    unoptimized: process.env.NODE_ENV === 'development', // Otimizar imagens em produção
   },
   // Definir porta fixa
   serverRuntimeConfig: {
-    port: 3000
+    port: process.env.PORT || 3000
   },
   // Configuração para limitar os logs apenas a erros
   logging: {
     fetches: {
       fullUrl: true,
     },
-    level: 'error'
+    level: process.env.NODE_ENV === 'production' ? 'error' : 'info'
   },
+  // Otimizações para produção
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+  },
+  poweredByHeader: false, // Remover cabeçalho X-Powered-By por segurança
 };
 
 module.exports = nextConfig; 

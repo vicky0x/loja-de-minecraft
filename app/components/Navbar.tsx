@@ -347,21 +347,17 @@ export default function Navbar() {
   // Função para lidar com logout
   const handleLogout = async () => {
     try {
-      console.log('Fazendo logout...');
-      
-      // Usar a função de logout do contexto Auth
-      await logout();
+      console.log('Iniciando processo de logout via Navbar...');
       
       // Fechar o dropdown
       setIsDropdownOpen(false);
       
-      // Forçar atualização de toda a interface
-      router.refresh();
+      // Usar a função de logout do contexto Auth
+      await logout();
       
-      // Redirecionar para a página inicial
-      setTimeout(() => {
-        router.push('/');
-      }, 100);
+      // Redirecionar para a página inicial e forçar refresh
+      toast.success('Logout realizado com sucesso');
+      router.refresh();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
       toast.error('Falha ao fazer logout. Tente novamente.');
