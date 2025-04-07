@@ -345,18 +345,20 @@ export function useAuth() {
       try {
         const token = localStorage.getItem('auth_token');
         
-        if (token) {
-          const response = await fetch('/api/auth/logout', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (!response.ok) {
-            console.warn('Erro ao fazer logout no servidor, mas dados locais foram limpos');
+        // Chamar a API de logout com credentials: 'include' para garantir o envio de cookies
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           }
+        });
+        
+        if (!response.ok) {
+          console.warn('Erro ao fazer logout no servidor, mas dados locais foram limpos');
+        } else {
+          console.log('Logout no servidor realizado com sucesso');
         }
       } catch (error) {
         console.error('Erro ao fazer logout no servidor:', error);
@@ -366,11 +368,25 @@ export function useAuth() {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('cartItems');
+      localStorage.removeItem('user');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userRole');
       
       // Remover flags de redirecionamento
       localStorage.removeItem('auth_redirect_triggered');
       localStorage.removeItem('login_redirect_attempts');
       localStorage.removeItem('dashboard_redirect_attempts');
+      
+      // Disparar evento para sincronizar outros componentes
+      try {
+        const event = new CustomEvent('auth-change', { 
+          detail: { isAuthenticated: false, user: null }
+        });
+        window.dispatchEvent(event);
+      } catch (eventError) {
+        console.error("Erro ao disparar evento auth-change:", eventError);
+      }
       
       setIsAuthenticated(false);
       setUser(null);

@@ -14,7 +14,10 @@ async function checkAuth(request: NextRequest) {
   // Obter o token diretamente do cookie da request
   const token = request.cookies.get('auth_token')?.value;
   
+  console.log('Verificando autenticação para atualização de produto');
+  
   if (!token) {
+    console.log('Erro de autenticação: Token não encontrado nos cookies');
     return null;
   }
   
@@ -23,8 +26,11 @@ async function checkAuth(request: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string, role?: string };
 
     if (!decoded || !decoded.id) {
+      console.log('Erro de autenticação: Token JWT inválido ou não contém ID');
       return null;
     }
+
+    console.log(`Token decodificado para usuário: ${decoded.id}, role: ${decoded.role || 'não definida'}`);
 
     // Conectar ao banco de dados
     await connectDB();
@@ -33,12 +39,17 @@ async function checkAuth(request: NextRequest) {
     const user = await User.findById(decoded.id).select('-password');
 
     if (!user) {
+      console.log(`Erro de autenticação: Usuário com ID ${decoded.id} não encontrado`);
       return null;
     }
     
+    console.log(`Autenticação bem-sucedida: ${user.username || user.email}, role: ${user.role || 'não definida'}`);
     return user;
   } catch (error) {
     console.error('Erro ao verificar autenticação:', error);
+    if (error instanceof jwt.JsonWebTokenError) {
+      console.log('Erro específico do JWT:', error.message);
+    }
     return null;
   }
 }
@@ -104,18 +115,35 @@ export async function PUT(
     const user = await checkAuth(request);
     
     if (!user) {
+      console.log('Tentativa de atualização de produto sem autenticação');
+      
+      // Verificar e reportar o erro específico de autenticação
+      const authError = request.cookies.get('auth_token') 
+        ? 'Token inválido ou expirado' 
+        : 'Token de autenticação não encontrado';
+      
       return NextResponse.json(
-        { message: 'Não autorizado' },
+        { 
+          message: 'Não autorizado', 
+          details: `Erro de autenticação: ${authError}. Faça login novamente.`,
+          code: 'AUTH_REQUIRED'
+        },
         { status: 401 }
       );
     }
     
+    // Verificação detalhada do papel do usuário
+    console.log(`Verificando permissões: usuário ${user.username || user.email} com papel: "${user.role}" tentando atualizar produto`);
+    
     if (user.role !== 'admin') {
+      console.log(`Acesso negado: usuário ${user.username || user.email} não é admin (papel atual: ${user.role || 'não definido'})`);
       return NextResponse.json(
-        { message: 'Acesso proibido' },
+        { message: 'Acesso proibido - permissão de administrador necessária' },
         { status: 403 }
       );
     }
+    
+    console.log(`Usuário ${user.username || user.email} autenticado como admin, prosseguindo com atualização do produto`);
     
     await connectDB();
     

@@ -551,31 +551,6 @@ export default function ProductPage() {
           </div>
         </motion.div>
 
-        {/* NOVO: Aviso de entrega manual */}
-        {product.deliveryType === 'manual' && (
-          <motion.div 
-            className="mb-6 bg-amber-900/30 border border-amber-500/30 rounded-xl p-4 shadow-lg"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="flex items-start">
-              <div className="flex-shrink-0 bg-amber-500/20 p-2 rounded-full mr-3">
-                <FiClock className="text-amber-400 text-xl" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-amber-400 font-semibold text-lg mb-1">Entrega Manual</h3>
-                <p className="text-white text-sm leading-relaxed">
-                  Este produto possui <strong>entrega manual</strong> e será entregue em até <strong>24 horas</strong> após a confirmação do pagamento.
-                </p>
-                <p className="text-white/80 text-sm mt-2">
-                  Nossa equipe trabalha para fazer a entrega em <strong>poucos minutos</strong>. Fique tranquilo, não é necessário entrar em contato com o suporte para solicitar informações sobre a entrega.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
         {/* Aviso de estoque limitado no topo */}
         <motion.div 
           initial={{ opacity: 0, y: -5 }}

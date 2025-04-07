@@ -104,7 +104,7 @@ export default function CartPage() {
   const [isCouponValid, setIsCouponValid] = useState<boolean | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [showExitIntent, setShowExitIntent] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{variantId: string; productId: string} | null>(null);
   const [customerData, setCustomerData] = useState<CustomerData>({
     firstName: '',
     lastName: '',
@@ -281,26 +281,49 @@ export default function CartPage() {
   };
 
   // Função segura para remover item do carrinho
-  const handleRemoveItem = (variantId: string) => {
+  const handleRemoveItem = (variantId: string, productId: string) => {
+    console.log(`Tentando remover item com ID: ${variantId} e productId: ${productId}`);
+    
+    if (!variantId || !productId) {
+      console.error('Tentativa de remover item sem ID de variante ou produto');
+      return;
+    }
+    
+    // Verificar se o item existe no carrinho
+    const itemExiste = items.some(item => item.variantId === variantId && item.productId === productId);
+    if (!itemExiste) {
+      console.error(`Item com variantId ${variantId} e productId ${productId} não encontrado no carrinho`);
+      return;
+    }
+    
     safeOperation(() => {
-      removeItem(variantId);
+      console.log(`Removendo item com variantId: ${variantId} e productId: ${productId}`);
+      console.log(`Itens antes da remoção: ${items.length}`);
+      console.log(`Itens no carrinho antes:`, items.map(i => ({ id: i.variantId, prodId: i.productId, nome: i.productName })));
+      
+      // Chamar a função de remoção do contexto com ambos os IDs
+      removeItem(variantId, productId);
+      
+      // Atualizar o estado de confirmação
       updateStateIfMounted(() => setShowDeleteConfirm(null));
+      
+      // Mostrar mensagem de sucesso
       toast.success('Item removido do carrinho');
     });
   };
   
   // Função segura para atualizar quantidade
-  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
+  const handleUpdateQuantity = (itemId: string, newQuantity: number, productId: string) => {
     if (!isMounted.current) return;
     
     try {
       if (newQuantity < 1) {
-        handleRemoveItem(itemId);
+        handleRemoveItem(itemId, productId);
         return;
       }
       
       // Buscar o item no carrinho
-      const item = items.find(item => item.variantId === itemId);
+      const item = items.find(item => item.variantId === itemId && item.productId === productId);
       if (!item) {
         console.error(`Item com ID ${itemId} não encontrado no carrinho`);
         return;
@@ -1460,7 +1483,7 @@ export default function CartPage() {
                               {/* Botão de incremento/decremento de quantidade */}
                               <div className="flex items-center bg-dark-300 border border-dark-400 rounded-full shadow-inner overflow-hidden">
                                 <button 
-                                  onClick={() => handleUpdateQuantity(item.variantId, Math.max(1, item.quantity - 1))}
+                                  onClick={() => handleUpdateQuantity(item.variantId, Math.max(1, item.quantity - 1), item.productId)}
                                   className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-white hover:bg-dark-400 transition-colors"
                                   aria-label="Diminuir quantidade"
                                 >
@@ -1470,7 +1493,7 @@ export default function CartPage() {
                                 </button>
                                 <span className="w-10 text-center py-1 font-medium text-white">{item.quantity}</span>
                                 <button 
-                                  onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1)}
+                                  onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1, item.productId)}
                                   className={`w-9 h-9 flex items-center justify-center ${!!item.stock && item.quantity >= item.stock ? 'text-gray-600 cursor-not-allowed' : 'text-gray-300 hover:text-white hover:bg-dark-400'} transition-colors`}
                                   disabled={!!item.stock && item.quantity >= item.stock}
                                   aria-label="Aumentar quantidade"
@@ -1482,7 +1505,7 @@ export default function CartPage() {
                               </div>
                               {/* Botão de remover item */}
                               <button 
-                                onClick={() => setShowDeleteConfirm(item.variantId)}
+                                onClick={() => setShowDeleteConfirm({variantId: item.variantId, productId: item.productId})}
                                 className="group/trash w-9 h-9 rounded-full bg-red-500/10 hover:bg-red-500 flex items-center justify-center transition-colors duration-300"
                                 aria-label="Remover item"
                               >
@@ -1492,7 +1515,7 @@ export default function CartPage() {
                           </div>
                         </div>
                         {/* Confirmação de exclusão */}
-                        {showDeleteConfirm === item.variantId && (
+                        {showDeleteConfirm && showDeleteConfirm.variantId === item.variantId && showDeleteConfirm.productId === item.productId && (
                           <div className="bg-dark-300/80 backdrop-blur-sm p-5 flex flex-col sm:flex-row items-center justify-between border-t border-dark-400">
                             <div className="flex items-center mb-4 sm:mb-0">
                               <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center mr-3">
@@ -1502,7 +1525,7 @@ export default function CartPage() {
                             </div>
                             <div className="flex space-x-3">
                               <button 
-                                onClick={() => handleRemoveItem(item.variantId)}
+                                onClick={() => handleRemoveItem(item.variantId, item.productId)}
                                 className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-300 flex items-center"
                               >
                                 <IconFiCheck size={16} className="mr-1" /> Sim, remover

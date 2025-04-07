@@ -263,6 +263,34 @@ export default function Dashboard() {
         // Função para carregar os dados do usuário
         const fetchUserData = async () => {
           try {
+            // Carregar estatísticas gerais do usuário
+            fetch('/api/user/stats')
+              .then(response => {
+                if (!response.ok) {
+                  if (response.status === 401) {
+                    console.warn('Usuário não autenticado ao buscar estatísticas');
+                    return { stats: { count: 0, total: 0, products: 0 } };
+                  }
+                  console.warn(`Erro ao buscar estatísticas: ${response.status}`);
+                  return { stats: { count: 0, total: 0, products: 0 } };
+                }
+                return response.json();
+              })
+              .then(data => {
+                if (data && data.stats) {
+                  console.log('Estatísticas recebidas da API:', data.stats);
+                  setState(prev => ({
+                    ...prev,
+                    stats: {
+                      ...prev.stats,
+                      totalOrders: data.stats.count || 0,
+                      revenue: data.stats.total || 0
+                    }
+                  }));
+                }
+              })
+              .catch(error => console.error('Erro ao processar estatísticas:', error));
+            
             // Carregar produtos com tratamento de erros
             fetch('/api/user/products')
               .then(response => {
@@ -321,6 +349,8 @@ export default function Dashboard() {
                   // Contar realmente TODOS os pedidos feitos pelo usuário
                   const totalOrders = orders.length;
                   
+                  console.log('Total de pedidos encontrados:', totalOrders);
+                  
                   const totalRevenue = orders
                     .filter(order => order.paymentInfo?.status === 'paid' || order.status === 'completed')
                     .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
@@ -328,13 +358,25 @@ export default function Dashboard() {
                   // Mostrar apenas os 5 pedidos mais recentes na tabela
                   const recentOrders = orders.slice(0, 5);
                   
+                  setState(prev => {
+                    console.log('Atualizando estado com totalOrders:', totalOrders);
+                    return {
+                      ...prev,
+                      recentOrders: recentOrders,
+                      stats: {
+                        ...prev.stats,
+                        totalOrders: totalOrders, // Total real de todos os pedidos
+                        revenue: totalRevenue
+                      }
+                    };
+                  });
+                } else {
+                  console.warn('Resposta da API inválida ou vazia:', data);
                   setState(prev => ({
                     ...prev,
-                    recentOrders: recentOrders,
                     stats: {
                       ...prev.stats,
-                      totalOrders: totalOrders, // Total real de todos os pedidos
-                      revenue: totalRevenue
+                      totalOrders: 0
                     }
                   }));
                 }

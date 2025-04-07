@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FiHome, FiUser, FiShoppingCart, FiDownload, FiHelpCircle, FiLogOut, FiMessageSquare } from 'react-icons/fi';
+import { useAuth } from '@/app/contexts/AuthContext';
 
 // Definir os itens do menu fora do componente para evitar recriação
 const menuItems = [
@@ -20,6 +21,7 @@ const Sidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { logout } = useAuth();
 
   // Simplificar a lógica de inicialização
   useEffect(() => {
@@ -72,16 +74,15 @@ const Sidebar = () => {
   };
 
   // Função de logout simplificada
-  const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.clear();
-        window.location.href = '/auth/login';
-      } catch (error) {
-        console.error('Erro ao fazer logout:', error);
-        // Fallback se o localStorage não estiver disponível
-        window.location.href = '/auth/login';
-      }
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Redirecionar para a página de login após o logout bem-sucedido
+      window.location.href = '/auth/login';
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      // Fallback se o logout falhar
+      window.location.href = '/auth/login';
     }
   };
 

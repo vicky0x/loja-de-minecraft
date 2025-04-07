@@ -215,6 +215,7 @@ export default function OrderDetailPage() {
             
             // Determinar o tipo de entrega (produto principal ou variante)
             let deliveryType = productDetail.deliveryType || 'automatic';
+            let variantDeliveryType = undefined;
             
             // Se tiver variante, verificar o deliveryType da variante específica
             if (item.variant && item.variant._id && 
@@ -224,20 +225,31 @@ export default function OrderDetailPage() {
                 (v: any) => v._id === item.variant?._id
               );
               
-              if (matchingVariant && matchingVariant.deliveryType) {
-                deliveryType = matchingVariant.deliveryType;
+              if (matchingVariant) {
+                variantDeliveryType = matchingVariant.deliveryType;
+                // Se a variante tiver um tipo de entrega específico, ele tem prioridade
+                if (variantDeliveryType) {
+                  console.log(`Variante ${matchingVariant.name} tem tipo de entrega específico: ${variantDeliveryType}`);
+                }
               }
             }
             
-            // Log para debugar o tipo de entrega
-            console.log(`Item ${item.name}: deliveryType configurado como ${deliveryType}`);
+            // Determinar o tipo de entrega final (priorizar variante sobre produto)
+            const finalDeliveryType = variantDeliveryType || deliveryType;
+            
+            // Log para debug
+            console.log(`Item ${item.name}: tipo de entrega do produto=${deliveryType}, tipo de entrega da variante=${variantDeliveryType}, tipo de entrega final=${finalDeliveryType}`);
             
             return {
               ...item,
               product: {
                 ...item.product,
                 deliveryType: deliveryType
-              }
+              },
+              variant: item.variant ? {
+                ...item.variant,
+                deliveryType: variantDeliveryType
+              } : undefined
             };
           });
           
@@ -425,11 +437,37 @@ export default function OrderDetailPage() {
   // Adicionar função para marcar produto como entregue manualmente
   const markProductAsDelivered = async (itemId: string) => {
     try {
+      if (!order) return;
+      
+      // Encontrar o item específico
+      const targetItem = order.orderItems.find(item => item._id === itemId);
+      if (!targetItem) {
+        toast.error('Item não encontrado no pedido');
+        return;
+      }
+      
+      // Verificar se o item já foi entregue
+      if (targetItem.delivered) {
+        toast.success('Este item já foi entregue');
+        return;
+      }
+      
+      // Verificar se o item tem entrega manual antes de permitir a marcação
+      const productDeliveryType = targetItem.product?.deliveryType;
+      const variantDeliveryType = targetItem.variant?.deliveryType;
+      const finalDeliveryType = variantDeliveryType || productDeliveryType || 'automatic';
+      
+      if (finalDeliveryType !== 'manual') {
+        toast.error('Apenas itens com entrega manual podem ser marcados como entregues');
+        return;
+      }
+      
       setActionLoading(true);
       setMarkingItemId(itemId);
       
       const response = await fetch(`/api/orders/${orderId}/deliver-item`, {
         method: 'POST',
+        credentials: 'include',  // Adicionado para garantir que os cookies sejam enviados
         headers: {
           'Content-Type': 'application/json',
         },
@@ -440,7 +478,8 @@ export default function OrderDetailPage() {
       });
       
       if (!response.ok) {
-        throw new Error('Erro ao marcar produto como entregue');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Erro ao marcar produto como entregue');
       }
       
       // Atualizar o estado local
@@ -474,10 +513,54 @@ export default function OrderDetailPage() {
       toast.success('Produto marcado como entregue com sucesso!');
     } catch (error) {
       console.error('Erro ao marcar produto como entregue:', error);
-      toast.error('Erro ao marcar produto como entregue');
+      toast.error(error instanceof Error ? error.message : 'Erro ao marcar produto como entregue');
     } finally {
       setActionLoading(false);
       setMarkingItemId(null);
+    }
+  };
+  
+  // Função que lida com o clique no botão de marcar como entregue
+  const handleMarkAsDelivered = async (itemId: string) => {
+    if (actionLoading) return;
+    
+    try {
+      // Mostrar confirmação antes de prosseguir
+      if (confirm('Confirma que deseja marcar este item como entregue?')) {
+        try {
+          await markProductAsDelivered(itemId);
+        } catch (error) {
+          console.error('Erro ao marcar produto como entregue:', error);
+          
+          // Verificar se é um erro específico de autenticação
+          if (error instanceof Error) {
+            const errorMsg = error.message.toLowerCase();
+            
+            if (errorMsg.includes('não autenticado') || errorMsg.includes('unauthorized') || errorMsg.includes('401')) {
+              toast.error('Sessão expirada. Por favor, faça login novamente.');
+              // Redirecionar para a página de login após um breve delay
+              setTimeout(() => {
+                router.push('/auth/login');
+              }, 1500);
+              return;
+            }
+            
+            if (errorMsg.includes('não autorizado') || errorMsg.includes('forbidden') || errorMsg.includes('403')) {
+              toast.error('Você não tem permissão para realizar esta ação. É necessário ser administrador.');
+              return;
+            }
+            
+            // Para outros erros, mostrar a mensagem específica
+            toast.error(error.message);
+          } else {
+            // Mensagem genérica para outros tipos de erro
+            toast.error('Erro ao marcar produto como entregue');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao processar ação:', error);
+      toast.error('Ocorreu um erro inesperado. Tente novamente mais tarde.');
     }
   };
   
@@ -979,22 +1062,35 @@ export default function OrderDetailPage() {
                   
                   {/* Tipo de Entrega */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {/* Verifica se o tipo de entrega existe e é uma string válida */}
-                    {typeof item.product?.deliveryType === 'string' ? (
-                      item.product.deliveryType === 'automatic' ? (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Automática
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                          Manual
-                        </span>
-                      )
-                    ) : (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        Automática
-                      </span>
-                    )}
+                    {/* Verificação robusta do tipo de entrega, considerando tanto produto quanto variante */}
+                    {(() => {
+                      // Verificar o tipo de entrega do produto
+                      const productDeliveryType = item.product?.deliveryType;
+                      
+                      // Verificar o tipo de entrega da variante (se existir)
+                      const variantDeliveryType = item.variant?.deliveryType;
+                      
+                      // Priorizar o tipo de entrega da variante, se disponível
+                      const finalDeliveryType = variantDeliveryType || productDeliveryType || 'automatic';
+                      
+                      // Log para debug
+                      console.log(`Item ${item.name}: produto=${productDeliveryType}, variante=${variantDeliveryType}, final=${finalDeliveryType}`);
+                      
+                      // Exibir o tipo de entrega
+                      if (finalDeliveryType === 'manual') {
+                        return (
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                            Manual
+                          </span>
+                        );
+                      } else {
+                        return (
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Automática
+                          </span>
+                        );
+                      }
+                    })()}
                   </td>
                   
                   {/* Status */}
@@ -1021,25 +1117,44 @@ export default function OrderDetailPage() {
                   
                   {/* Ações */}
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {!item.delivered && item.product?.deliveryType === 'manual' && (
-                      <button
-                        onClick={() => handleMarkAsDelivered(item._id)}
-                        disabled={isSaving}
-                        className="text-primary hover:text-primary-dark focus:outline-none disabled:opacity-50"
-                      >
-                        {isSaving && markingItemId === item._id ? (
-                          <span className="flex items-center">
-                            <span className="animate-spin h-4 w-4 mr-2 border-b-2 border-primary rounded-full"></span>
-                            Processando...
-                          </span>
-                        ) : (
-                          <span className="flex items-center">
-                            <FiCheckCircle className="mr-1" />
-                            Marcar como entregue
-                          </span>
-                        )}
-                      </button>
-                    )}
+                    {(() => {
+                      // Determinar se o item já foi entregue
+                      const isItemDelivered = !!item.delivered;
+                      
+                      // Verificar o tipo de entrega do produto
+                      const productDeliveryType = item.product?.deliveryType;
+                      
+                      // Verificar o tipo de entrega da variante (se existir)
+                      const variantDeliveryType = item.variant?.deliveryType;
+                      
+                      // Priorizar o tipo de entrega da variante, se disponível
+                      const finalDeliveryType = variantDeliveryType || productDeliveryType || 'automatic';
+                      
+                      // Mostrar o botão apenas se o tipo de entrega for manual e o item não estiver entregue
+                      if (!isItemDelivered && finalDeliveryType === 'manual') {
+                        return (
+                          <button
+                            onClick={() => handleMarkAsDelivered(item._id)}
+                            disabled={isSaving}
+                            className="text-primary hover:text-primary-dark focus:outline-none disabled:opacity-50"
+                          >
+                            {isSaving && markingItemId === item._id ? (
+                              <span className="flex items-center">
+                                <span className="animate-spin h-4 w-4 mr-2 border-b-2 border-primary rounded-full"></span>
+                                Processando...
+                              </span>
+                            ) : (
+                              <span className="flex items-center">
+                                <FiCheckCircle className="mr-1" />
+                                Marcar como entregue
+                              </span>
+                            )}
+                          </button>
+                        );
+                      }
+                      
+                      return null;
+                    })()}
                   </td>
                 </tr>
               ))}

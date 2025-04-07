@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiPlus, FiTrash2, FiUpload, FiX, FiSave, FiLoader, FiShield, FiClock, FiAward, FiSlash } from 'react-icons/fi';
 import RichTextEditor from '@/app/components/RichTextEditor';
+import { toast } from 'react-hot-toast';
 
 interface Variant {
   name: string;
@@ -434,10 +435,27 @@ export default function EditProductPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(productToSave),
+        credentials: 'include' // Garante que os cookies são enviados com a requisição
       });
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Erro na resposta da API:', errorData);
+        
+        // Verificar se é um erro de autenticação
+        if (response.status === 401) {
+          // Redirecionar para login
+          toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+          router.push('/auth/login?redirect=/admin/products'); 
+          return;
+        }
+        
+        // Verificar se é um erro de autorização 
+        if (response.status === 403) {
+          toast.error('Você não tem permissão para realizar esta operação. É necessário acesso de administrador.');
+          return;
+        }
+        
         throw new Error(errorData.message || 'Falha ao atualizar o produto');
       }
       

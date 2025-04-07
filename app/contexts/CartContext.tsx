@@ -24,7 +24,7 @@ interface CartItem {
 interface CartContextType {
   items: CartItem[];
   addItem: (item: CartItem) => void;
-  removeItem: (variantId: string) => void;
+  removeItem: (variantId: string, productId?: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
   getCartItemCount: () => number;
@@ -480,24 +480,72 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   
   // Função para remover um item do carrinho
-  const removeItem = (variantId: string) => {
-    if (!variantId) return;
+  const removeItem = (variantId: string, productId?: string) => {
+    if (!variantId) {
+      console.error('Tentativa de remover item sem ID de variante');
+      return;
+    }
     
     try {
+      console.log(`Contexto: Tentando remover item com variantId: "${variantId}" ${productId ? `e productId: "${productId}"` : ''}`);
+      
+      // Verificar quais itens estão no carrinho antes da remoção
+      const itemsAntes = Array.isArray(items) ? [...items] : [];
+      console.log('Contexto: Itens antes da remoção:', 
+        itemsAntes.map(item => ({
+          variantId: item.variantId,
+          productId: item.productId,
+          nome: item.productName
+        }))
+      );
+      
+      // Atualizar o estado com uma nova lista de itens, excluindo apenas o item específico
       setItems(prevItems => {
-        try {
-          // Verificar se prevItems é um array
-          if (!Array.isArray(prevItems)) return [];
+        // Garantir que prevItems é um array
+        if (!Array.isArray(prevItems)) return [];
+        
+        // Verificar se temos um productId para filtragem mais precisa
+        if (productId) {
+          // Usar combinação de productId e variantId para identificar o item exato
+          const indexItemParaRemover = prevItems.findIndex(item => 
+            item && item.variantId === variantId && item.productId === productId
+          );
           
-          // Filtrar o item pelo variantId
-          return prevItems.filter(item => item && item.variantId !== variantId);
-        } catch (innerError) {
-          console.error('Erro ao filtrar itens para remoção:', innerError);
-          return prevItems; // Retornar os itens anteriores em caso de erro
+          if (indexItemParaRemover === -1) {
+            console.log(`Contexto: Item com variantId "${variantId}" e productId "${productId}" não encontrado`);
+            return prevItems;
+          }
+          
+          // Criar uma nova lista removendo apenas o item no índice encontrado
+          const novaLista = [
+            ...prevItems.slice(0, indexItemParaRemover),
+            ...prevItems.slice(indexItemParaRemover + 1)
+          ];
+          
+          console.log(`Contexto: Total de itens após remoção: ${novaLista.length} (antes: ${prevItems.length})`);
+          return novaLista;
+        } else {
+          // Método anterior (menos preciso) - usado apenas quando não há productId
+          // Criar uma nova lista excluindo o item com o variantId específico
+          const novaListaDeItens = prevItems.filter(item => {
+            // Garantir que o item existe e tem um variantId
+            if (!item || !item.variantId) return false;
+            
+            // Comparar o variantId do item com o variantId que queremos remover
+            const manterItem = item.variantId !== variantId;
+            
+            console.log(`Contexto: Item ${item.productName} (${item.variantId}): ${manterItem ? 'manter' : 'remover'}`);
+            
+            // Retornar true para manter o item, false para removê-lo
+            return manterItem;
+          });
+          
+          console.log(`Contexto: Total de itens após remoção: ${novaListaDeItens.length} (antes: ${prevItems.length})`);
+          return novaListaDeItens;
         }
       });
-    } catch (outerError) {
-      console.error('Erro externo ao remover item:', outerError);
+    } catch (error) {
+      console.error('Erro ao remover item do carrinho:', error);
     }
   };
   
