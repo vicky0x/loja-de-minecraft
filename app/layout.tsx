@@ -9,6 +9,7 @@ import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
 import GlobalAppInitializer from './_app/globals';
 import CharlaWidgetWrapper from './components/CharlaWidgetWrapper';
+import InitApp from './components/InitApp';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -55,7 +56,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" href="/favicon.png" />
       </head>
       <body className={`${inter.className} bg-dark-100 text-white`}>
-        <GlobalAppInitializer />
+        <InitApp />
         <AuthProvider>
           <CartProvider>
             <Toaster 

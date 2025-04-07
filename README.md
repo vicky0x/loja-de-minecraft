@@ -225,3 +225,65 @@ pm2 restart fantasystore
 ## Suporte
 
 Para questões técnicas ou problemas no deploy, entre em contato com a equipe de desenvolvimento.
+
+## Requisitos para Produção
+
+Antes de implantar em produção, verifique as seguintes recomendações críticas de segurança:
+
+### 1. Credenciais e Variáveis de Ambiente
+
+✅ Verifique se todas as credenciais sensíveis foram movidas para variáveis de ambiente:
+- MongoDB URI: Nunca use a string de conexão de desenvolvimento em produção
+- JWT Secret: Gere um novo segredo forte para produção
+- Mercado Pago: Use o token de produção, nunca o de testes
+
+### 2. Segurança dos Logs
+
+✅ Certifique-se de que o código não está logando informações sensíveis:
+- As credenciais nos logs foram removidas
+- Em produção, apenas erros serão logados (INFO e DEBUG são desativados)
+- Tokens e senhas são automaticamente sanitizados pelo sistema de log
+
+### 3. Lista de Verificação Final
+
+Antes de publicar em produção, rode esta checklist:
+
+```bash
+# 1. Verifique se .env não está sendo enviado ao repositório
+grep -v "^#" .env
+
+# 2. Certifique-se que todas as variáveis de ambiente estão configuradas
+echo "MONGODB_URI: $MONGODB_URI"
+echo "JWT_SECRET: [configurado: $([ -n "$JWT_SECRET" ] && echo "sim" || echo "não")]" 
+echo "MP_ACCESS_TOKEN: [configurado: $([ -n "$MP_ACCESS_TOKEN" ] && echo "sim" || echo "não")]"
+
+# 3. Verifique se as credenciais de produção são diferentes das de desenvolvimento
+# (Compare manualmente com o que está no .env de desenvolvimento)
+```
+
+### 4. Sistema de Revogação de Tokens
+
+✅ Sistema de revogação de tokens atualizado:
+- Foi implementada a integração com Redis para armazenamento persistente de tokens revogados em produção
+- Em desenvolvimento, é usado um armazenamento em memória automaticamente (sem necessidade de Redis)
+- A implementação detecta automaticamente o ambiente cliente/servidor e usa o método apropriado
+- O código foi otimizado para funcionar corretamente com o Next.js App Router
+
+**Configuração do Redis:**
+
+Para configurar o Redis para armazenamento de tokens revogados em produção, adicione as seguintes variáveis de ambiente:
+
+```
+# Opção 1: URL completa (recomendado)
+REDIS_URL=redis://usuario:senha@seu-host:6379
+
+# Opção 2: Configuração separada
+REDIS_HOST=seu-redis-host
+REDIS_PORT=6379
+REDIS_PASSWORD=sua-senha
+```
+
+**Importante:**
+- Redis é usado apenas no ambiente de produção e apenas no lado do servidor
+- Em ambiente de desenvolvimento, o sistema automaticamente usa armazenamento em memória
+- Não é necessário configurar Redis para desenvolvimento ou testes

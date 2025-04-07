@@ -13,7 +13,8 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fantas
 
 // Função para conectar ao MongoDB
 async function connectDB() {
-  logger.info(`URI do MongoDB usado para conexão: ${MONGODB_URI.replace(/:[^:/@]+@/, ':****@')}`);
+  // Não logar a URI, apenas informar que está sendo usada
+  logger.info('Iniciando conexão com MongoDB');
   
   // Verificar se já existe uma conexão ativa
   if (connection.isConnected) {
@@ -35,8 +36,6 @@ async function connectDB() {
   const opts = {
     bufferCommands: true,
   };
-  
-  logger.info('Iniciando nova conexão com MongoDB...');
   
   // Verificar se a URI do MongoDB está definida
   if (!process.env.MONGODB_URI) {

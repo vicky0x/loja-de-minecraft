@@ -148,102 +148,62 @@ export default function LoginPage() {
     setError('');
     
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      console.log(`Tentando login com email: ${email}`);
       
-      const data = await response.json();
+      // Usar a função do hook useAuth para login
+      const result = await login(email, password);
       
-      if (!response.ok) {
-        setError(data.message || 'Email ou senha inválidos');
+      console.log('Resultado do login:', result);
+      
+      if (!result.success) {
+        setError(result.message || 'Email ou senha inválidos');
         setLoading(false);
         return;
       }
       
-      // Verificar se temos um token nos cookies
-      const cookies = document.cookie.split(';');
-      let authToken = '';
+      // Login foi bem-sucedido
+      setLoginSuccess(true);
       
-      for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'auth_token') {
-          authToken = value;
-          break;
-        }
+      // Limpar qualquer flag de redirecionamento
+      try {
+        localStorage.setItem('auth_redirect_triggered', 'false');
+        localStorage.removeItem('loop_detected');
+        localStorage.removeItem('loop_detected_time');
+        localStorage.removeItem('force_login_page');
+        localStorage.removeItem('redirect_history');
+        localStorage.removeItem('dashboard_redirect_attempts');
+      } catch (e) {
+        // Ignorar erros
+        console.error('Erro ao limpar flags de redirecionamento:', e);
       }
       
-      // Se não encontrou nos cookies, usar resposta direta da API
-      if (!authToken && response.headers.get('Set-Cookie')) {
-        const setCookie = response.headers.get('Set-Cookie') || '';
-        const match = setCookie.match(/auth_token=([^;]+)/);
-        if (match && match[1]) {
-          authToken = match[1];
-        }
-      }
+      // Verificar se havia um checkout pendente
+      const pendingCheckout = localStorage.getItem('pending_checkout');
       
-      // Como backup final, verificar se o token foi retornado no corpo da resposta
-      if (!authToken && data.token) {
-        authToken = data.token;
-      }
-      
-      if (authToken) {
-        // Armazenar token no localStorage para uso nas requisições futuras
-        localStorage.setItem('auth_token', authToken);
-        localStorage.setItem('isAuthenticated', 'true');
-        
-        // Armazenar dados do usuário se disponíveis
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-        }
-        
-        // Login foi bem-sucedido
-        setLoginSuccess(true);
-        
-        // Limpar qualquer flag de redirecionamento
+      if (pendingCheckout === 'true') {
+        // Limpar a flag e redirecionar para o carrinho
+        console.log('Redirecionando para o carrinho após login (checkout pendente)');
         try {
-          localStorage.setItem('auth_redirect_triggered', 'false');
-          localStorage.removeItem('loop_detected');
-          localStorage.removeItem('loop_detected_time');
-          localStorage.removeItem('force_login_page');
-          localStorage.removeItem('redirect_history');
-          localStorage.removeItem('dashboard_redirect_attempts');
+          localStorage.removeItem('pending_checkout');
         } catch (e) {
           // Ignorar erros
+          console.error('Erro ao remover flag de checkout pendente:', e);
         }
         
-        // Verificar se havia um checkout pendente
-        const pendingCheckout = localStorage.getItem('pending_checkout');
-        
-        if (pendingCheckout === 'true') {
-          // Limpar a flag e redirecionar para o carrinho
-          try {
-            localStorage.removeItem('pending_checkout');
-          } catch (e) {
-            // Ignorar erros
-          }
-          
-          // Redirecionar após breve delay
-          setTimeout(() => {
-            console.log('Redirecionando para o carrinho após login bem-sucedido');
-            window.location.href = '/cart';
-          }, 1000);
-        } else {
-          // Redirecionar para a página de dashboard normalmente
-          setTimeout(() => {
-            console.log('Redirecionando para o dashboard após login bem-sucedido');
-            window.location.href = '/dashboard';
-          }, 1000);
-        }
+        // Redirecionar após breve delay
+        setTimeout(() => {
+          console.log('Redirecionando para o carrinho após login bem-sucedido');
+          window.location.href = '/cart';
+        }, 1000);
       } else {
-        setError('Erro ao processar autenticação. Token não encontrado.');
-        setLoading(false);
+        // Redirecionar para a página de dashboard normalmente
+        console.log('Redirecionando para o dashboard após login bem-sucedido');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
       }
     } catch (err) {
-      console.error('Erro ao fazer login:', err);
+      console.error('Erro durante o processo de login:', err);
       setError('Erro ao conectar ao servidor. Tente novamente.');
       setLoading(false);
     }

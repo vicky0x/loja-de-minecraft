@@ -1,0 +1,70 @@
+name: Pre-Deploy Security Check
+
+on:
+  push:
+    branches: [ main, production ]
+  pull_request:
+    branches: [ main, production ]
+
+jobs:
+  check-credentials:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Check for leaked credentials
+        run: |
+          # Verificar se .env está no repositório
+          if [ -f ".env" ]; then
+            echo "⚠️ ERRO: Arquivo .env encontrado no repositório!"
+            echo "Remova o arquivo .env e utilize variáveis de ambiente ou .env.local em vez disso."
+            exit 1
+          fi
+          
+          # Verificar strings de conexão no código
+          if grep -r "mongodb+srv://" --include="*.ts" --include="*.js" --exclude-dir=node_modules .; then
+            echo "⚠️ ERRO: Strings de conexão MongoDB hardcoded encontradas!"
+            echo "Mova todas as strings de conexão para variáveis de ambiente."
+            exit 1
+          fi
+          
+          # Verificar tokens JWT hardcoded
+          if grep -r "JWT_SECRET.*=.*['\"].*['\"]" --include="*.ts" --include="*.js" --exclude-dir=node_modules .; then
+            echo "⚠️ ERRO: JWT_SECRET hardcoded encontrado!"
+            echo "Nunca armazene segredos JWT diretamente no código."
+            exit 1
+          fi
+          
+          # Verificar tokens do Mercado Pago
+          if grep -r "APP_USR-" --include="*.ts" --include="*.js" --exclude-dir=node_modules .; then
+            echo "⚠️ ERRO: Token do Mercado Pago hardcoded encontrado!"
+            echo "Tokens de APIs devem ser armazenados em variáveis de ambiente."
+            exit 1
+          fi
+          
+          echo "✅ Nenhuma credencial vazada encontrada no código."
+        
+      - name: Check for common security issues
+        run: |
+          # Verificar console.log com informações sensíveis
+          if grep -r "console.log.*password" --include="*.ts" --include="*.js" --exclude-dir=node_modules .; then
+            echo "⚠️ AVISO: Possível log de senha detectado!"
+            echo "Verifique os logs para garantir que informações sensíveis não estejam sendo expostas."
+            exit 1
+          fi
+          
+          # Verificar se há código de desenvolvimento em produção
+          if grep -r "NODE_ENV === 'development'" --include="*.ts" --include="*.js" --exclude-dir=node_modules .; then
+            echo "ℹ️ INFO: Código condicional baseado em ambiente de desenvolvimento encontrado."
+            echo "Verifique se todas as condições estão protegendo adequadamente o ambiente de produção."
+          fi
+          
+          echo "✅ Verificação básica de segurança concluída." 

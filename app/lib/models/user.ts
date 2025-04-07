@@ -20,6 +20,11 @@ export interface IUser extends Document {
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
+// Estender a interface do modelo para incluir o método estático
+interface UserModel extends mongoose.Model<IUser> {
+  createWithHash(userData: any): Promise<IUser>;
+}
+
 // Função para gerar número de membro único
 function generateUniqueNumber(min = 100000, max = 999999) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -118,7 +123,7 @@ const userSchema = new Schema<IUser>(
   }
 );
 
-// Gerar memberNumber antes de salvar, se não existir
+// Gerar hash da senha antes de salvar
 userSchema.pre('save', async function (next) {
   // Só executar se o documento for novo ou se a senha foi modificada
   if (this.isNew || this.isModified('password')) {
@@ -141,23 +146,63 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-// Método para comparar senha
+// Método para comparar senha - simplificado e seguro
 userSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
   try {
-    // Buscar usuário com senha (que normalmente é excluída das consultas)
-    const user = await (this.constructor as any).findById(this._id).select('+password');
-    if (!user) return false;
+    // Carregar a senha se necessário
+    let storedHash = this.password;
+    if (!storedHash) {
+      const user = await (this.constructor as any).findById(this._id).select('+password');
+      
+      if (!user || !user.password) {
+        return false;
+      }
+      
+      storedHash = user.password;
+    }
     
-    return await bcrypt.compare(candidatePassword, user.password);
+    // Verificar com bcrypt
+    return await bcrypt.compare(candidatePassword, storedHash);
   } catch (error) {
-    console.error('Erro ao comparar senha:', error);
+    // Registro de erro apenas para fins de monitoramento, sem expor detalhes
+    console.error('Erro ao verificar senha para usuário:', this._id);
     return false;
   }
 };
 
+// Método estático para criar um novo usuário com senha já hasheada
+userSchema.statics.createWithHash = async function(userData) {
+  try {
+    console.log('Criando usuário com método otimizado');
+    
+    // Gerar hash da senha com bcrypt diretamente
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(userData.password, salt);
+    
+    // Criar objeto com todos os dados e senha hasheada
+    const userWithHash = {
+      ...userData,
+      password: hashedPassword
+    };
+    
+    // Se for novo usuário e não tiver número de membro, gerar um
+    if (!userWithHash.memberNumber) {
+      userWithHash.memberNumber = await generateUniqueMemberNumber.call(this);
+    }
+    
+    console.log('Hash de senha gerado com bcrypt diretamente');
+    
+    // Usar create diretamente para pular o middleware pre-save
+    return await this.create(userWithHash);
+  } catch (error) {
+    console.error('Erro ao criar usuário com hash direto:', error);
+    throw error;
+  }
+};
+
 // Verificar se o modelo já existe antes de criar um novo
-const User = mongoose.models.User || mongoose.model<IUser>('User', userSchema);
+const User = mongoose.models.User || mongoose.model<IUser, UserModel>('User', userSchema);
 
 export default User; 

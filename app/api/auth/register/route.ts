@@ -2,91 +2,143 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/lib/mongodb';
 import connectDBModule from '@/app/lib/db/mongodb';
 import User from '@/app/lib/models/user';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { cookies } from 'next/headers';
 import mongoose from 'mongoose';
 
-// Funções de validação
+// Cache para limitar tentativas de registro (rate limiting básico)
+const registerAttempts = new Map<string, { count: number, timestamp: number }>();
+const MAX_ATTEMPTS = 3; // Menos tentativas para registro do que login
+const LOCKOUT_TIME = 30 * 60 * 1000; // 30 minutos em milissegundos
+
+// Função para validar email
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
+// Função para validar username
 function isValidUsername(username: string): boolean {
-  // Apenas letras, números, _ e -, entre 3-20 caracteres
+  // Permitir apenas letras, números, underscore e hífen
   const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
   return usernameRegex.test(username);
 }
 
-function isValidPassword(password: string): boolean {
-  // Mínimo 6 caracteres, pelo menos 1 letra e 1 número
-  if (password.length < 6) return false;
-  return /[A-Za-z]/.test(password) && /[0-9]/.test(password);
-}
-
-// Lista de palavras bloqueadas para usernames
-const blockedWords = [
-  // Políticos e figuras controversas
-  'lula', 'bolsonaro', 'trump', 'biden', 'hitler', 'mussolini', 'stalin', 'lenin',
-  // Palavrões e ofensas (português e inglês)
-  'puta', 'caralho', 'foda', 'buceta', 'viado', 'corno', 'porra', 'merda', 
-  'fuck', 'shit', 'bitch', 'ass', 'dick', 'pussy', 'whore',
-  // Termos relacionados a golpes
-  'admin', 'moderador', 'staff', 'suporte', 'support', 'scam', 'hacker', 
-  'golpe', 'fake', 'roubo', 'virus', 'hack', 'free', 'gratis'
-];
-
+// Função para verificar se username está bloqueado
 function isBlockedUsername(username: string): boolean {
-  return blockedWords.some(word => 
-    username.toLowerCase().includes(word.toLowerCase())
-  );
+  const blockedUsernames = [
+    'admin', 'administrator', 'suporte', 'support', 'moderator', 'mod',
+    'sistema', 'system', 'staff', 'owner', 'dono', 'master', 'root'
+  ];
+  return blockedUsernames.includes(username.toLowerCase());
 }
 
+// Função para implementar rate limiting básico
+function checkRateLimit(ip: string): { allowed: boolean, message?: string } {
+  const now = Date.now();
+  const userAttempts = registerAttempts.get(ip);
+  
+  // Limpar entradas antigas do cache a cada 500 solicitações
+  if (registerAttempts.size > 500) {
+    const keysToDelete: string[] = [];
+    registerAttempts.forEach((data, key) => {
+      if (now - data.timestamp > LOCKOUT_TIME) {
+        keysToDelete.push(key);
+      }
+    });
+    keysToDelete.forEach(key => registerAttempts.delete(key));
+  }
+
+  // Se o usuário não tem tentativas anteriores, permitir
+  if (!userAttempts) {
+    registerAttempts.set(ip, { count: 1, timestamp: now });
+    return { allowed: true };
+  }
+
+  // Se o bloqueio já expirou, resetar contador
+  if (now - userAttempts.timestamp > LOCKOUT_TIME) {
+    registerAttempts.set(ip, { count: 1, timestamp: now });
+    return { allowed: true };
+  }
+
+  // Se excedeu o limite de tentativas
+  if (userAttempts.count >= MAX_ATTEMPTS) {
+    const remainingTime = Math.ceil((LOCKOUT_TIME - (now - userAttempts.timestamp)) / 60000);
+    return { 
+      allowed: false, 
+      message: `Muitas tentativas de registro. Tente novamente em ${remainingTime} minutos.` 
+    };
+  }
+
+  // Incrementar contagem de tentativas
+  registerAttempts.set(ip, { 
+    count: userAttempts.count + 1, 
+    timestamp: userAttempts.timestamp 
+  });
+  return { allowed: true };
+}
+
+// Função POST para criar novo usuário
 export async function POST(request: NextRequest) {
   try {
-    const jsonData = await request.json();
-    const { username, email, password } = jsonData;
-
-    // Validações dos campos
+    // Obter IP para rate limiting
+    const ip = request.headers.get('x-forwarded-for') || 
+              request.headers.get('x-real-ip') || 
+              'unknown';
+    
+    // Verificar rate limiting
+    const rateLimitCheck = checkRateLimit(ip);
+    if (!rateLimitCheck.allowed) {
+      return NextResponse.json(
+        { success: false, message: rateLimitCheck.message },
+        { status: 429 }
+      );
+    }
+    
+    // Extrair dados do corpo da requisição
+    const body = await request.json();
+    const { username, email, password } = body;
+    
+    // Validar dados obrigatórios
     if (!username || !email || !password) {
       return NextResponse.json(
         { message: 'Todos os campos são obrigatórios' },
         { status: 400 }
       );
     }
-
-    // Validar email
+    
+    // Validar formato de email
     if (!isValidEmail(email)) {
       return NextResponse.json(
-        { message: 'O formato do e-mail é inválido' },
+        { message: 'Formato de e-mail inválido' },
         { status: 400 }
       );
     }
-
-    // Validar username
+    
+    // Validar formato de username
     if (!isValidUsername(username)) {
       return NextResponse.json(
-        { message: 'Nome de usuário inválido. Use apenas letras, números, _ e - (3-20 caracteres)' },
+        { message: 'Nome de usuário deve ter entre 3 e 20 caracteres e conter apenas letras, números, underscore e hífen' },
         { status: 400 }
       );
     }
-
-    // Verificar palavras bloqueadas
+    
+    // Verificar se username está na lista de bloqueados
     if (isBlockedUsername(username)) {
       return NextResponse.json(
-        { message: 'Este nome de usuário não é permitido' },
+        { message: 'Este nome de usuário não está disponível' },
         { status: 400 }
       );
     }
-
-    // Validar senha
-    if (!isValidPassword(password)) {
+    
+    // Validar tamanho da senha
+    if (password.length < 6) {
       return NextResponse.json(
-        { message: 'A senha deve ter pelo menos 6 caracteres, incluindo letras e números' },
+        { message: 'A senha deve ter no mínimo 6 caracteres' },
         { status: 400 }
       );
     }
-
+    
     // Usar a função de conexão apropriada
     if (connectDB) {
       await connectDB();
@@ -116,20 +168,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Criar hash da senha
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     // Dados do usuário para criação
     const userData = {
       username,
       email,
-      password: hashedPassword,
+      password, // O hook pre-save do modelo User fará o hash internamente
       role: 'user'
     };
 
-    // Criar novo usuário
+    // Criar novo usuário usando o método padrão do Mongoose
     const user = await User.create(userData);
+
+    // Resetar contador de tentativas após sucesso
+    registerAttempts.delete(ip);
 
     // Retornar dados do usuário (sem a senha)
     return NextResponse.json({
@@ -143,7 +194,6 @@ export async function POST(request: NextRequest) {
       }
     }, { status: 201 });
   } catch (error) {
-    console.error('Erro ao criar conta:', error);
     return NextResponse.json(
       { message: 'Erro ao criar conta' },
       { status: 500 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { cookies } from 'next/headers';
 
 // Estrutura comum de armazenamento de sessão
 export interface AuthSession {
@@ -14,9 +15,9 @@ export interface AuthSession {
 
 // Hook para gerenciar a sessão do usuário
 export function useSession() {
-  const [session, setSession] = useState<AuthSession>({
+  const [session, setSession] = useState({
     isAuthenticated: false,
-  });
+  } as AuthSession);
   const [loading, setLoading] = useState(true);
 
   // Verificar sessão ao montar o componente

@@ -36,6 +36,26 @@ const nextConfig = {
     } : false,
   },
   poweredByHeader: false, // Remover cabeçalho X-Powered-By por segurança
+  webpack: (config, { isServer }) => {
+    // Resolver problemas com módulos específicos no lado do cliente
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        dns: false,
+        'mock-aws-s3': false, 
+        'aws-sdk': false,
+        'nock': false,
+      };
+    }
+    
+    return config;
+  },
+  experimental: {
+    serverComponentsExternalPackages: ['mongoose']
+  },
 };
 
 module.exports = nextConfig; 

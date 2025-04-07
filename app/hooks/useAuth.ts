@@ -2,6 +2,25 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
+// Define interfaces para tipos
+export interface User {
+  id?: string;
+  _id?: string;
+  username: string;
+  email: string;
+  name?: string;
+  role: string;
+  profileImage?: string;
+  memberNumber?: number;
+  createdAt?: Date;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  user?: User;
+}
+
 // Controle global para evitar verificações simultâneas
 let isCheckingAuth = false;
 let isRedirecting = false;
@@ -14,11 +33,39 @@ let lastURLTime = 0;
 const URL_HISTORY_SIZE = 10;
 const LOOP_DETECTION_TIME = 10000; // 10 segundos para detectar loop
 
+// Verificar se estamos em uma página pública que não requer autenticação
+const isPublicPage = () => {
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    return (
+      path === '/auth/login' || 
+      path.startsWith('/auth/login/') ||
+      path === '/auth/register' || 
+      path.startsWith('/auth/register/') ||
+      path === '/' || 
+      path.startsWith('/products/') ||
+      path.startsWith('/search') ||
+      path === '/about' ||
+      path === '/contact'
+    );
+  }
+  return false;
+};
+
 // Verificar se já estamos na página de login
 const isLoginPage = () => {
   if (typeof window !== 'undefined') {
     const path = window.location.pathname;
     return path === '/auth/login' || path.startsWith('/auth/login/');
+  }
+  return false;
+};
+
+// Verificar se estamos na página de registro
+const isRegisterPage = () => {
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    return path === '/auth/register' || path.startsWith('/auth/register/');
   }
   return false;
 };
@@ -112,15 +159,21 @@ const detectRedirectLoop = () => {
 };
 
 export function useAuth() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
-  const [user, setUser] = useState<User | null>(null);
-  const [errorAuth, setErrorAuth] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [user, setUser] = useState(null);
+  const [errorAuth, setErrorAuth] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
     // Verificar se há um loop de redirecionamento detectado ou se estamos sendo forçados a ir para a página de login
     try {
+      // Ignorar verificação se estamos em uma página pública como registro
+      if (isPublicPage() && !isDashboardPage()) {
+        setIsLoadingAuth(false);
+        return;
+      }
+      
       const loopDetected = localStorage.getItem('loop_detected') === 'true';
       const forceLoginPage = localStorage.getItem('force_login_page') === 'true';
       const loopTime = parseInt(localStorage.getItem('loop_detected_time') || '0');
@@ -231,6 +284,17 @@ export function useAuth() {
 
   const checkAuth = useCallback(async () => {
     try {
+      // Se estamos em uma página pública, não precisamos verificar
+      if (isPublicPage() && !isDashboardPage()) {
+        return;
+      }
+      
+      // Evitar verificações simultâneas
+      if (isCheckingAuth) {
+        return;
+      }
+      
+      isCheckingAuth = true;
       setIsLoadingAuth(true);
       setErrorAuth(null);
       
@@ -294,104 +358,120 @@ export function useAuth() {
       return { isAuthenticated: false, user: null };
     } finally {
       setIsLoadingAuth(false);
+      isCheckingAuth = false;
     }
   }, []);
 
-  // Função segura para redirecionar
+  // Função para redirecionar de forma segura
   const safeRedirect = (url: string) => {
+    // Não redirecionar para o login se já estamos em uma página pública
+    if (isPublicPage() && url.includes('/auth/login')) {
+      console.log(`Redirecionamento para ${url} ignorado pois já estamos em uma página pública`);
+      return;
+    }
+    
+    // Verificar se ainda não estamos no meio de um redirecionamento
     const now = Date.now();
-    
-    // Verificar se estamos em um loop de redirecionamento
-    if (detectRedirectLoop()) {
-      console.warn('Loop de redirecionamento detectado ao tentar redirecionar. Cancelando redirecionamento.');
-      return;
-    }
-    
-    // Se estamos na página de destino, não redirecionar
-    if ((url === '/auth/login' && isLoginPage()) || 
-        (url === '/dashboard' && isDashboardPage())) {
-      return;
-    }
-    
-    // Verificar se podemos redirecionar
-    if (!isRedirecting && 
-        (now - lastRedirectTime > REDIRECT_COOLDOWN)) {
-      
-      // Atualizar variáveis de controle
+    if (!isRedirecting && (now - lastRedirectTime > REDIRECT_COOLDOWN)) {
       isRedirecting = true;
       lastRedirectTime = now;
       
-      console.log(`Redirecionando para ${url}`);
+      // Registrar tentativa de redirecionamento para detectar loops
+      localStorage.setItem('redirect_history', JSON.stringify([
+        ...(JSON.parse(localStorage.getItem('redirect_history') || '[]')),
+        { url, time: now }
+      ]));
       
-      // Redirecionar após breve atraso
+      console.log(`Redirecionando para ${url}`);
+      router.push(url);
+      
+      // Resetar flag após um timeout
       setTimeout(() => {
-        router.push(url);
-        
-        // Liberar a flag após o redirecionamento
-        setTimeout(() => {
-          isRedirecting = false;
-        }, 1000);
-      }, 200);
+        isRedirecting = false;
+      }, REDIRECT_COOLDOWN);
     } else {
       console.log(`Redirecionamento para ${url} bloqueado (cooldown ou já redirecionando)`);
     }
   };
 
-  const logout = useCallback(async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<{ success: boolean, message: string }> => {
     try {
       setIsLoadingAuth(true);
       
-      // Mesmo se a requisição falhar, limpar localStorage
+      // Obter token CSRF para request seguro
+      const csrfToken = localStorage.getItem('csrf_token');
+      const authToken = localStorage.getItem('auth_token');
+      
+      // Tentar fazer logout no servidor
       try {
-        const token = localStorage.getItem('auth_token');
-        
-        // Chamar a API de logout com credentials: 'include' para garantir o envio de cookies
         const response = await fetch('/api/auth/logout', {
           method: 'POST',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            'Authorization': authToken ? `Bearer ${authToken}` : '',
+            'X-CSRF-Token': csrfToken || ''
           }
         });
         
-        if (!response.ok) {
-          console.warn('Erro ao fazer logout no servidor, mas dados locais foram limpos');
-        } else {
-          console.log('Logout no servidor realizado com sucesso');
-        }
-      } catch (error) {
-        console.error('Erro ao fazer logout no servidor:', error);
+        // Mesmo que o logout falhe no servidor, continuamos com o processo de logout local
+        console.log(`Logout no servidor: status ${response.status}`);
+      } catch (serverError) {
+        console.error('Erro ao comunicar com servidor para logout:', serverError);
+        // Continuamos com o logout local mesmo com erro no servidor
       }
       
-      // Limpar localStorage
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('cartItems');
-      localStorage.removeItem('user');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('userRole');
+      // Limpar todos os dados de autenticação do localStorage
+      const keysToRemove = [
+        'auth_token', 
+        'isAuthenticated', 
+        'userId', 
+        'userRole', 
+        'csrf_token',
+        'auth_timestamp',
+        'user'
+      ];
       
-      // Remover flags de redirecionamento
-      localStorage.removeItem('auth_redirect_triggered');
-      localStorage.removeItem('login_redirect_attempts');
-      localStorage.removeItem('dashboard_redirect_attempts');
-      
-      // Disparar evento para sincronizar outros componentes
-      try {
-        const event = new CustomEvent('auth-change', { 
-          detail: { isAuthenticated: false, user: null }
-        });
-        window.dispatchEvent(event);
-      } catch (eventError) {
-        console.error("Erro ao disparar evento auth-change:", eventError);
+      for (const key of keysToRemove) {
+        localStorage.removeItem(key);
       }
       
+      // Atualizar estado
       setIsAuthenticated(false);
       setUser(null);
+      
+      // Disparar evento para outros componentes
+      const authEvent = new CustomEvent('auth-state-changed', { 
+        detail: { authenticated: false }
+      });
+      window.dispatchEvent(authEvent);
+      
+      // Retornar sucesso, mesmo que o servidor tenha falhado (já que o logout local foi concluído)
+      return {
+        success: true,
+        message: 'Logout realizado com sucesso'
+      };
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      console.error('Erro ao processar logout:', error);
+      
+      // Tentar limpar os dados mesmo com erro
+      try {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('csrf_token');
+        
+        setIsAuthenticated(false);
+        setUser(null);
+      } catch (cleanupError) {
+        console.error('Erro ao limpar dados durante falha de logout:', cleanupError);
+      }
+      
+      return {
+        success: false,
+        message: 'Erro ao processar logout, mas dados locais foram limpos'
+      };
     } finally {
       setIsLoadingAuth(false);
     }
@@ -402,46 +482,84 @@ export function useAuth() {
       setIsLoadingAuth(true);
       setErrorAuth(null);
       
+      console.log(`Iniciando requisição de login para email: ${email}`);
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'include', // Importante para receber e enviar cookies
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
       });
       
+      console.log(`Resposta do servidor: status ${response.status}`);
+      
       const data = await response.json();
+      console.log('Dados recebidos:', { success: data.success, hasToken: !!data.token, hasUser: !!data.user });
       
       if (!response.ok) {
-        setErrorAuth(data.message || 'Erro ao fazer login');
+        const errorMsg = data.message || 'Erro ao fazer login';
+        console.error(`Erro de login: ${errorMsg}`);
+        setErrorAuth(errorMsg);
         return { 
           success: false, 
-          message: data.message || 'Erro ao fazer login'
+          message: errorMsg
         };
       }
       
-      if (data.token) {
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('isAuthenticated', 'true');
-        setIsAuthenticated(true);
-        setUser(data.user);
-        
-        return { 
-          success: true, 
-          message: 'Login realizado com sucesso',
-          user: data.user
-        };
-      } else {
-        setErrorAuth('Erro ao processar autenticação');
-        return { 
-          success: false, 
-          message: 'Erro ao processar autenticação'
+      // Verificar se temos todos os dados necessários
+      if (!data.token || !data.user || !data.csrfToken) {
+        console.error('Resposta de login inválida: faltam campos obrigatórios');
+        setErrorAuth('Erro no processo de login: resposta incompleta');
+        return {
+          success: false,
+          message: 'Erro no processo de login: resposta incompleta'
         };
       }
+      
+      // Armazenar token JWT e CSRF token no localStorage
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('csrf_token', data.csrfToken);
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userId', data.user.id || data.user._id);
+      
+      if (data.user.role) {
+        localStorage.setItem('userRole', data.user.role);
+      }
+      
+      // Criar e armazenar timestamp de login
+      const loginTimestamp = Date.now();
+      localStorage.setItem('auth_timestamp', loginTimestamp.toString());
+      
+      // Atualizar estado de autenticação
+      setIsAuthenticated(true);
+      setUser(data.user);
+      setErrorAuth(null);
+      
+      // Disparar evento personalizado para outros componentes saberem da mudança de autenticação
+      const authEvent = new CustomEvent('auth-state-changed', { 
+        detail: { 
+          authenticated: true,
+          user: data.user
+        }
+      });
+      window.dispatchEvent(authEvent);
+      
+      // Retornar sucesso
+      return {
+        success: true,
+        user: data.user,
+        message: 'Login realizado com sucesso'
+      };
     } catch (error) {
-      console.error('Erro ao fazer login:', error);
-      setErrorAuth('Erro ao fazer login');
-      return { success: false, message: 'Erro ao fazer login' };
+      console.error('Erro ao processar login:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido ao fazer login';
+      setErrorAuth(errorMsg);
+      return {
+        success: false,
+        message: errorMsg
+      };
     } finally {
       setIsLoadingAuth(false);
     }

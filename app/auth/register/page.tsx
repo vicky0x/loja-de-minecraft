@@ -26,23 +26,33 @@ export default function RegisterPage() {
   // Referência para o timeout de debounce
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Verificar se o usuário já está autenticado
+  // Verificar se o usuário já está autenticado - somente redireciona se já estiver logado
   useEffect(() => {
     const checkAuth = () => {
       try {
+        // Verificar se o localStorage está disponível (evita erros no SSR)
+        if (typeof window === 'undefined') return;
+        
         const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
         const user = localStorage.getItem('user');
         
+        // Só redireciona se o usuário já estiver autenticado
         if (isAuthenticated && user) {
           console.log('Usuário já está autenticado, redirecionando para o dashboard');
           router.push('/dashboard');
         }
       } catch (error) {
+        // Apenas logar o erro sem afetar a renderização
         console.error('Erro ao verificar autenticação:', error);
       }
     };
     
-    checkAuth();
+    // Executar a verificação após um pequeno delay para garantir que o 
+    // componente seja renderizado antes de qualquer redirecionamento
+    const timer = setTimeout(checkAuth, 500);
+    
+    // Limpar o timer quando o componente for desmontado
+    return () => clearTimeout(timer);
   }, [router]);
   
   // Função para verificar se um username está disponível
