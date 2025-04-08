@@ -823,7 +823,7 @@ export default function Home() {
       </section>
 
       {/* FAQ */}
-      <section className="py-24 relative overflow-hidden">
+      <section id="faq" className="py-24 relative overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-gradient-to-b from-dark-100/0 via-primary/5 to-dark-100/0"></div>
         <div className="absolute inset-0 overflow-hidden">

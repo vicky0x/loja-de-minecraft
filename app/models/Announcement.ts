@@ -8,7 +8,6 @@ export interface IAnnouncement extends Document {
   authorRole: string;
   authorImage?: string;
   imageUrl?: string;
-  imageUrl2?: string;
   videoUrl?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -42,9 +41,6 @@ const AnnouncementSchema = new Schema<IAnnouncement>(
       type: String,
     },
     imageUrl: {
-      type: String,
-    },
-    imageUrl2: {
       type: String,
     },
     videoUrl: {

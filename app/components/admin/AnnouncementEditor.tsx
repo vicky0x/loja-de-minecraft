@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FiSave, FiX, FiImage, FiVideo, FiAlertCircle, FiBold, FiItalic, FiLink, FiList } from 'react-icons/fi';
+import { FiSave, FiX, FiImage, FiVideo, FiAlertCircle, FiBold, FiItalic, FiLink, FiList, FiUpload } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 
 interface EditingAnnouncement {
@@ -9,7 +9,6 @@ interface EditingAnnouncement {
   title: string;
   content: string;
   imageUrl?: string;
-  imageUrl2?: string;
   videoUrl?: string;
 }
 
@@ -23,10 +22,11 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
   const [title, setTitle] = useState(editingAnnouncement?.title || '');
   const [content, setContent] = useState(editingAnnouncement?.content ? editingAnnouncement.content.replace(/\n\n&nbsp;\n\n/g, '\n\n') : '');
   const [imageUrl, setImageUrl] = useState(editingAnnouncement?.imageUrl || '');
-  const [imageUrl2, setImageUrl2] = useState(editingAnnouncement?.imageUrl2 || '');
   const [videoUrl, setVideoUrl] = useState(editingAnnouncement?.videoUrl || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const contentRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Normalizar quebras de linha quando o componente carrega um anúncio existente
   useEffect(() => {
@@ -74,7 +74,6 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
         title,
         content: formattedContent,
         imageUrl,
-        imageUrl2,
         videoUrl
       });
 
@@ -88,7 +87,6 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
           title,
           content: formattedContent,
           imageUrl: imageUrl || undefined,
-          imageUrl2: imageUrl2 || undefined,
           videoUrl: videoUrl || undefined,
         }),
       });
@@ -105,7 +103,6 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
         setTitle('');
         setContent('');
         setImageUrl('');
-        setImageUrl2('');
         setVideoUrl('');
       }
       
@@ -144,6 +141,103 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
         end + prefix.length
       );
     }, 0);
+  };
+
+  // Função para lidar com upload de imagens
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    
+    console.log(`Inicializando upload de imagem: ${file.name}`);
+    
+    // Validar o tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione um arquivo de imagem válido');
+      console.error(`Tipo de arquivo inválido: ${file.type}`);
+      return;
+    }
+    
+    // Validar o tamanho do arquivo (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      console.error(`Tamanho de arquivo excedido: ${file.size} bytes`);
+      return;
+    }
+    
+    try {
+      // Indicar que está carregando
+      setIsUploading(true);
+      console.log('Definido estado de carregamento para imagem');
+      
+      // Criar um formData para enviar o arquivo
+      const formData = new FormData();
+      formData.append('files', file);
+      formData.append('type', 'announcements');
+      
+      console.log(`FormData criado: arquivo=${file.name}, tipo=${file.type}, tamanho=${file.size}`);
+      
+      const toastId = toast.loading(`Fazendo upload da imagem: ${file.name}...`);
+      console.log('Iniciando upload da imagem:', file.name, file.type, file.size);
+      
+      // Usar o endpoint de upload existente
+      console.log('Enviando requisição para /api/upload...');
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      console.log('Resposta do servidor:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        console.error(`Erro do servidor: ${response.status} ${response.statusText}`);
+        toast.dismiss(toastId);
+        
+        let errorMessage = 'Erro ao fazer upload da imagem';
+        try {
+          const errorData = await response.json();
+          console.error('Dados do erro:', errorData);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error('Erro ao analisar resposta de erro como JSON:', parseError);
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      // Se chegou aqui, a resposta foi bem-sucedida
+      let data;
+      try {
+        data = await response.json();
+        console.log('Dados da resposta:', data);
+      } catch (parseError) {
+        console.error('Erro ao analisar resposta como JSON:', parseError);
+        toast.dismiss(toastId);
+        throw new Error('Erro ao processar resposta do servidor');
+      }
+      
+      if (data.paths && data.paths.length > 0) {
+        // Atualizar a URL da imagem com o caminho retornado pela API
+        const imageUrl = data.paths[0];
+        console.log('URL da imagem recebida:', imageUrl);
+        
+        setImageUrl(imageUrl);
+        console.log('Imagem atualizada:', imageUrl);
+        
+        toast.success('Imagem carregada com sucesso', { id: toastId });
+      } else {
+        toast.dismiss(toastId);
+        console.error('Nenhum caminho retornado do servidor', data);
+        throw new Error('Nenhum caminho de imagem retornado pelo servidor');
+      }
+      
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      toast.error(typeof error === 'object' && error !== null 
+        ? error.message || 'Erro ao fazer upload da imagem' 
+        : 'Erro ao fazer upload da imagem');
+    } finally {
+      setIsUploading(false);
+      console.log('Estado de carregamento da imagem definido como falso');
+    }
   };
 
   return (
@@ -229,41 +323,58 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
       </div>
       
       <div className="mb-4">
-        <label htmlFor="imageUrl" className="block text-white font-medium mb-2">
+        <label htmlFor="imageUpload" className="block text-white font-medium mb-2">
           <span className="flex items-center">
             <span className="mr-2">
               <FiImage />
             </span>
-            URL da Imagem Principal (opcional)
+            Imagem (opcional)
           </span>
         </label>
-        <input
-          type="url"
-          id="imageUrl"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          className="w-full bg-dark-300 border border-dark-400 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="https://exemplo.com/imagem.jpg"
-        />
-      </div>
-      
-      <div className="mb-4">
-        <label htmlFor="imageUrl2" className="block text-white font-medium mb-2">
-          <span className="flex items-center">
-            <span className="mr-2">
-              <FiImage />
-            </span>
-            URL da Imagem Secundária (opcional)
-          </span>
-        </label>
-        <input
-          type="url"
-          id="imageUrl2"
-          value={imageUrl2}
-          onChange={(e) => setImageUrl2(e.target.value)}
-          className="w-full bg-dark-300 border border-dark-400 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="https://exemplo.com/imagem2.jpg"
-        />
+        
+        <div>
+          <div className="flex items-center">
+            <input
+              type="file"
+              id="imageUpload"
+              ref={fileInputRef}
+              onChange={(e) => handleImageUpload(e.target.files?.[0] as File)}
+              className="hidden"
+              accept="image/*"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full bg-gradient-to-br from-dark-400 to-dark-300 border border-dark-400 rounded-md px-4 py-3 text-white hover:from-dark-300 hover:to-dark-200 focus:outline-none flex items-center justify-center transition-all duration-200"
+              disabled={isUploading}
+            >
+              <FiUpload className="mr-2" />
+              {isUploading ? 'Carregando...' : 'Carregar imagem do dispositivo'}
+            </button>
+          </div>
+        </div>
+        
+        {imageUrl && (
+          <div className="mt-2 bg-dark-300 p-2 rounded-md">
+            <div className="relative">
+              <img 
+                src={imageUrl} 
+                alt="Preview" 
+                className="w-full h-auto max-h-60 object-contain mx-auto rounded-lg"
+                onError={(e) => {
+                  console.error('Erro ao carregar imagem:', imageUrl);
+                  e.currentTarget.style.display = 'none';
+                  toast.error('Erro ao carregar a imagem. Tente fazer o upload novamente.');
+                }}
+              />
+              {isUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-dark-400/60">
+                  <span className="text-white">Carregando...</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="mb-6">
@@ -301,7 +412,6 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
               setTitle(editingAnnouncement?.title || '');
               setContent(editingAnnouncement?.content || '');
               setImageUrl(editingAnnouncement?.imageUrl || '');
-              setImageUrl2(editingAnnouncement?.imageUrl2 || '');
               setVideoUrl(editingAnnouncement?.videoUrl || '');
             }
           }}

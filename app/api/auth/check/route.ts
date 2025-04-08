@@ -1,46 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkAuth } from '@/app/lib/auth';
 
-// Endpoint para verificar se o usuário está autenticado
+// GET /api/auth/check - Verificar status de autenticação atual
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
-    const { isAuthenticated, user, error } = await checkAuth(request);
+    // Usar a função checkAuth para verificar a autenticação
+    const authResult = await checkAuth(request);
     
-    // Se não estiver autenticado, retornar erro 401
-    if (!isAuthenticated || !user) {
-      return NextResponse.json(
-        { 
-          authenticated: false, 
-          message: error || 'Não autenticado',
-          code: error ? error : 'auth_required' 
-        },
-        { status: 401 }
-      );
-    }
+    // Se autenticado, retornar dados do usuário
+    if (authResult.isAuthenticated && authResult.user) {
+      return NextResponse.json({
+        authenticated: true,
+        user: authResult.user
+      });
+    } 
     
-    // Retornar sucesso com dados do usuário
+    // Se não autenticado, retornar status falso (mas não erro)
     return NextResponse.json({
-      authenticated: true,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        name: user.name || '',
-        role: user.role,
-        profileImage: user.profileImage || '',
-        memberNumber: user.memberNumber || 0,
-        createdAt: user.createdAt
-      }
+      authenticated: false,
+      message: authResult.error || 'Não autenticado'
     });
   } catch (error) {
     console.error('Erro ao verificar autenticação:', error);
     
-    // Retornar erro 500 em caso de falha no servidor
+    // Retornar erro de servidor
     return NextResponse.json(
       { 
-        authenticated: false, 
-        message: 'Erro interno ao verificar autenticação'
+        authenticated: false,
+        error: 'Erro ao verificar autenticação'
       },
       { status: 500 }
     );

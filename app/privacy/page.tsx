@@ -46,7 +46,7 @@ export default function PrivacyPage() {
               Política de Privacidade
             </h1>
             <p className="text-slate-300 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
-              Como protegemos suas informações pessoais e respeitamos sua privacidade.
+              A Fantasy Store respeita sua privacidade e está comprometida em proteger os dados pessoais dos usuários que acessam e utilizam nosso site. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos suas informações.
             </p>
           </motion.div>
         </div>
@@ -70,29 +70,14 @@ export default function PrivacyPage() {
                       <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
                         <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
                       </span>
-                      1. Introdução
-                    </h2>
-                    <p className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300">
-                      A Fantasy Store valoriza a sua privacidade e está comprometida em proteger suas informações pessoais. Esta Política de Privacidade descreve como coletamos, usamos e compartilhamos suas informações quando você utiliza nosso site, produtos e serviços.
-                    </p>
-                  </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="group">
-                  <div className="bg-gradient-to-br from-dark-300/40 to-dark-300/20 rounded-xl p-6 shadow-sm border border-dark-300/30 hover:border-primary/30 transition-all duration-300">
-                    <h2 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center group-hover:text-primary/90 transition-colors duration-300">
-                      <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
-                        <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
-                      </span>
-                      2. Informações que Coletamos
+                      1. Informações Coletadas
                     </h2>
                     <div className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300 space-y-4">
-                      <p>Podemos coletar os seguintes tipos de informações:</p>
+                      <p>Ao utilizar o site fantasystore.com.br, poderemos coletar as seguintes informações:</p>
                       <ul className="list-disc pl-6 space-y-2 ml-2">
-                        <li>Informações de contato (como nome, endereço de e-mail);</li>
-                        <li>Informações de conta (nome de usuário, senha);</li>
-                        <li>Informações de transações (detalhes de compras, métodos de pagamento);</li>
-                        <li>Informações técnicas (endereço IP, cookies, dados de navegação).</li>
+                        <li>Dados fornecidos pelo usuário: nome de usuário, e-mail, endereço IP, avaliações, dados de pagamento e outras informações inseridas voluntariamente no site;</li>
+                        <li>Informações de navegação: páginas acessadas, tempo de permanência, dispositivo utilizado, sistema operacional e navegador;</li>
+                        <li>Cookies e tecnologias similares: usamos cookies para melhorar a experiência do usuário, lembrar preferências e medir desempenho do site.</li>
                       </ul>
                     </div>
                   </div>
@@ -104,17 +89,59 @@ export default function PrivacyPage() {
                       <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
                         <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
                       </span>
-                      3. Como Usamos Suas Informações
+                      2. Uso das Informações
                     </h2>
                     <div className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300 space-y-4">
-                      <p>Utilizamos suas informações para:</p>
+                      <p>Os dados coletados são utilizados para os seguintes fins:</p>
                       <ul className="list-disc pl-6 space-y-2 ml-2">
-                        <li>Fornecer e manter nossos serviços;</li>
-                        <li>Processar e completar suas transações;</li>
-                        <li>Enviar informações administrativas;</li>
-                        <li>Melhorar nossos serviços e conteúdo;</li>
-                        <li>Personalizar sua experiência;</li>
-                        <li>Prevenir atividades fraudulentas.</li>
+                        <li>Processar pedidos e entregas de produtos;</li>
+                        <li>Garantir a segurança das transações;</li>
+                        <li>Oferecer suporte ao cliente;</li>
+                        <li>Enviar notificações importantes sobre pedidos ou atualizações de serviço;</li>
+                        <li>Prevenir fraudes, abusos e acessos não autorizados;</li>
+                        <li>Cumprir obrigações legais.</li>
+                      </ul>
+                      <p className="mt-4">Não vendemos, alugamos ou compartilhamos suas informações com terceiros para fins comerciais.</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="group">
+                  <div className="bg-gradient-to-br from-dark-300/40 to-dark-300/20 rounded-xl p-6 shadow-sm border border-dark-300/30 hover:border-primary/30 transition-all duration-300">
+                    <h2 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center group-hover:text-primary/90 transition-colors duration-300">
+                      <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
+                        <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
+                      </span>
+                      3. Armazenamento e Segurança
+                    </h2>
+                    <div className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300 space-y-4">
+                      <p>
+                        Seus dados são armazenados de forma segura em servidores protegidos por criptografia, autenticação e monitoramento.
+                      </p>
+                      <p>
+                        Empregamos medidas técnicas e organizacionais rigorosas para proteger seus dados contra perda, uso indevido ou acesso não autorizado.
+                      </p>
+                      <p>
+                        Apenas pessoal autorizado tem acesso às informações pessoais fornecidas.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="group">
+                  <div className="bg-gradient-to-br from-dark-300/40 to-dark-300/20 rounded-xl p-6 shadow-sm border border-dark-300/30 hover:border-primary/30 transition-all duration-300">
+                    <h2 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center group-hover:text-primary/90 transition-colors duration-300">
+                      <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
+                        <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
+                      </span>
+                      4. Compartilhamento com Terceiros
+                    </h2>
+                    <div className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300 space-y-4">
+                      <p>Podemos compartilhar dados com terceiros apenas quando:</p>
+                      <ul className="list-disc pl-6 space-y-2 ml-2">
+                        <li>Necessário para processar pagamentos ou entregar produtos;</li>
+                        <li>Exigido por lei, decisão judicial ou solicitação governamental;</li>
+                        <li>For essencial para investigar fraudes, abusos ou violações aos nossos termos.</li>
                       </ul>
                     </div>
                   </div>
@@ -126,16 +153,17 @@ export default function PrivacyPage() {
                       <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
                         <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
                       </span>
-                      4. Compartilhamento de Informações
+                      5. Direitos do Usuário
                     </h2>
                     <div className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300 space-y-4">
-                      <p>Podemos compartilhar suas informações com:</p>
+                      <p>Você tem o direito de:</p>
                       <ul className="list-disc pl-6 space-y-2 ml-2">
-                        <li>Provedores de serviços de pagamento para processar transações;</li>
-                        <li>Prestadores de serviços que nos ajudam a operar nosso site;</li>
-                        <li>Autoridades legais quando exigido por lei.</li>
+                        <li>Acessar e revisar suas informações pessoais armazenadas;</li>
+                        <li>Corrigir dados incorretos;</li>
+                        <li>Solicitar a exclusão de seus dados (exceto quando houver obrigações legais que exijam retenção);</li>
+                        <li>Solicitar informações sobre como seus dados estão sendo utilizados.</li>
                       </ul>
-                      <p className="mt-4">Nunca vendemos suas informações pessoais a terceiros.</p>
+                      <p className="mt-4">Para exercer seus direitos, entre em contato através do e-mail: <a href="mailto:help@fantasystore.com" className="text-primary hover:text-primary-light hover:underline transition-all duration-300">help@fantasystore.com</a></p>
                     </div>
                   </div>
                 </motion.div>
@@ -146,32 +174,15 @@ export default function PrivacyPage() {
                       <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
                         <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
                       </span>
-                      5. Segurança de Dados
-                    </h2>
-                    <p className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300">
-                      Implementamos medidas de segurança técnicas e organizacionais para proteger suas informações contra acesso não autorizado, alteração, divulgação ou destruição. No entanto, nenhum método de transmissão pela internet ou método de armazenamento eletrônico é 100% seguro.
-                    </p>
-                  </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="group">
-                  <div className="bg-gradient-to-br from-dark-300/40 to-dark-300/20 rounded-xl p-6 shadow-sm border border-dark-300/30 hover:border-primary/30 transition-all duration-300">
-                    <h2 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center group-hover:text-primary/90 transition-colors duration-300">
-                      <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
-                        <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
-                      </span>
-                      6. Seus Direitos
+                      6. Cookies
                     </h2>
                     <div className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300 space-y-4">
-                      <p>Dependendo da sua localização, você pode ter os seguintes direitos em relação aos seus dados pessoais:</p>
-                      <ul className="list-disc pl-6 space-y-2 ml-2">
-                        <li>Acessar os dados pessoais que mantemos sobre você;</li>
-                        <li>Corrigir dados incompletos ou imprecisos;</li>
-                        <li>Solicitar a exclusão de seus dados pessoais;</li>
-                        <li>Restringir ou se opor ao processamento de seus dados;</li>
-                        <li>Solicitar a transferência de seus dados para outro controlador;</li>
-                        <li>Retirar seu consentimento a qualquer momento.</li>
-                      </ul>
+                      <p>
+                        Utilizamos cookies essenciais para o funcionamento do site e cookies de desempenho para analisar métricas de uso.
+                      </p>
+                      <p>
+                        O usuário pode configurar seu navegador para recusar cookies, mas isso poderá afetar a funcionalidade do site.
+                      </p>
                     </div>
                   </div>
                 </motion.div>
@@ -182,10 +193,10 @@ export default function PrivacyPage() {
                       <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
                         <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
                       </span>
-                      7. Cookies e Tecnologias Semelhantes
+                      7. Alterações na Política de Privacidade
                     </h2>
                     <p className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300">
-                      Utilizamos cookies e tecnologias semelhantes para melhorar sua experiência, analisar como você usa nossos serviços e personalizar conteúdo. Você pode controlar o uso de cookies através das configurações do seu navegador.
+                      A Fantasy Store se reserva o direito de modificar esta política a qualquer momento, sem aviso prévio. As alterações entrarão em vigor imediatamente após a publicação no site. Recomendamos a leitura periódica desta página.
                     </p>
                   </div>
                 </motion.div>
@@ -196,24 +207,11 @@ export default function PrivacyPage() {
                       <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
                         <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
                       </span>
-                      8. Alterações nesta Política
+                      8. Contato
                     </h2>
                     <p className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300">
-                      Podemos atualizar esta Política de Privacidade periodicamente. Notificaremos sobre quaisquer alterações materiais publicando a nova política em nosso site e, quando apropriado, através de e-mail.
-                    </p>
-                  </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="group">
-                  <div className="bg-gradient-to-br from-dark-300/40 to-dark-300/20 rounded-xl p-6 shadow-sm border border-dark-300/30 hover:border-primary/30 transition-all duration-300">
-                    <h2 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center group-hover:text-primary/90 transition-colors duration-300">
-                      <span className="text-primary mr-3 bg-primary/10 p-2 rounded-lg">
-                        <FaShieldAlt className="group-hover:scale-110 transition-transform duration-300" />
-                      </span>
-                      9. Contato
-                    </h2>
-                    <p className="text-slate-300 leading-relaxed pl-2 border-l-2 border-primary/20 group-hover:border-primary/40 transition-colors duration-300">
-                      Se você tiver dúvidas sobre esta Política de Privacidade, por favor, entre em contato conosco através do email: <a href="mailto:privacy@fantasystore.com.br" className="text-primary hover:text-primary-light hover:underline transition-all duration-300">privacy@fantasystore.com.br</a>.
+                      Para mais informações ou dúvidas sobre esta Política de Privacidade, entre em contato conosco:
+                      <a href="mailto:help@fantasystore.com" className="text-primary hover:text-primary-light hover:underline transition-all duration-300 block mt-2">📩 help@fantasystore.com</a>
                     </p>
                   </div>
                 </motion.div>

@@ -44,8 +44,10 @@ export async function GET(
 // PUT - Atualizar um anúncio (apenas para admins)
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
+  
   try {
     await dbConnect();
     
@@ -132,8 +134,10 @@ export async function PUT(
 // DELETE - Excluir um anúncio (apenas para admins)
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
+  
   try {
     await dbConnect();
     

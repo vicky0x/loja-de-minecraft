@@ -32,6 +32,7 @@ export default function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [hashFaq, setHashFaq] = useState(false);
   // Estado para detectar se estamos em telas grandes quando no dashboard
   const [isLargeScreen, setIsLargeScreen] = useState(false);
   
@@ -372,6 +373,23 @@ export default function Navbar() {
     }
   };
 
+  // Efeito para verificar se o hash da página é #faq
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const checkHash = () => {
+        setHashFaq(window.location.hash === '#faq');
+      };
+      
+      // Verificar inicialmente
+      checkHash();
+      
+      // Adicionar listener para alterações no hash
+      window.addEventListener('hashchange', checkHash);
+      
+      return () => window.removeEventListener('hashchange', checkHash);
+    }
+  }, []);
+
   // Se estamos na dashboard, não renderizar a navbar principal
   if (isDashboard) {
     return null;
@@ -421,11 +439,15 @@ export default function Navbar() {
               Produtos
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <Link href="/games" className={`text-sm font-medium transition-colors duration-300 ${pathname.startsWith('/games') ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-              Jogos
+            <Link href="/category" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/category' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+              Categorias
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <Link href="/faq" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/faq' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+            <Link href="/dashboard/support" className={`text-sm font-medium transition-colors duration-300 ${pathname.startsWith('/dashboard/support') ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+              Suporte
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+            </Link>
+            <Link href="/#faq" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/' && hashFaq ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
               FAQ
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
             </Link>
@@ -730,16 +752,24 @@ export default function Navbar() {
               Produtos
             </Link>
             <Link 
-              href="/games" 
-              className={`py-2 text-sm font-medium ${pathname.startsWith('/games') ? 'text-primary' : 'text-gray-300'}`}
+              href="/category" 
+              className={`py-2 text-sm font-medium ${pathname === '/category' ? 'text-primary' : 'text-gray-300'}`}
               onClick={() => setIsMenuOpen(false)}
               style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
             >
-              Jogos
+              Categorias
             </Link>
             <Link 
-              href="/faq" 
-              className={`py-2 text-sm font-medium ${pathname === '/faq' ? 'text-primary' : 'text-gray-300'}`}
+              href="/dashboard/support" 
+              className={`py-2 text-sm font-medium ${pathname.startsWith('/dashboard/support') ? 'text-primary' : 'text-gray-300'}`}
+              onClick={() => setIsMenuOpen(false)}
+              style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+            >
+              Suporte
+            </Link>
+            <Link 
+              href="/#faq" 
+              className={`py-2 text-sm font-medium ${pathname === '/' && hashFaq ? 'text-primary' : 'text-gray-300'}`}
               onClick={() => setIsMenuOpen(false)}
               style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
             >

@@ -44,7 +44,7 @@ interface Product {
 export default function CategoryPage() {
   // Usar o hook useParams em vez de receber params como props
   const params = useParams();
-  const slug = params?.slug as string;
+  const slug = typeof params?.slug === 'string' ? params.slug : '';
 
   const router = useRouter();
   const [category, setCategory] = useState<Category | null>(null);
@@ -62,8 +62,11 @@ export default function CategoryPage() {
   useEffect(() => {
     if (slug) {
       fetchCategoryAndProducts();
+    } else {
+      // Se não tiver slug, redirecionar para a página principal
+      router.push('/');
     }
-  }, [slug]);
+  }, [slug, router]);
 
   // Aplicar filtros sempre que os produtos ou filtros mudarem
   useEffect(() => {

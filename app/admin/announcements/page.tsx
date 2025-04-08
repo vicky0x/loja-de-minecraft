@@ -13,7 +13,6 @@ interface Announcement {
   authorName: string;
   authorRole: string;
   imageUrl?: string;
-  imageUrl2?: string;
   videoUrl?: string;
   createdAt: string;
 }

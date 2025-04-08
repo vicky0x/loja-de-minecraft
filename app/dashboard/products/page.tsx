@@ -262,59 +262,58 @@ export default function ProductsPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 p-5">
             {filteredProducts.map((product) => (
               <div
                 key={product._id}
-                className="bg-dark-300 rounded-lg overflow-hidden flex flex-col border border-dark-400 hover:border-primary transition-colors duration-200"
+                className="bg-[#1e1e1e] rounded-lg overflow-hidden"
               >
-                <div className="relative aspect-video">
+                {/* Imagem de capa */}
+                <div className="w-full h-48 overflow-hidden">
                   {product.image ? (
-                    <div className="relative h-32 w-full rounded overflow-hidden bg-dark-400">
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        fill
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const imgElement = e.target as HTMLImageElement;
-                          imgElement.src = '/placeholder-image.jpg';
-                          imgElement.onerror = null; // Prevent infinite loop
-                        }}
-                      />
-                    </div>
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        target.src = '/placeholder-image.jpg';
+                      }}
+                    />
                   ) : (
-                    <div className="h-32 w-full rounded bg-dark-400 flex items-center justify-center">
+                    <div className="h-48 w-full bg-dark-400 flex items-center justify-center">
                       <FiImage size={32} className="text-gray-500" />
                     </div>
                   )}
-                  <div className="absolute top-2 right-2">
-                    {getStatusBadge(product.status)}
-                  </div>
                 </div>
                 
-                <div className="p-4 flex-grow flex flex-col">
-                  <h3 className="text-lg font-medium mb-1">{product.name}</h3>
-                  <p className="text-sm text-gray-400 mb-2">
-                    {product.variant.name}
+                {/* Conteúdo do card */}
+                <div className="p-4">
+                  {/* Título do produto */}
+                  <h3 className="text-white font-semibold text-lg mb-2">
+                    {product.name}
+                  </h3>
+                  
+                  {/* Tipo do produto/variante */}
+                  <p className="text-gray-400 text-sm">
+                    Padrão
                   </p>
                   
-                  <div className="flex items-center justify-between mt-auto">
-                    <div className="text-xs text-gray-400">
-                      <span>Adquirido em: </span>
-                      <span>{formatDate(product.assignedAt)}</span>
-                    </div>
+                  {/* Data de aquisição */}
+                  <p className="text-gray-500 text-xs mt-1">
+                    Adquirido em: {formatDate(product.assignedAt)}
+                  </p>
+                  
+                  {/* Botão de ver detalhes */}
+                  <div className="mt-4 text-right">
+                    <Link 
+                      href={`/dashboard/products/${product._id}`}
+                      className="text-[#ff6b00] hover:text-[#ff8533] inline-flex items-center"
+                    >
+                      <span>Ver detalhes</span>
+                      <span className="text-lg ml-1">›</span>
+                    </Link>
                   </div>
-                </div>
-                
-                <div className="bg-dark-400 p-3 flex justify-end items-center">
-                  <Link 
-                    href={`/dashboard/products/${product._id}`} 
-                    className="inline-flex items-center text-primary hover:text-primary-light"
-                  >
-                    <span className="text-sm">Ver detalhes</span>
-                    <FiChevronRight className="ml-1" />
-                  </Link>
                 </div>
               </div>
             ))}

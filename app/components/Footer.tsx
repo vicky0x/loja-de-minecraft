@@ -332,27 +332,6 @@ export default function Footer() {
                 <span className="absolute left-0 right-0 bottom-0 h-px w-0 bg-gradient-to-r from-primary to-primary-light group-hover:w-full transition-all duration-300"></span>
               </Link>
             </motion.div>
-            <span className="text-slate-600">•</span>
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              whileInView={{ 
-                opacity: 1, 
-                y: 0, 
-                transition: { 
-                  delay: 0.9, 
-                  duration: 0.5 
-                } 
-              }}
-              viewport={{ once: true }}
-            >
-              <Link 
-                href="/garantia-minecraft" 
-                className="text-slate-400 hover:text-primary transition-all duration-300 relative group"
-              >
-                <span>Garantia Minecraft</span>
-                <span className="absolute left-0 right-0 bottom-0 h-px w-0 bg-gradient-to-r from-primary to-primary-light group-hover:w-full transition-all duration-300"></span>
-              </Link>
-            </motion.div>
           </div>
         </motion.div>
       </div>

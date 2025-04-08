@@ -20,11 +20,31 @@ export default function ProductFeaturedSelector() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [invalidProductIds, setInvalidProductIds] = useState<string[]>([]);
+  const [isRemovingInvalid, setIsRemovingInvalid] = useState(false);
 
   useEffect(() => {
     fetchProducts();
     fetchSelectedProducts();
   }, []);
+
+  // Verificar produtos inválidos sempre que a lista de produtos ou selecionados mudar
+  useEffect(() => {
+    if (products.length > 0 && selectedProducts.length > 0) {
+      // Criar um Set para busca mais rápida
+      const validIdSet = new Set(products.map(p => p?._id).filter(Boolean));
+      
+      // Encontrar IDs selecionados que não existem nos produtos válidos
+      const invalidIds = selectedProducts.filter(id => !validIdSet.has(id));
+      
+      if (invalidIds.length > 0) {
+        console.warn('IDs de produtos inválidos encontrados:', invalidIds);
+        setInvalidProductIds(invalidIds);
+      } else {
+        setInvalidProductIds([]);
+      }
+    }
+  }, [products, selectedProducts]);
 
   // Buscar todos os produtos
   const fetchProducts = async () => {
@@ -54,6 +74,7 @@ export default function ProductFeaturedSelector() {
         const data = await response.json();
         if (data.success && Array.isArray(data.featuredProducts)) {
           setSelectedProducts(data.featuredProducts);
+          // A verificação de IDs inválidos agora é feita no useEffect
         } else {
           // Se não houver produtos em destaque na API, buscar os featured do banco
           fetchFeaturedFromDatabase();
@@ -116,6 +137,43 @@ export default function ProductFeaturedSelector() {
     }
   };
 
+  // Função para limpar produtos inválidos dos destaques
+  const removeInvalidProducts = async () => {
+    try {
+      setIsRemovingInvalid(true);
+      setError(null);
+      
+      // Filtrar apenas os produtos válidos
+      const validProducts = selectedProducts.filter(id => !invalidProductIds.includes(id));
+      
+      // Atualizar o estado
+      setSelectedProducts(validProducts);
+      
+      // Salvar os produtos válidos na API
+      const response = await fetch('/api/featuredProducts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ featuredProducts: validProducts }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setSuccess(`${invalidProductIds.length} produtos inválidos foram removidos dos destaques.`);
+        setInvalidProductIds([]);
+      } else {
+        throw new Error(data.message || 'Falha ao atualizar produtos em destaque');
+      }
+    } catch (error: any) {
+      console.error('Erro ao remover produtos inválidos:', error);
+      setError(error.message || 'Falha ao remover produtos inválidos. Tente novamente.');
+    } finally {
+      setIsRemovingInvalid(false);
+    }
+  };
+
   // Alternar seleção de produto
   const toggleProductSelection = (productId: string) => {
     setSelectedProducts(prev => {
@@ -151,6 +209,29 @@ export default function ProductFeaturedSelector() {
       {success && (
         <div className="bg-green-900/30 border-l-4 border-green-500 p-4 text-green-400 mb-4">
           {success}
+        </div>
+      )}
+      
+      {invalidProductIds.length > 0 && (
+        <div className="bg-amber-900/30 border-l-4 border-amber-500 p-4 text-amber-400 mb-4 flex flex-col">
+          <div className="flex justify-between">
+            <div>
+              <p className="font-medium">Atenção: {invalidProductIds.length} produtos em destaque não foram encontrados</p>
+              <p className="text-sm mt-1">Esses produtos podem ter sido excluídos ou estão temporariamente indisponíveis.</p>
+            </div>
+            <button 
+              onClick={removeInvalidProducts}
+              disabled={isRemovingInvalid}
+              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-md ml-4 text-sm flex items-center whitespace-nowrap disabled:opacity-50"
+            >
+              {isRemovingInvalid ? 'Removendo...' : 'Remover inválidos'}
+            </button>
+          </div>
+          <div className="mt-2 text-xs space-y-1">
+            {invalidProductIds.map(id => (
+              <div key={id} className="font-mono bg-dark-400/50 p-1 rounded">ID: {id}</div>
+            ))}
+          </div>
         </div>
       )}
       

@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ReactMarkdown from 'react-markdown';
 import { FiClock, FiEdit2, FiTrash2, FiX, FiMaximize, FiUser, FiCheck, FiMessageSquare } from 'react-icons/fi';
+import { toast } from 'react-hot-toast';
 
 interface AnnouncementCardProps {
   announcement: {
@@ -15,7 +16,6 @@ interface AnnouncementCardProps {
     authorRole: string;
     authorImage?: string;
     imageUrl?: string;
-    imageUrl2?: string;
     videoUrl?: string;
     createdAt: string;
   };
@@ -27,6 +27,18 @@ interface AnnouncementCardProps {
 const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: AnnouncementCardProps) => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
+
+  // Adiciona uma classe ao body quando o modal de zoom está aberto
+  useEffect(() => {
+    if (zoomedImage) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [zoomedImage]);
 
   useEffect(() => {
     // Verificar se o anúncio contém todas as propriedades necessárias
@@ -167,46 +179,30 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
           </div>
           
           {/* Container para as imagens */}
-          {(announcement.imageUrl || announcement.imageUrl2) && (
-            <div className="mt-4 flex flex-wrap gap-4">
-              {announcement.imageUrl && (
-                <div className="relative overflow-hidden rounded-lg shadow-lg announcement-image">
-                  <img 
-                    src={announcement.imageUrl} 
-                    alt={announcement.title}
-                    className="h-auto max-h-72 object-contain rounded-lg cursor-pointer border border-dark-400"
-                    style={{ maxWidth: '100%', width: 'auto', minHeight: '150px' }}
-                    onClick={() => handleZoomImage(announcement.imageUrl!)}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                  <div className="absolute bottom-2 right-2 bg-primary/80 rounded-full p-2">
-                    <FiMaximize className="text-white" size={16} />
-                  </div>
+          {announcement.imageUrl && (
+            <div className="mt-4">
+              <div className="relative overflow-hidden rounded-[20px] shadow-lg announcement-image">
+                <img 
+                  src={announcement.imageUrl} 
+                  alt={announcement.title}
+                  className="w-full max-w-full h-auto object-cover rounded-[20px] cursor-pointer border border-dark-400"
+                  style={{ maxHeight: '400px', width: '100%', objectFit: 'cover' }}
+                  onClick={() => handleZoomImage(announcement.imageUrl!)}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                <div 
+                  className="absolute bottom-3 right-3 bg-primary/90 hover:bg-primary rounded-full p-2.5 shadow-lg cursor-pointer transform transition-transform duration-300 hover:scale-110"
+                  onClick={() => handleZoomImage(announcement.imageUrl!)}
+                >
+                  <FiMaximize className="text-white" size={18} />
                 </div>
-              )}
-              {announcement.imageUrl2 && (
-                <div className="relative overflow-hidden rounded-lg shadow-lg announcement-image">
-                  <img 
-                    src={announcement.imageUrl2} 
-                    alt={`${announcement.title} - imagem 2`}
-                    className="h-auto max-h-72 object-contain rounded-lg cursor-pointer border border-dark-400"
-                    style={{ maxWidth: '100%', width: 'auto', minHeight: '150px' }}
-                    onClick={() => handleZoomImage(announcement.imageUrl2!)}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                  <div className="absolute bottom-2 right-2 bg-primary/80 rounded-full p-2">
-                    <FiMaximize className="text-white" size={16} />
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           )}
           
-          {announcement.videoUrl && !announcement.imageUrl && !announcement.imageUrl2 && (
+          {announcement.videoUrl && !announcement.imageUrl && (
             <div className="mt-4 aspect-video overflow-hidden rounded-lg shadow-lg border border-dark-400" style={{ maxWidth: '80%' }}>
               <iframe
                 src={announcement.videoUrl}
@@ -248,7 +244,7 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
       {/* Modal de zoom */}
       {zoomedImage && (
         <div 
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 announcement-zoom-modal backdrop-blur-md"
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 announcement-zoom-modal backdrop-blur-md"
           onClick={closeZoom}
         >
           <div className="relative max-w-6xl max-h-[90vh] w-full">
@@ -257,16 +253,18 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
                 e.stopPropagation();
                 closeZoom();
               }}
-              className="absolute top-2 right-2 bg-dark-800/90 p-2 rounded-full text-white"
+              className="absolute top-2 right-2 bg-dark-800/90 p-2 rounded-full text-white z-[101]"
             >
               <FiX size={24} />
             </button>
             <img 
               src={zoomedImage} 
               alt="Imagem ampliada" 
-              className="w-auto h-auto max-w-full max-h-[90vh] object-contain mx-auto rounded-lg shadow-2xl"
+              className="w-auto h-auto max-w-full max-h-[90vh] object-cover mx-auto rounded-[20px] shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
               onError={(e) => {
                 closeZoom();
+                toast.error('Erro ao carregar imagem ampliada');
               }}
             />
           </div>

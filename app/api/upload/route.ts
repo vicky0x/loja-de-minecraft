@@ -11,6 +11,9 @@ export async function POST(request: NextRequest) {
     // Verificar se é uma solicitação multipart/form-data
     const formData = await request.formData();
     const files = formData.getAll('files') as File[];
+    const uploadType = formData.get('type') as string || 'products'; // Tipo padrão é produtos
+    
+    console.log('Headers da requisição:', Object.fromEntries(request.headers.entries()));
     
     if (!files || files.length === 0) {
       console.log('Nenhum arquivo encontrado na requisição');
@@ -20,7 +23,10 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log(`Recebidos ${files.length} arquivos para upload`);
+    console.log(`Recebidos ${files.length} arquivos para upload do tipo: ${uploadType}`);
+    files.forEach((file, index) => {
+      console.log(`Arquivo ${index+1}: nome=${file.name}, tipo=${file.type}, tamanho=${file.size} bytes`);
+    });
     
     // Validar tipos de arquivo
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -38,8 +44,15 @@ export async function POST(request: NextRequest) {
     // Processar e salvar os arquivos
     const savedPaths = [];
     
+    // Determinar o diretório com base no tipo de upload
+    let uploadSubdir = 'products'; // Diretório padrão
+    
+    if (uploadType === 'announcements') {
+      uploadSubdir = 'announcements';
+    }
+    
     // Caminho do diretório de upload
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'products');
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', uploadSubdir);
     
     // Criar o diretório se não existir
     await mkdir(uploadDir, { recursive: true });
@@ -48,39 +61,51 @@ export async function POST(request: NextRequest) {
     for (const file of files) {
       console.log(`Processando arquivo: ${file.name} (${file.size} bytes)`);
       
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      
-      // Gerar nome de arquivo único usando UUID + nome original
-      const originalName = file.name.replace(/\s+/g, '-');
-      const fileExt = path.extname(originalName);
-      const fileName = `${uuidv4()}${fileExt}`;
-      
-      // Caminho onde salvar o arquivo
-      const filePath = path.join(uploadDir, fileName);
-      
       try {
-        // Salvar o arquivo
-        await writeFile(filePath, buffer);
-        console.log('Arquivo salvo com sucesso em:', filePath);
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        console.log(`Buffer criado com sucesso. Tamanho: ${buffer.length} bytes`);
         
-        // Caminho relativo para acesso via URL
-        const relativePath = `/uploads/products/${fileName}`;
-        savedPaths.push(relativePath);
+        // Gerar nome de arquivo único usando UUID + nome original
+        const originalName = file.name.replace(/\s+/g, '-');
+        const fileExt = path.extname(originalName);
+        const fileName = `${uuidv4()}${fileExt}`;
+        console.log(`Nome de arquivo gerado: ${fileName}`);
+        
+        // Caminho onde salvar o arquivo
+        const filePath = path.join(uploadDir, fileName);
+        console.log(`Caminho completo do arquivo: ${filePath}`);
+        
+        try {
+          // Salvar o arquivo
+          await writeFile(filePath, buffer);
+          console.log('Arquivo salvo com sucesso em:', filePath);
+          
+          // Caminho relativo para acesso via URL
+          const relativePath = `/uploads/${uploadSubdir}/${fileName}`;
+          console.log('Caminho relativo (URL) gerado:', relativePath);
+          savedPaths.push(relativePath);
+        } catch (error) {
+          console.error(`Erro ao salvar o arquivo ${fileName}:`, error);
+          throw new Error(`Falha ao salvar o arquivo ${fileName}: ${error.message}`);
+        }
       } catch (error) {
-        console.error(`Erro ao salvar o arquivo ${fileName}:`, error);
-        throw new Error(`Falha ao salvar o arquivo ${fileName}`);
+        console.error(`Erro ao processar o arquivo ${file.name}:`, error);
+        throw new Error(`Falha ao processar o arquivo ${file.name}: ${error.message}`);
       }
     }
     
     console.log('Upload concluído com sucesso:', savedPaths);
-    
-    return NextResponse.json({
+    const responseData = {
       message: 'Upload realizado com sucesso',
       paths: savedPaths
-    });
+    };
+    console.log('Dados da resposta:', JSON.stringify(responseData));
+    
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('Erro no upload de arquivos:', error);
+    console.error('Stack trace:', error.stack);
     
     return NextResponse.json(
       { message: 'Erro ao processar upload', error: error.message },

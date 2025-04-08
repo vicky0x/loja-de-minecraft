@@ -81,7 +81,6 @@ export async function POST(req: NextRequest) {
     console.log('Dados recebidos na API POST:', {
       title: data.title,
       imageUrl: data.imageUrl,
-      imageUrl2: data.imageUrl2,
       videoUrl: data.videoUrl
     });
     
@@ -113,7 +112,6 @@ export async function POST(req: NextRequest) {
       authorRole: userData.role,
       authorImage: userImage,
       imageUrl: data.imageUrl,
-      imageUrl2: data.imageUrl2,
       videoUrl: data.videoUrl,
     });
     

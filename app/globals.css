@@ -1070,11 +1070,15 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
 }
 
 .announcement-image img {
-  transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+  border-radius: 20px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.3s ease;
+  object-fit: cover !important;
 }
 
 .announcement-image:hover img {
-  transform: scale(1.08);
+  border-radius: 20px !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
 .announcement-header {
@@ -1640,6 +1644,26 @@ div[id="admin-menu"] {
   z-index: 50 !important;
 }
 
+/* Garantir que o modal de zoom tem prioridade máxima */
+.announcement-zoom-modal,
+.announcement-zoom-modal *,
+[class*="announcement-zoom-modal"] {
+  z-index: 100 !important;
+}
+
+.announcement-zoom-modal button {
+  z-index: 101 !important;
+}
+
+/* Quando o modal de zoom está aberto, esconder outros cards */
+body.modal-open .announcement-item:not(:has(.announcement-zoom-modal)) {
+  visibility: hidden;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
 /* Animações para contador de vendas e avaliações */
 @keyframes countUp {
   0% {
@@ -1744,4 +1768,24 @@ div[id="admin-menu"] {
 
 .increment-animation {
   animation: clientCounterIncrement 0.7s ease-out;
+}
+
+/* Estilização das imagens dos anúncios */
+.announcement-image img {
+  border-radius: 20px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.3s ease;
+  object-fit: cover !important;
+}
+
+.announcement-image:hover img {
+  border-radius: 20px !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Modal de zoom com imagem arredondada */
+.announcement-zoom-modal img {
+  border-radius: 20px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+  object-fit: cover !important;
 }

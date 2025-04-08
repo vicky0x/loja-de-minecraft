@@ -15,60 +15,41 @@ async function ensureDirectoryExists() {
   }
 }
 
-// GET /api/featuredProducts - Obter os IDs dos produtos em destaque
-export async function GET() {
+// GET /api/featuredProducts/validate - Validar e limpar produtos inválidos
+export async function GET(request: NextRequest) {
   try {
-    // Verificar se o arquivo existe, se não, retornar um array vazio
+    // Checar API key para segurança (opcional)
+    const apiKey = request.nextUrl.searchParams.get('key');
+    const cronApiKey = process.env.CRON_API_KEY || 'chave-secreta';
+    
+    if (apiKey !== cronApiKey) {
+      return NextResponse.json(
+        { success: false, message: 'Acesso não autorizado' },
+        { status: 401 }
+      );
+    }
+    
+    // Ler o arquivo de produtos em destaque
+    let featuredIds: string[] = [];
     try {
       const data = await fs.readFile(featuredProductsFilePath, 'utf-8');
-      const featuredProducts = JSON.parse(data);
-      
-      return NextResponse.json({ 
-        success: true, 
-        featuredProducts 
-      });
+      featuredIds = JSON.parse(data);
     } catch (error) {
       // Se o arquivo não existir, criar um arquivo vazio
       await ensureDirectoryExists();
       await fs.writeFile(featuredProductsFilePath, JSON.stringify([]));
-      
-      return NextResponse.json({ 
-        success: true, 
-        featuredProducts: [] 
-      });
-    }
-  } catch (error) {
-    console.error('Erro ao obter produtos em destaque:', error);
-    return NextResponse.json(
-      { success: false, message: 'Erro ao obter produtos em destaque' },
-      { status: 500 }
-    );
-  }
-}
-
-// POST /api/featuredProducts - Atualizar os IDs dos produtos em destaque
-export async function POST(request: NextRequest) {
-  try {
-    // Na versão simplificada, não fazemos verificação de autenticação
-    // Em produção, você deve implementar um sistema de autenticação adequado
-    
-    // Obter os novos IDs dos produtos em destaque
-    const { featuredProducts } = await request.json();
-    
-    // Validar se featuredProducts é um array
-    if (!Array.isArray(featuredProducts)) {
-      return NextResponse.json(
-        { success: false, message: 'Formato inválido. Esperado um array de IDs.' },
-        { status: 400 }
-      );
     }
     
-    // Verificar a existência de cada produto antes de salvar
-    const validatedProducts = [];
-    const invalidProducts = [];
+    if (featuredIds.length === 0) {
+      return NextResponse.json({ success: true, message: 'Nenhum produto em destaque para validar' });
+    }
+    
+    // Verificar a existência de cada produto
+    const validatedProducts: string[] = [];
+    const invalidProducts: string[] = [];
     
     // Verificar cada ID para garantir que o produto existe
-    for (const id of featuredProducts) {
+    for (const id of featuredIds) {
       try {
         // Pulamos IDs vazios ou não-strings
         if (!id || typeof id !== 'string' || id.trim() === '') {
@@ -85,7 +66,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Produto não existe, adicionar à lista de inválidos
           invalidProducts.push(id);
-          console.warn(`Produto não encontrado (ID: ${id}). Não será incluído nos destaques.`);
+          console.warn(`Produto não encontrado (ID: ${id}). Removido dos destaques.`);
         }
       } catch (error) {
         console.error(`Erro ao validar produto ${id}:`, error);
@@ -93,24 +74,30 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Garantir que o diretório existe
-    await ensureDirectoryExists();
+    // Se não houver produtos inválidos, nada a fazer
+    if (invalidProducts.length === 0) {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Todos os produtos em destaque são válidos',
+        featuredProducts: featuredIds
+      });
+    }
     
     // Salvar apenas os IDs validados no arquivo JSON
     await fs.writeFile(featuredProductsFilePath, JSON.stringify(validatedProducts));
     
     return NextResponse.json({
       success: true,
-      message: invalidProducts.length > 0 
-        ? `Produtos em destaque atualizados com sucesso. ${invalidProducts.length} produtos inválidos foram removidos.`
-        : 'Produtos em destaque atualizados com sucesso',
+      message: `Produtos em destaque validados. ${invalidProducts.length} produtos inválidos foram removidos.`,
       featuredProducts: validatedProducts,
-      invalidProducts: invalidProducts
+      invalidProducts: invalidProducts,
+      removedCount: invalidProducts.length
     });
+    
   } catch (error) {
-    console.error('Erro ao atualizar produtos em destaque:', error);
+    console.error('Erro ao validar produtos em destaque:', error);
     return NextResponse.json(
-      { success: false, message: 'Erro ao atualizar produtos em destaque' },
+      { success: false, message: 'Erro ao validar produtos em destaque' },
       { status: 500 }
     );
   }
