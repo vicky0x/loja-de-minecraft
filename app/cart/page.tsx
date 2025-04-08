@@ -6,7 +6,7 @@ import {
   FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiX, FiArrowLeft,
   FiShoppingBag, FiTag, FiAlertTriangle, FiCheck, FiUser,
   FiMail, FiPhone, FiCreditCard, FiArrowRight, FiLock,
-  FiShield, FiAlertCircle, FiCheckCircle
+  FiShield, FiAlertCircle, FiCheckCircle, FiInfo
 } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons';
 import Link from 'next/link';
@@ -42,6 +42,7 @@ const IconFiLock = (props: IconProps) => <FiLock {...props} />;
 const IconFiShield = (props: IconProps) => <FiShield {...props} />;
 const IconFiAlertCircle = (props: IconProps) => <FiAlertCircle {...props} />;
 const IconFiCheckCircle = (props: IconProps) => <FiCheckCircle {...props} />;
+const IconFiInfo = (props: IconProps) => <FiInfo {...props} />;
 
 // Utilitário para formatação de valores
 const formatCurrency = (value: number): string => {
@@ -134,34 +135,52 @@ export default function CartPage() {
         const storedOrderId = localStorage.getItem('createdOrderId');
         
         if (storedPixData && storedOrderId) {
-          const parsedPixData = JSON.parse(storedPixData);
-          console.log('Restaurando dados de pagamento PIX do localStorage:', parsedPixData);
-          
-          setPixPaymentData(parsedPixData);
-          setCreatedOrderId(storedOrderId);
-          setIsPixModalOpen(true);
-        }
-        
-        // Verificar e restaurar dados do cliente
-        const storedCustomerData = localStorage.getItem('customerData');
-        if (storedCustomerData) {
           try {
-            const parsedCustomerData = JSON.parse(storedCustomerData);
-            // Verificar se os dados são válidos antes de restaurar
-            if (parsedCustomerData && 
-                typeof parsedCustomerData === 'object' && 
-                parsedCustomerData.firstName &&
-                parsedCustomerData.lastName) {
-              console.log('Restaurando dados do cliente do localStorage');
-              setCustomerData(parsedCustomerData);
+            const parsedPixData = JSON.parse(storedPixData);
+            console.log('Encontrados dados de pagamento PIX no localStorage');
+            
+            // Verificar se o pagamento já expirou
+            const expiresAt = parsedPixData.expiresAt ? new Date(parsedPixData.expiresAt) : null;
+            const now = new Date();
+            
+            // Se o pagamento já expirou, limpar do localStorage
+            if (expiresAt && expiresAt < now) {
+              console.log('Dados de pagamento PIX expirados, removendo do localStorage');
+              localStorage.removeItem('pixPaymentData');
+              localStorage.removeItem('createdOrderId');
+              setPixPaymentData(null);
+              setCreatedOrderId(null);
+              setIsPixModalOpen(false);
+              return;
             }
-          } catch (error) {
-            console.error('Erro ao processar dados do cliente do localStorage:', error);
+            
+            // Apenas atualizar os dados, não abrir o modal automaticamente
+            // a menos que o modal já estivesse aberto anteriormente
+            setPixPaymentData(parsedPixData);
+            setCreatedOrderId(storedOrderId);
+            // Manter o estado atual do modal - não alterar automaticamente
+          } catch (parseError) {
+            console.error('Erro ao processar dados de PIX armazenados:', parseError);
+            localStorage.removeItem('pixPaymentData');
+            localStorage.removeItem('createdOrderId');
+            setPixPaymentData(null);
+            setCreatedOrderId(null);
+            setIsPixModalOpen(false);
           }
+        } else {
+          // Se não há dados armazenados, garantir que o modal esteja fechado
+          setIsPixModalOpen(false);
         }
       } catch (error) {
-        console.error('Erro ao recuperar dados do localStorage:', error);
+        console.error('Erro ao recuperar dados de PIX do localStorage:', error);
+        // Se houver erro, garantimos que o modal esteja fechado
+        setIsPixModalOpen(false);
       }
+      
+      // Limpeza de outros estados problemáticos
+      setShowDeleteConfirm(null);
+      setIsLoading(false);
+      setError(null);
     };
     
     // Verificar dados armazenados quando o componente montar
@@ -199,12 +218,37 @@ export default function CartPage() {
           const storedOrderId = localStorage.getItem('createdOrderId');
           
           if (storedPixData && storedOrderId) {
-            const parsedPixData = JSON.parse(storedPixData);
-            
-            // Garantir que o modal esteja aberto apenas se houver dados válidos
-            setPixPaymentData(parsedPixData);
-            setCreatedOrderId(storedOrderId);
-            setIsPixModalOpen(true);
+            try {
+              const parsedPixData = JSON.parse(storedPixData);
+              
+              // Verificar se o pagamento já expirou
+              const expiresAt = parsedPixData.expiresAt ? new Date(parsedPixData.expiresAt) : null;
+              const now = new Date();
+              
+              // Se o pagamento já expirou, limpar do localStorage
+              if (expiresAt && expiresAt < now) {
+                console.log('Dados de pagamento PIX expirados, removendo do localStorage');
+                localStorage.removeItem('pixPaymentData');
+                localStorage.removeItem('createdOrderId');
+                setPixPaymentData(null);
+                setCreatedOrderId(null);
+                setIsPixModalOpen(false);
+                return;
+              }
+              
+              // Apenas atualizar os dados, não abrir o modal automaticamente
+              // a menos que o modal já estivesse aberto anteriormente
+              setPixPaymentData(parsedPixData);
+              setCreatedOrderId(storedOrderId);
+              // Manter o estado atual do modal - não alterar automaticamente
+            } catch (parseError) {
+              console.error('Erro ao processar dados de PIX armazenados:', parseError);
+              localStorage.removeItem('pixPaymentData');
+              localStorage.removeItem('createdOrderId');
+              setPixPaymentData(null);
+              setCreatedOrderId(null);
+              setIsPixModalOpen(false);
+            }
           } else {
             // Se não há dados armazenados, garantir que o modal esteja fechado
             setIsPixModalOpen(false);
@@ -836,12 +880,36 @@ export default function CartPage() {
         const storedOrderId = localStorage.getItem('createdOrderId');
         
         if (storedPixData && storedOrderId && isMounted.current) {
-          const parsedPixData = JSON.parse(storedPixData);
-          
-          // Restaurar dados e reabrir o modal
-          setPixPaymentData(parsedPixData);
-          setCreatedOrderId(storedOrderId);
-          setIsPixModalOpen(true);
+          try {
+            const parsedPixData = JSON.parse(storedPixData);
+            
+            // Verificar se o pagamento já expirou
+            const expiresAt = parsedPixData.expiresAt ? new Date(parsedPixData.expiresAt) : null;
+            const now = new Date();
+            
+            // Se o pagamento já expirou, limpar do localStorage
+            if (expiresAt && expiresAt < now) {
+              console.log('Dados de pagamento PIX expirados, removendo do localStorage');
+              localStorage.removeItem('pixPaymentData');
+              localStorage.removeItem('createdOrderId');
+              setPixPaymentData(null);
+              setCreatedOrderId(null);
+              setIsPixModalOpen(false);
+              return;
+            }
+            
+            // Apenas atualizar os dados, não abrir o modal automaticamente
+            setPixPaymentData(parsedPixData);
+            setCreatedOrderId(storedOrderId);
+            // Não abrimos o modal automaticamente: setIsPixModalOpen(false);
+          } catch (parseError) {
+            console.error('Erro ao processar dados de PIX armazenados:', parseError);
+            localStorage.removeItem('pixPaymentData');
+            localStorage.removeItem('createdOrderId');
+            setPixPaymentData(null);
+            setCreatedOrderId(null);
+            setIsPixModalOpen(false);
+          }
         }
         
         // Restauramos outros estados que possam ter travado
@@ -1387,6 +1455,33 @@ export default function CartPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
             Seu Carrinho
           </h1>
+          
+          {/* Aviso de pagamento PIX pendente */}
+          {pixPaymentData && !isPixModalOpen && (
+            <div className="mt-4 mx-auto max-w-2xl bg-primary/10 border border-primary/30 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 text-primary">
+                  <IconFiInfo size={24} />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-primary">Pagamento PIX pendente</h3>
+                  <div className="mt-1 text-sm text-gray-200">
+                    <p>Você tem um pagamento PIX no valor de {formatCurrency(pixPaymentData.total || 0)} aguardando confirmação.</p>
+                  </div>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsPixModalOpen(true)}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none"
+                    >
+                      <IconFiCreditCard className="mr-2 -ml-1 h-4 w-4" aria-hidden="true" />
+                      Ver código PIX
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           
           {!isCartEmpty && (
             <div className="flex items-center justify-center space-x-8 mt-6">

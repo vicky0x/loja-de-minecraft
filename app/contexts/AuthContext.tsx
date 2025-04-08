@@ -505,36 +505,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log("Iniciando processo de logout");
       
-      // Remover dados do localStorage
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('username');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('userRole');
-      
-      // Chamar a API de logout
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      // Limpar todos os cookies relacionados à autenticação
+      const cookiesToRemove = [
+        'auth_token',
+        'user',
+        'isAuthenticated',
+        'userId',
+        'username',
+        'userEmail',
+        'userRole',
+        'next-auth.session-token',
+        'next-auth.csrf-token',
+        'next-auth.callback-url'
+      ];
+
+      cookiesToRemove.forEach(cookieName => {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
       });
       
-      if (!response.ok) {
-        console.error('Erro na resposta da API de logout:', response.status);
-      } else {
-        console.log('API de logout respondeu com sucesso');
+      // Remover dados do localStorage
+      const localStorageKeys = [
+        'auth_token',
+        'user',
+        'isAuthenticated',
+        'userId',
+        'username',
+        'userEmail',
+        'userRole',
+        'next-auth.session-token',
+        'next-auth.csrf-token',
+        'next-auth.callback-url'
+      ];
+      
+      localStorageKeys.forEach(key => localStorage.removeItem(key));
+      
+      // Limpar sessionStorage também
+      sessionStorage.clear();
+      
+      // Chamar a API de logout
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+        });
+        
+        if (!response.ok) {
+          console.error('Erro na resposta da API de logout:', response.status);
+        } else {
+          console.log('API de logout respondeu com sucesso');
+        }
+      } catch (apiError) {
+        console.error('Erro ao chamar API de logout:', apiError);
       }
       
-      // Atualizar o estado mesmo se a API falhar
+      // Atualizar o estado
       setUser(null);
       setIsAuthenticated(false);
       setLoading(false);
       
-      // Dispatch evento para outros componentes de forma segura
+      // Dispatch evento para outros componentes
       try {
         const event = new CustomEvent('auth-change', { 
           detail: { isAuthenticated: false, user: null }
@@ -542,11 +578,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         window.dispatchEvent(event);
       } catch (eventError) {
         console.error("Erro ao disparar evento auth-change:", eventError);
-        // Continuar mesmo se o evento falhar
       }
       
-      // Redirecionar para a página inicial
-      router.push('/');
+      // Forçar recarregamento completo da página
+      window.location.href = '/?logout=' + Date.now();
       
       console.log("Processo de logout concluído");
     } catch (error) {
@@ -557,10 +592,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthenticated(false);
       setLoading(false);
       
-      // Redirecionar para a página inicial mesmo com erro
-      router.push('/');
+      // Forçar recarregamento completo da página
+      window.location.href = '/?logout=' + Date.now();
     }
-  }, [router]);
+  }, []);
 
   const contextValue = {
     user,

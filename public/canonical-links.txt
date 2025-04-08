@@ -1,0 +1,32 @@
+# URLs Canônicas para Fantasy Store
+# Este arquivo é uma referência para implementar tags canonical em todas as páginas
+
+# Páginas principais
+https://fantasystore.com.br/ - Página inicial
+https://fantasystore.com.br/products - Lista de produtos
+https://fantasystore.com.br/auth/login - Login
+https://fantasystore.com.br/auth/register - Registro
+
+# Produtos individuais
+https://fantasystore.com.br/product/minecraft-java-bedrock-edition - Minecraft Java + Bedrock Edition
+https://fantasystore.com.br/product/minecraft-com-capa-migrator - Minecraft com Capa Migrator
+https://fantasystore.com.br/product/minecraft-full-acesso-vip-hypixel - Minecraft Full Acesso + VIP Hypixel
+
+# Categorias
+https://fantasystore.com.br/category/minecraft-full-acesso - Categoria Full Acesso
+https://fantasystore.com.br/category/minecraft-com-capas - Categoria Capas
+https://fantasystore.com.br/category/minecraft-com-vip - Categoria VIP
+
+# Páginas informativas
+https://fantasystore.com.br/terms - Termos de Uso
+https://fantasystore.com.br/privacy - Política de Privacidade
+https://fantasystore.com.br/refund - Política de Reembolso
+
+# URLs potencialmente duplicadas que devem usar canonical
+https://fantasystore.com.br/products?page=1 - Canonical para /products
+https://fantasystore.com.br/products?sort=price_asc - Canonical para /products
+https://fantasystore.com.br/products?sort=price_desc - Canonical para /products
+https://fantasystore.com.br/search?q=minecraft - Canonical para /products
+
+# Para implementar em cada página:
+# <link rel="canonical" href="URL_CANÔNICA" />

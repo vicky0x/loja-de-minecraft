@@ -35,13 +35,23 @@ export default function AuthNav() {
 
   const handleLogout = async () => {
     try {
-      await logout();
       setShowMenu(false);
-      router.refresh();
-      router.push('/');
+      
+      // Marcar que um processo de logout está em andamento
+      sessionStorage.setItem('logout_in_progress', 'true');
+      
+      // Chamar a função de logout
+      await logout();
+      
+      // Forçar recarregamento completo da página
+      window.location.href = '/?logout=' + Date.now();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
       toast.error('Falha ao fazer logout');
+      
+      // Mesmo com erro, tentar forçar o logout
+      sessionStorage.setItem('logout_in_progress', 'true');
+      window.location.href = '/?logout=' + Date.now();
     }
   };
 

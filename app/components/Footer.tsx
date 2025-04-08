@@ -67,7 +67,7 @@ export default function Footer() {
               <span className="absolute -bottom-2 left-0 w-12 h-0.5 bg-gradient-to-r from-primary to-primary-light rounded-full"></span>
             </h3>
             <p className="text-slate-300 mb-6 leading-relaxed">
-              A melhor loja de contas Minecraft Premium do Brasil. Oferecemos contas originais Java e Bedrock com garantia de até 365 dias e entrega imediata.
+              A melhor loja de contas de Minecraft Premium do Brasil. Oferecemos contas originais Java e Bedrock com garantia de até 365 dias e entrega imediata.
             </p>
             <div className="flex space-x-5">
               <motion.a 
@@ -144,7 +144,7 @@ export default function Footer() {
                   <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
                     <FaChevronRight size={12} />
                   </span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-200">Contas Minecraft</span>
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">Contas de Minecraft</span>
                 </Link>
               </li>
               <li className="group">
@@ -249,7 +249,7 @@ export default function Footer() {
             viewport={{ once: true }}
             className="text-slate-300 font-light"
           >
-            © {currentYear} Fantasy Store - Loja de Contas Minecraft Premium. Todos os direitos reservados.
+            © {currentYear} Fantasy Store - Loja de Contas de Minecraft Premium. Todos os direitos reservados.
           </motion.p>
           
           {/* Texto adicional com palavras-chave relevantes para SEO */}
@@ -263,8 +263,8 @@ export default function Footer() {
             viewport={{ once: true }}
             className="text-slate-400 text-xs max-w-4xl mx-auto mt-4 px-4"
           >
-            Fantasy Store é especializada em venda de contas Minecraft Original Premium com garantia de até 365 dias. 
-            Fornecemos contas Minecraft Java Edition e Bedrock Edition com entrega automática imediata. 
+            Fantasy Store é especializada em venda de contas de Minecraft Original Premium com garantia de até 365 dias. 
+            Fornecemos contas de Minecraft Java Edition e Bedrock Edition com entrega automática imediata. 
             Compre Minecraft Original pelo menor preço do Brasil com total segurança. 
             Minecraft é marca registrada da Mojang Studios e Microsoft. Não somos afiliados a Mojang ou Microsoft.
           </motion.p>

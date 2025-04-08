@@ -7,7 +7,7 @@ import ProductList from './components/ProductList';
 
 export default function Home() {
   // Estado para armazenar os IDs dos produtos em destaque
-  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Buscar os IDs dos produtos em destaque
@@ -31,67 +31,29 @@ export default function Home() {
     fetchFeaturedProductIds();
   }, []);
 
-  // Jogos populares
-  const popularGames = [
-    {
-      id: 1,
-      name: 'Valorant',
-      image: '/images/games/valorant.jpg',
-      slug: 'valorant',
-    },
-    {
-      id: 2,
-      name: 'Counter-Strike 2',
-      image: '/images/games/cs2.jpg',
-      slug: 'cs2',
-    },
-    {
-      id: 3,
-      name: 'Apex Legends',
-      image: '/images/games/apex.jpg',
-      slug: 'apex-legends',
-    },
-    {
-      id: 4,
-      name: 'PUBG',
-      image: '/images/games/pubg.jpg',
-      slug: 'pubg',
-    },
-    {
-      id: 5,
-      name: 'Fortnite',
-      image: '/images/games/fortnite.jpg',
-      slug: 'fortnite',
-    },
-    {
-      id: 6,
-      name: 'Call of Duty',
-      image: '/images/games/cod.jpg',
-      slug: 'call-of-duty',
-    }
-  ];
+
 
   // Features do produto
   const features = [
     {
       icon: 'shield',
       title: 'Entrega Imediata',
-      description: 'Receba sua conta Minecraft Premium imediatamente após a confirmação do pagamento'
+      description: 'Receba sua conta de Minecraft Original imediatamente após a confirmação do pagamento'
     },
     {
       icon: 'update',
       title: 'Garantia de até 365 dias',
-      description: 'Todas as nossas contas possuem garantia de até 365 dias em caso de problemas'
+      description: 'Todas as nossas contas originais de Minecraft possuem garantia de até 365 dias contra problemas'
     },
     {
       icon: 'support',
       title: 'Suporte 24/7',
-      description: 'Nossa equipe de suporte está sempre disponível para ajudar com qualquer problema'
+      description: 'Nossa equipe de suporte está sempre disponível para ajudar com qualquer dúvida ou problema'
     },
     {
       icon: 'interface',
-      title: 'Acesso Completo',
-      description: 'Contas com acesso completo ao e-mail e possibilidade de alterar todos os dados'
+      title: 'Full Acesso Garantido',
+      description: 'Contas Microsoft com acesso completo - altere e-mail, senha, nick e skin como quiser'
     }
   ];
 
@@ -101,7 +63,7 @@ export default function Home() {
       value: '98', 
       label: 'Taxa de Satisfação', 
       suffix: '%', 
-      description: 'Clientes satisfeitos com nossas contas Minecraft',
+      description: 'Clientes satisfeitos com nossas contas de Minecraft',
       icon: 'star'
     },
     { 
@@ -111,15 +73,15 @@ export default function Home() {
       icon: 'support'
     },
     { 
-      value: '10k+', 
+      value: '5k+', 
       label: 'Contas Vendidas', 
-      description: 'Jogadores utilizando nossas contas Minecraft',
+      description: 'Jogadores utilizando nossas contas de Minecraft',
       icon: 'users'
     },
     { 
       value: '5+', 
       label: 'Anos de Experiência', 
-      description: 'Fornecendo as melhores contas Minecraft do Brasil',
+      description: 'Fornecendo as melhores contas de Minecraft do Brasil',
       icon: 'calendar'
     }
   ];
@@ -127,28 +89,32 @@ export default function Home() {
   // Perguntas frequentes
   const faqs = [
     { 
-      question: 'O que são contas Minecraft Premium?', 
-      answer: 'Contas Minecraft Premium são contas originais que oferecem acesso completo ao jogo, permitindo jogar em todos os servidores, trocar de skin e aproveitar todas as funcionalidades do Minecraft Java ou Bedrock Edition.' 
+      question: 'O que são contas de Minecraft Full Acesso?', 
+      answer: 'Contas de Minecraft Full Acesso (FA) são contas Microsoft originais que oferecem acesso completo ao jogo, permitindo alterar e-mail, senha, nick, skin e jogar em todos os servidores das versões Java e Bedrock Edition do Minecraft.' 
     },
     { 
       question: 'Como funciona o processo de compra?', 
-      answer: 'Após a confirmação do pagamento, você receberá automaticamente os dados de acesso da sua conta Minecraft Premium em nosso sistema e por e-mail. A entrega é imediata e 100% automática.' 
+      answer: 'Após a confirmação do pagamento, você receberá automaticamente os dados de acesso da sua conta de Minecraft Original em nosso sistema e por e-mail. A entrega é imediata e 100% automática para maior comodidade. Caso não tenhamos estoque disponível para entrega automática no momento da compra, enviaremos sua conta em até 24h.' 
     },
     { 
       question: 'As contas têm garantia?', 
-      answer: 'Sim! Todas as nossas contas Minecraft possuem garantia de até 365 dias. Se acontecer qualquer problema com sua conta, nós substituímos por outra imediatamente, sem custos adicionais.' 
+      answer: 'Sim! Todas as nossas contas de Minecraft originais possuem garantia de até 365 dias. Se acontecer qualquer problema com sua conta, nós substituímos por outra imediatamente, sem custos adicionais.' 
     },
     { 
-      question: 'Posso alterar os dados da conta após a compra?', 
-      answer: 'Sim, você receberá acesso completo à conta, incluindo o e-mail, permitindo alterar a senha, nome de usuário, skin e todos os outros dados da conta Minecraft.' 
+      question: 'Posso alterar todos os dados da conta após a compra?', 
+      answer: 'Sim, nas contas Full Acesso você recebe acesso completo, podendo alterar o e-mail, senha, nome de usuário (nick), skin e todos os outros dados da conta de Minecraft, tornando-a definitivamente sua.' 
     },
     { 
-      question: 'A conta é original/legítima?', 
-      answer: 'Sim, todas as nossas contas Minecraft são 100% originais e legítimas, compradas diretamente da Mojang/Microsoft, permitindo acesso completo a todas as funcionalidades do jogo.' 
+      question: 'A conta é original/legítima da Microsoft?', 
+      answer: 'Sim, todas as nossas contas de Minecraft são 100% originais e legítimas da Microsoft, garantindo acesso completo a todas as funcionalidades do jogo, tanto na versão Java quanto na Bedrock Edition.' 
+    },
+    { 
+      question: 'Qual a diferença entre a Fantasy Store e outras lojas de Minecraft?', 
+      answer: 'A principal diferença está na origem e legitimidade das contas. Enquanto muitas lojas vendem contas adquiridas por meios ilegais ou contas roubadas, a Fantasy Store trabalha exclusivamente com fornecedores autorizados que são nossos parceiros oficiais. Nossas contas são 100% legítimas, o que nos permite oferecer garantia de até 365 dias. Além disso, temos suporte humano 24/7, preços competitivos e sistema de entrega automática, proporcionando uma experiência de compra segura e confiável.' 
     },
     { 
       question: 'Qual a diferença entre Minecraft Java e Bedrock?', 
-      answer: 'Minecraft Java é a versão para computadores (Windows, Mac e Linux) com maior compatibilidade com mods e servidores. Minecraft Bedrock é a versão multiplataforma (PC, console e mobile) com suporte a crossplay entre diferentes dispositivos.' 
+      answer: 'O Minecraft Java Edition é a versão para computadores (Windows, Mac e Linux) com maior compatibilidade com mods e servidores. O Minecraft Bedrock Edition é a versão multiplataforma (PC, console e mobile) com suporte a crossplay. Nossas contas incluem AMBAS as versões!' 
     }
   ];
 
@@ -205,8 +171,8 @@ export default function Home() {
                 {/* Texto principal com efeito de brilho */}
                 <div className="relative z-10 font-medium text-white/95 tracking-wide group-hover:text-white transition-all duration-300 ml-1">
                   <span className="relative inline-block group-hover:animate-text-glow">
-                    A Maior Loja de Minecraft
-                    <span className="font-bold text-yellow-400 group-hover:text-yellow-300 transition-colors duration-300"> da América Latina</span>
+                    A Maior Loja de Contas Originais de Minecraft
+                    <span className="font-bold text-yellow-400 group-hover:text-yellow-300 transition-colors duration-300"> do Brasil</span>
                   </span>
                 </div>
                 
@@ -217,14 +183,13 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700 transform translate-y-full group-hover:translate-y-0"></div>
               </div>
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
-                Fantasy Store
+                Minecraft Original Barato
               </h1>
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold mb-6 tracking-wide">
-                Contas Minecraft <span className="text-primary">Premium</span>
+                Contas de Minecraft <span className="text-primary">Full Acesso</span> e <span className="text-primary">Premium</span>
               </h2>
               <p className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-                Compre contas originais Minecraft Java e Bedrock com acesso completo.
-                Entrega automática e garantia de até 365 dias pelo menor preço do Brasil.
+                Compre Minecraft original com garantia e preço justo. Contas Microsoft com Java e Bedrock Edition, acesso completo, entrega imediata e suporte 24h.
               </p>
             </div>
             
@@ -246,7 +211,7 @@ export default function Home() {
                 
                 {/* Texto e ícone */}
                 <span className="relative z-10 flex items-center justify-center text-primary group-hover:text-white font-medium tracking-wide text-sm transition-colors duration-300">
-                  EXPLORAR CONTAS
+                  EXPLORAR CONTAS DE MINECRAFT
                   <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1.5 transition-all duration-500 ease-out" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
@@ -337,7 +302,7 @@ export default function Home() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16 opacity-0 animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
             <h2 className="text-3xl md:text-4xl font-bold inline-block mb-6 relative">
-              CONTAS MINECRAFT ORIGINAL
+              CONTAS DE MINECRAFT ORIGINAL
               <span className="absolute -bottom-2 left-1/2 w-24 h-1 bg-gradient-to-r from-primary-dark via-primary to-primary-light transform -translate-x-1/2 rounded-full"></span>
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto">
@@ -350,7 +315,7 @@ export default function Home() {
             <ProductList 
               selectedIds={selectedProductIds.length > 0 ? selectedProductIds : undefined}
               showTitle={true}
-              title="Contas Minecraft em Destaque" 
+              title="Contas de Minecraft em Destaque" 
               limit={4}
             />
           </div>
@@ -361,7 +326,7 @@ export default function Home() {
               href="/products" 
               className="px-8 py-3 bg-dark-300 text-white rounded-lg inline-flex items-center hover:bg-dark-400 transition-colors"
             >
-              Ver Todos os Produtos
+              ADQUIRA SUA CONTA MINECRAFT AGORA! 🔥
               <svg className="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -502,7 +467,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </span>
-                    <span>Contas antigas (mais de 1 ano de criação)</span>
+                    <span>Conta original e completa por menos de R$70</span>
                   </li>
                   <li className="flex items-start space-x-3">
                     <span className="text-green-500 mt-1">
@@ -510,7 +475,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </span>
-                    <span>Contas com medalhas raras antigas</span>
+                    <span>Contas antigas e raras</span>
                   </li>
                   <li className="flex items-start space-x-3">
                     <span className="text-green-500 mt-1">
@@ -518,7 +483,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </span>
-                    <span>Integridade verde (conta confiável)</span>
+                    <span>Suporte humano 24/7</span>
                   </li>
                   <li className="flex items-start space-x-3">
                     <span className="text-green-500 mt-1">
@@ -526,7 +491,23 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </span>
-                    <span>Menor risco de cheaters</span>
+                    <span>Contas com capas e itens raros e exclusivos</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-green-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span>Garantia de até 365 dias</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-green-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span>Segurança e garantia total sobre a conta</span>
                   </li>
                 </ul>
               </div>
@@ -534,7 +515,7 @@ export default function Home() {
               <div className="p-6">
                 <div className="p-2 mb-6 inline-flex items-center justify-center bg-dark-300/50 rounded-lg">
                   <div className="px-3 py-1 bg-dark-400 text-gray-300 rounded-md text-center font-semibold">
-                    Comprando direto na Mojang
+                    Comprando direto na Microsoft
                   </div>
                 </div>
                 
@@ -550,7 +531,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </span>
-                    <span>Conta recente</span>
+                    <span>O jogo custa R$199</span>
                   </li>
                   <li className="flex items-start space-x-3">
                     <span className="text-red-500 mt-1">
@@ -558,7 +539,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </span>
-                    <span>Sem medalhas</span>
+                    <span>Conta recente e sem estatísticas</span>
                   </li>
                   <li className="flex items-start space-x-3">
                     <span className="text-red-500 mt-1">
@@ -566,7 +547,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </span>
-                    <span>Integridade que cai fácil</span>
+                    <span>Suporte inexistente</span>
                   </li>
                   <li className="flex items-start space-x-3">
                     <span className="text-red-500 mt-1">
@@ -574,7 +555,15 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </span>
-                    <span>Alto risco de cair com cheaters</span>
+                    <span>Conta sem capas e itens</span>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <span className="text-red-500 mt-1">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </span>
+                    <span>Sem segurança adicional</span>
                   </li>
                 </ul>
               </div>
@@ -592,7 +581,7 @@ export default function Home() {
                   </span>
                   <div>
                     <p className="font-medium text-white">Entrega instantânea</p>
-                    <p className="text-sm text-gray-300">Receba sua conta em menos de 1 minuto após a confirmação</p>
+                    <p className="text-sm text-gray-300">Receba sua conta em menos de 1 minuto após a confirmação. Caso não tenhamos estoque disponível, entrega em até 24h.</p>
                   </div>
                 </li>
                 <li className="flex items-start space-x-3">
@@ -697,13 +686,9 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="https://images-static.trustpilot.com/feeds-consumer/consumer-profile-2/image.svg" 
+                    src="/fantasy_logo.png" 
                     alt="Pedrin"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
-                    onError={(e) => {
-                      const target = e.currentTarget as HTMLImageElement;
-                      target.src = 'https://ui-avatars.com/api/?name=Pedrin&background=ff6000&color=fff';
-                    }}
                   />
                   <div>
                     <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">Pedrin</h3>
@@ -740,13 +725,9 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="https://images-static.trustpilot.com/feeds-consumer/consumer-profile-5/image.svg" 
+                    src="/fantasy_logo.png" 
                     alt="João Gabriel"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
-                    onError={(e) => {
-                      const target = e.currentTarget as HTMLImageElement;
-                      target.src = 'https://ui-avatars.com/api/?name=João+Gabriel&background=ff6000&color=fff';
-                    }}
                   />
                   <div>
                     <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">João Gabriel</h3>
@@ -760,7 +741,7 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "simplesmente a melhor loja de contas Minecraft de todas, o suporte é bom, a entrega é muito rápida, a minha conta chegou em 15 minutos, além de darem o acesso a todos os dados da conta e ter um preço bem acessível e é a única loja que eu confio em comprar o mine e recomendo a meus amigos"
+                  "simplesmente a melhor loja de contas de Minecraft de todas, o suporte é bom, a entrega é muito rápida, a minha conta chegou em 15 minutos, além de darem o acesso a todos os dados da conta e ter um preço bem acessível e é a única loja que eu confio em comprar o mine e recomendo a meus amigos"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
                   <span className="mr-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs flex items-center">
@@ -783,13 +764,9 @@ export default function Home() {
                 
                 <div className="flex items-center mb-4 relative z-10">
                   <img 
-                    src="https://images-static.trustpilot.com/feeds-consumer/consumer-profile-3/image.svg" 
+                    src="/fantasy_logo.png" 
                     alt="David Luis"
                     className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-primary"
-                    onError={(e) => {
-                      const target = e.currentTarget as HTMLImageElement;
-                      target.src = 'https://ui-avatars.com/api/?name=David+Luis&background=ff6000&color=fff';
-                    }}
                   />
                   <div>
                     <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors duration-300">David Luis</h3>
@@ -803,7 +780,7 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-300 mb-4 relative z-10">
-                  "Literalmente a melhor loja de Minecraft que já comprei. Entrega totalmente automática e um suporte maravilhoso, sem sombras de dúvida a Fantasy é a melhor loja de contas Minecraft Premium. Recomendo demais comprarem😍"
+                  "Literalmente a melhor loja de Minecraft que já comprei. Entrega totalmente automática e um suporte maravilhoso, sem sombras de dúvida a Fantasy é a melhor loja de contas de Minecraft Premium. Recomendo demais comprarem😍"
                 </p>
                 <div className="flex items-center text-sm text-gray-400 relative z-10">
                   <span className="mr-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs flex items-center">
@@ -818,6 +795,31 @@ export default function Home() {
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
               </div>
             </div>
+          </div>
+          
+          {/* Texto explicativo sobre as avaliações */}
+          <div className="text-center mt-10 max-w-3xl mx-auto opacity-0 animate-fade-in" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
+            <div className="flex items-center justify-center mb-3">
+              <svg className="w-5 h-5 text-primary mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span className="text-white font-semibold">Avaliações 100% Reais</span>
+            </div>
+            <p className="text-gray-300 text-sm">
+              Todas as avaliações apresentadas são de clientes reais e foram retiradas da nossa página no Trustpilot, 
+              a maior plataforma de avaliações do planeta. Conheça a experiência genuína de quem já comprou com a Fantasy Store.
+            </p>
+            <a 
+              href="https://br.trustpilot.com/review/fantasystore.com.br" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="inline-flex items-center mt-3 text-primary hover:text-primary-light transition-colors text-sm"
+            >
+              Ver todas as avaliações
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
           </div>
         </div>
       </section>
