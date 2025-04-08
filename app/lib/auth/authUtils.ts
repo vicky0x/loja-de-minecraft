@@ -10,7 +10,7 @@ interface AuthUser {
   _id: string;
   username: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'developer';
 }
 
 // Interface para objeto de sessão

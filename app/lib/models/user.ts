@@ -7,7 +7,7 @@ export interface IUser extends Document {
   password: string;
   name: string;
   profileImage?: string; // URL para a imagem (/api/images/[id])
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'developer';
   products: mongoose.Types.ObjectId[];
   memberNumber: number | null;
   cpf?: string;
@@ -82,7 +82,7 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['admin', 'user'],
+      enum: ['admin', 'user', 'developer'],
       default: 'user',
     },
     memberNumber: {

@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { 
   FiUser, FiSearch, FiFilter, FiChevronLeft, FiChevronRight, 
   FiCheckCircle, FiUserCheck, FiUserX, FiUsers, FiRefreshCw,
-  FiCalendar, FiMail, FiEdit, FiUserPlus, FiShield, FiDatabase
+  FiCalendar, FiMail, FiEdit, FiUserPlus, FiShield, FiDatabase, FiCode, FiAlertCircle
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -16,7 +16,7 @@ interface User {
   username: string;
   email: string;
   name: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'developer';
   memberNumber: number | null;
   profileImage?: string;
   createdAt: string;
@@ -45,6 +45,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [isPromotingToAdmin, setIsPromotingToAdmin] = useState(false);
+  const [isPromotingToDeveloper, setIsPromotingToDeveloper] = useState(false);
   const [isDemotingToUser, setIsDemotingToUser] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   
@@ -132,6 +133,36 @@ export default function UsersPage() {
     }
   };
   
+  // Função para promover usuário para desenvolvedor
+  const promoteToDeveloper = async (userId: string) => {
+    try {
+      setIsPromotingToDeveloper(true);
+      setSelectedUserId(userId);
+      
+      const response = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, role: 'developer' }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro ao promover usuário');
+      }
+      
+      // Atualizar lista
+      fetchUsers(pagination.page, search, roleFilter);
+      toast.success('Usuário promovido a desenvolvedor com sucesso!');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao promover usuário');
+    } finally {
+      setIsPromotingToDeveloper(false);
+      setSelectedUserId('');
+    }
+  };
+  
   // Função para rebaixar admin para usuário
   const demoteToUser = async (userId: string) => {
     try {
@@ -201,6 +232,7 @@ export default function UsersPage() {
             >
               <option value="">Todos os tipos</option>
               <option value="user">Usuários</option>
+              <option value="developer">Desenvolvedores</option>
               <option value="admin">Administradores</option>
             </select>
 
@@ -323,6 +355,10 @@ export default function UsersPage() {
                           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/30">
                             Administrador
                           </span>
+                        ) : user.role === 'developer' ? (
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900/30 text-green-500 border border-green-800/30">
+                            Desenvolvedor
+                          </span>
                         ) : (
                           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900/30 text-blue-400 border border-blue-800/30">
                             Usuário
@@ -347,19 +383,63 @@ export default function UsersPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
                           {user.role === 'user' ? (
-                            <button
-                              onClick={() => promoteToAdmin(user._id)}
-                              disabled={isPromotingToAdmin && selectedUserId === user._id}
-                              className="px-2 py-1 bg-green-900/30 text-green-400 border border-green-800/30 rounded hover:bg-green-900/50 transition-colors flex items-center"
-                              title="Promover a Administrador"
-                            >
-                              {isPromotingToAdmin && selectedUserId === user._id ? (
-                                <FiRefreshCw className="animate-spin" />
-                              ) : (
-                                <FiUserCheck />
-                              )}
-                              <span className="ml-1 hidden sm:inline">Promover</span>
-                            </button>
+                            <>
+                              <button
+                                onClick={() => promoteToAdmin(user._id)}
+                                disabled={isPromotingToAdmin && selectedUserId === user._id}
+                                className="px-2 py-1 bg-green-900/30 text-green-400 border border-green-800/30 rounded hover:bg-green-900/50 transition-colors flex items-center"
+                                title="Promover a Administrador"
+                              >
+                                {isPromotingToAdmin && selectedUserId === user._id ? (
+                                  <FiRefreshCw className="animate-spin" />
+                                ) : (
+                                  <FiUserCheck />
+                                )}
+                                <span className="ml-1 hidden sm:inline">Admin</span>
+                              </button>
+                              <button
+                                onClick={() => promoteToDeveloper(user._id)}
+                                disabled={isPromotingToDeveloper && selectedUserId === user._id}
+                                className="px-2 py-1 bg-teal-900/30 text-teal-400 border border-teal-800/30 rounded hover:bg-teal-900/50 transition-colors flex items-center"
+                                title="Promover a Desenvolvedor"
+                              >
+                                {isPromotingToDeveloper && selectedUserId === user._id ? (
+                                  <FiRefreshCw className="animate-spin" />
+                                ) : (
+                                  <FiCode />
+                                )}
+                                <span className="ml-1 hidden sm:inline">Dev</span>
+                              </button>
+                            </>
+                          ) : user.role === 'developer' ? (
+                            <>
+                              <button
+                                onClick={() => promoteToAdmin(user._id)}
+                                disabled={isPromotingToAdmin && selectedUserId === user._id}
+                                className="px-2 py-1 bg-green-900/30 text-green-400 border border-green-800/30 rounded hover:bg-green-900/50 transition-colors flex items-center"
+                                title="Promover a Administrador"
+                              >
+                                {isPromotingToAdmin && selectedUserId === user._id ? (
+                                  <FiRefreshCw className="animate-spin" />
+                                ) : (
+                                  <FiUserCheck />
+                                )}
+                                <span className="ml-1 hidden sm:inline">Admin</span>
+                              </button>
+                              <button
+                                onClick={() => demoteToUser(user._id)}
+                                disabled={isDemotingToUser && selectedUserId === user._id}
+                                className="px-2 py-1 bg-blue-900/30 text-blue-400 border border-blue-800/30 rounded hover:bg-blue-900/50 transition-colors flex items-center"
+                                title="Rebaixar para Usuário"
+                              >
+                                {isDemotingToUser && selectedUserId === user._id ? (
+                                  <FiRefreshCw className="animate-spin" />
+                                ) : (
+                                  <FiUserX />
+                                )}
+                                <span className="ml-1 hidden sm:inline">Usuário</span>
+                              </button>
+                            </>
                           ) : (
                             <button
                               onClick={() => demoteToUser(user._id)}

@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       ];
     }
     
-    if (role && ['admin', 'user'].includes(role)) {
+    if (role && ['admin', 'user', 'developer'].includes(role)) {
       query.role = role;
     }
     
@@ -89,7 +89,7 @@ export async function PUT(req: NextRequest) {
     const data = await req.json();
     const { userId, role } = data;
     
-    if (!userId || !role || !['admin', 'user'].includes(role)) {
+    if (!userId || !role || !['admin', 'user', 'developer'].includes(role)) {
       return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 });
     }
     

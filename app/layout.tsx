@@ -33,9 +33,9 @@ export const metadata: Metadata = {
     description: "Compre Minecraft Original barato e confiável com Full Acesso. Entrega imediata após pagamento e suporte 24/7.",
   },
   robots: {
-    index: true,
-    follow: true,
-  },
+      index: true,
+      follow: true,
+    },
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon-16x16.png",
@@ -228,22 +228,22 @@ export default function RootLayout({
                 }
               ]
             })
-          }}
-        />
+              }}
+            />
       </head>
       <body className={inter.className}>
           <AuthProvider>
             <CartProvider>
-              <Providers>
-                <Navbar />
-                <main className="pt-20">
-                  {children}
-                </main>
-                <Footer />
-                <CharlaWidgetWrapper />
-              </Providers>
-            </CartProvider>
-          </AuthProvider>
+            <Providers>
+              <Navbar />
+              <main className="pt-20">
+                {children}
+              </main>
+              <Footer />
+              <CharlaWidgetWrapper />
+            </Providers>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -12,7 +12,7 @@ interface UserProfile {
   username: string;
   email: string;
   name: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'developer';
   memberNumber: number | null;
   profileImage?: string;
   createdAt: string;
@@ -501,6 +501,8 @@ export default function ProfilePage() {
     switch (role) {
       case 'admin':
         return <span className="bg-purple-900/30 text-purple-400 px-2 py-1 rounded-md text-xs font-medium">Administrador</span>;
+      case 'developer':
+        return <span className="bg-green-900/30 text-green-500 px-2 py-1 rounded-md text-xs font-medium">Desenvolvedor</span>;
       case 'user':
         return user?.orders?.count ? (
           <span className="bg-blue-900/30 text-blue-400 px-2 py-1 rounded-md text-xs font-medium">Cliente</span>

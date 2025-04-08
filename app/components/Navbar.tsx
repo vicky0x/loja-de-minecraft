@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { FiSearch, FiShoppingCart, FiUser, FiLogOut, FiSettings, FiPackage } from 'react-icons/fi';
+import { FiSearch, FiShoppingCart, FiUser, FiLogOut, FiSettings, FiPackage, FiCode } from 'react-icons/fi';
 import { useCart } from '@/app/contexts/CartContext';
 import { IoWifi } from 'react-icons/io5';
 import { useAuth } from '../hooks/useAuth';
@@ -621,6 +621,18 @@ export default function Navbar() {
                           Painel Admin
                         </Link>
                       )}
+                      
+                      {user.role === 'developer' && (
+                        <Link 
+                          href="/admin" 
+                          className="flex items-center px-4 py-2 text-sm text-white hover:bg-primary/10 hover:text-primary transition-all duration-300"
+                          style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        >
+                          <FiCode size={16} className="mr-2" />
+                          Painel de Desenvolvimento
+                        </Link>
+                      )}
+                      
                       <Link 
                         href="/dashboard" 
                         className="flex items-center px-4 py-2 text-sm text-white hover:bg-primary/10 hover:text-primary transition-all duration-300"

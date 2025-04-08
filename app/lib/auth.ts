@@ -30,7 +30,7 @@ export interface AuthUser {
   username: string;
   email: string;
   name?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'developer';
   profileImage?: string;
   memberNumber?: number;
   createdAt?: Date;
@@ -403,6 +403,16 @@ export async function verifyToken(token: string) {
 export function isAdmin(user: AuthUser | null) {
   if (!user) return false;
   return user.role === 'admin';
+}
+
+/**
+ * Verifica se um usuário é desenvolvedor
+ * @param user Objeto do usuário
+ * @returns Boolean indicando se é developer ou não
+ */
+export function isDeveloper(user: AuthUser | null) {
+  if (!user) return false;
+  return user.role === 'developer';
 }
 
 // Limpeza periódica de tokens revogados
