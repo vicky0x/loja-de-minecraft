@@ -4,6 +4,7 @@ import Product from '@/app/lib/models/product';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import User from '@/app/lib/models/user';
+import Category from '@/app/lib/models/category';
 
 // Segredo usado para verificar os tokens JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_jwt_aqui';
@@ -36,7 +37,42 @@ export async function GET(request: NextRequest) {
     }
     
     if (category) {
-      filter.category = new mongoose.Types.ObjectId(category);
+      // Verificar se é um ObjectId válido, caso contrário, tratar como slug
+      try {
+        if (mongoose.Types.ObjectId.isValid(category)) {
+          filter.category = new mongoose.Types.ObjectId(category);
+        } else {
+          // Buscar categoria pelo slug
+          const categoryDoc = await Category.findOne({ slug: category.toLowerCase() }).exec();
+          
+          if (categoryDoc) {
+            filter.category = categoryDoc._id;
+          } else {
+            // Se não encontrar pelo slug, tentar pelo nome (case insensitive)
+            const categoryByName = await Category.findOne({ 
+              name: { $regex: new RegExp(category, 'i') } 
+            }).exec();
+            
+            if (categoryByName) {
+              filter.category = categoryByName._id;
+            } else {
+              // Fallback: se não encontrar correspondência exata, buscar produtos que tenham
+              // a categoria no nome ou descrição
+              filter.$or = filter.$or || [];
+              filter.$or.push(
+                { name: { $regex: category, $options: 'i' } },
+                { description: { $regex: category, $options: 'i' } }
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao processar filtro de categoria:', err);
+        // Em caso de erro, manter o comportamento original
+        if (mongoose.Types.ObjectId.isValid(category)) {
+          filter.category = new mongoose.Types.ObjectId(category);
+        }
+      }
     }
     
     if (featured !== null && featured !== undefined) {

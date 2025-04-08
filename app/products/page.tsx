@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FiSearch, FiFilter, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiRefreshCw, FiChevronDown, FiChevronUp, FiAlertTriangle } from 'react-icons/fi';
 import Link from 'next/link';
 import ProductList from '../components/ProductList';
 
@@ -115,14 +115,36 @@ export default function ProductsPage() {
         url += `&status=${statusParam}`;
       }
       
-      const response = await fetch(url);
+      console.log(`Fazendo requisição para: ${url}`);
+      
+      // Adicionar timestamp para evitar cache
+      url += `&_t=${Date.now()}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+        next: { revalidate: 0 }
+      });
       
       if (!response.ok) {
-        throw new Error('Erro ao carregar produtos');
+        // Tentar extrair mais informações do erro
+        try {
+          const errorData = await response.json();
+          throw new Error(`Erro na API (${response.status}): ${errorData.message || 'Erro desconhecido'}`);
+        } catch (jsonError) {
+          throw new Error(`Erro ao carregar produtos (Status ${response.status}: ${response.statusText})`);
+        }
       }
       
       const data = await response.json();
       console.log(`Recebidos ${data.products?.length || 0} produtos`);
+      
+      // Verificar estrutura de dados
+      if (!data.products || !Array.isArray(data.products)) {
+        console.error('Formato de resposta inesperado:', data);
+        throw new Error('A API retornou um formato inesperado na resposta');
+      }
       
       // Definir diretamente produtos filtrados, sem necessidade de useEffect separado
       let products = data.products || [];
@@ -130,7 +152,17 @@ export default function ProductsPage() {
       setFilteredProducts(products);
     } catch (error) {
       console.error('Erro ao buscar produtos:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao carregar produtos');
+      
+      // Capturar erro mais detalhado
+      let errorMessage = 'Erro ao carregar produtos';
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMessage = 'Erro de conexão com a API. Verifique sua conexão de internet.';
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       setFilteredProducts([]);
     } finally {
       setLoading(false);
@@ -170,14 +202,14 @@ export default function ProductsPage() {
     updateUrlParams();
   };
   
-  const handleCategoryChange = (categoryId: string) => {
-    setSelectedCategory(categoryId);
+  const handleCategoryChange = (categoryValue: string) => {
+    setSelectedCategory(categoryValue);
     
     // Construir parâmetros de URL baseados nos filtros atuais
     const params = new URLSearchParams();
     
     if (searchTerm) params.set('search', searchTerm);
-    if (categoryId) params.set('category', categoryId);
+    if (categoryValue) params.set('category', categoryValue);
     if (sortBy !== 'createdAt') params.set('sort', sortBy);
     if (sortDir !== 'desc') params.set('dir', sortDir);
     if (statusFilter !== 'all') params.set('status', statusFilter);
@@ -214,6 +246,18 @@ export default function ProductsPage() {
             <span>Atualizar</span>
           </button>
         </div>
+        
+        {error && (
+          <div className="bg-red-900/30 text-red-200 p-4 rounded-lg mb-6 border border-red-500">
+            <div className="flex items-start gap-3">
+              <FiAlertTriangle className="text-red-400 text-xl flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="font-semibold text-red-300 mb-1">Erro ao carregar produtos</h3>
+                <p className="text-sm">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="bg-dark-200 rounded-lg p-4 shadow-md">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -259,7 +303,7 @@ export default function ProductsPage() {
               >
                 <option value="">Todas as categorias</option>
                 {categories.map((category) => (
-                  <option key={category._id} value={category._id}>
+                  <option key={category._id} value={category.slug}>
                     {category.name}
                   </option>
                 ))}
@@ -301,7 +345,7 @@ export default function ProductsPage() {
                 >
                   <option value="">Todas as categorias</option>
                   {categories.map((category) => (
-                    <option key={category._id} value={category._id}>
+                    <option key={category._id} value={category.slug}>
                       {category.name}
                     </option>
                   ))}
@@ -341,21 +385,6 @@ export default function ProductsPage() {
           <div className="text-center py-8">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             <p className="mt-2 text-gray-400">Carregando produtos...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <div className="mb-4 text-red-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p className="text-red-400">{error}</p>
-            <button 
-              onClick={() => fetchProducts()} 
-              className="mt-4 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
-            >
-              Tentar novamente
-            </button>
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-12 bg-dark-200 rounded-lg">
