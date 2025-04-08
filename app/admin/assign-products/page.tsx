@@ -480,7 +480,7 @@ export default function AssignProductsPage() {
                       value={variant._id}
                       disabled={variant.stock <= 0}
                     >
-                      {variant.name} - {variant.stock} em estoque
+                      {variant.name} - {variant.stock === 99999 ? 'Grande estoque disponível' : `${variant.stock} em estoque`}
                     </option>
                   ))}
                 </select>

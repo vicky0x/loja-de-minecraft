@@ -186,7 +186,7 @@ export default function ProductDetailPage() {
                                 ? 'text-yellow-400' 
                                 : 'text-red-400'
                           }>
-                            {variant.stock}
+                            {variant.stock === 99999 ? 'Grande estoque' : variant.stock}
                           </span>
                         </div>
                       </div>
@@ -209,7 +209,7 @@ export default function ProductDetailPage() {
                             ? 'text-yellow-400' 
                             : 'text-red-400'
                       }>
-                        {product.stock}
+                        {product.stock === 99999 ? 'Grande estoque' : product.stock}
                       </span>
                     </div>
                   </div>

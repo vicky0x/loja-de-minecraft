@@ -522,7 +522,7 @@ export default function ProductStockPage() {
             >
               {product?.variants.map((variant: Variant) => (
                 <option key={variant._id} value={variant._id}>
-                  {variant.name} - Estoque: {variant.stock} unidades
+                  {variant.name} - Estoque: {variant.stock === 99999 ? 'Grande estoque' : `${variant.stock} unidades`}
                 </option>
               ))}
             </select>
@@ -533,7 +533,7 @@ export default function ProductStockPage() {
               <h4 className="text-white font-medium mb-2">Estoque do Produto</h4>
               <div className="flex items-center">
                 <span className="text-gray-300 mr-2">Estoque atual:</span>
-                <span className="text-white font-semibold">{directProductStock} unidades</span>
+                <span className="text-white font-semibold">{directProductStock === 99999 ? 'Grande estoque disponível' : `${directProductStock} unidades`}</span>
               </div>
               <p className="text-gray-400 text-sm mt-2">
                 Este produto não possui variantes. Você gerencia o estoque através dos códigos individuais adicionados abaixo.

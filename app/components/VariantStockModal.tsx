@@ -318,15 +318,35 @@ export default function VariantStockModal({ productId, isOpen, onClose }: Varian
                         </div>
                       ) : (
                         <div className="flex items-center">
-                          <div className={`text-lg font-bold ${
-                            variant.stock > 10 
-                              ? 'text-green-400' 
-                              : variant.stock > 0 
-                                ? 'text-yellow-400' 
-                                : 'text-red-400'
-                          }`}>
-                            {variant.stock}
-                          </div>
+                          {!editingStockForVariant[variant._id] ? (
+                            <div className={`text-lg font-bold ${
+                              variant.stock > 10 
+                                ? 'text-green-400' 
+                                : variant.stock > 0 
+                                  ? 'text-yellow-400' 
+                                  : 'text-red-400'
+                            }`}>
+                              {variant.stock === 99999 ? 'Grande estoque disponível' : variant.stock}
+                            </div>
+                          ) : (
+                            <div className="flex items-center">
+                              <div className={`text-lg font-bold ${
+                                variant.stock > 10 
+                                  ? 'text-green-400' 
+                                  : variant.stock > 0 
+                                    ? 'text-yellow-400' 
+                                    : 'text-red-400'
+                              }`}>
+                                {variant.stock}
+                              </div>
+                              <button
+                                onClick={() => setEditingStockForVariant(null)}
+                                className="p-1 text-red-400 hover:text-red-300 ml-2"
+                              >
+                                <FiX />
+                              </button>
+                            </div>
+                          )}
                           <button
                             onClick={() => setEditingStockForVariant(variant._id)}
                             className="p-1 text-primary hover:text-primary/80 ml-2"
@@ -399,7 +419,7 @@ export default function VariantStockModal({ productId, isOpen, onClose }: Varian
                             ? 'text-yellow-400' 
                             : 'text-red-400'
                       }`}>
-                        {productStock}
+                        {productStock === 99999 ? 'Grande estoque disponível' : productStock}
                       </div>
                       <button
                         onClick={() => setEditingStock(true)}

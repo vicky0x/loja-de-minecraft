@@ -280,14 +280,18 @@ export default function ProductPage() {
   };
 
   const increaseQuantity = () => {
-    if (variant && quantity < variant.stock && variant.stock > 0) {
-      setQuantity(prev => prev + 1);
+    // Se o estoque for 99999 (estoque grande), permite aumentar até um limite alto mas razoável
+    const isLargeStock = variant.stock === 99999;
+    const maxAllowed = isLargeStock ? 30 : variant.stock;
+    
+    if (quantity < maxAllowed) {
+      setQuantity(quantity + 1);
     }
   };
   
   const decreaseQuantity = () => {
     if (quantity > 1) {
-      setQuantity(prev => prev - 1);
+      setQuantity(quantity - 1);
     }
   };
   
@@ -345,6 +349,7 @@ export default function ProductPage() {
   };
   
   const getStockText = (stock: number) => {
+    if (stock === 99999) return 'Grande estoque disponível';
     if (stock > 10) return 'Em estoque';
     if (stock > 0) return `Apenas ${stock} restantes`;
     return 'Esgotado';
@@ -1237,7 +1242,7 @@ export default function ProductPage() {
                               initial={{ opacity: 0.8 }}
                               whileHover={{ opacity: 1, x: 2 }}
                             >
-                              {variant.stock} disponíveis
+                              {variant.stock === 99999 ? 'Grande estoque disponível' : `${variant.stock} disponíveis`}
                             </motion.span>
                           </div>
                         </div>

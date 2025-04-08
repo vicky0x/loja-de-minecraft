@@ -47,6 +47,7 @@ export default function ProductCard({ product }: { product: Product }) {
   
   const getStockStatus = () => {
     const totalStock = getTotalStock();
+    if (totalStock === 99999) return 'Grande estoque disponível';
     if (totalStock <= 0) return 'Esgotado';
     if (totalStock <= 5) return 'Últimas unidades';
     if (totalStock <= 10) return 'Estoque baixo';
