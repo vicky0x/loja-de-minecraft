@@ -215,7 +215,23 @@ export async function POST(request: NextRequest) {
       
       console.log(`Contagem atual de estoque para a variante: ${stockCount}`);
       
-      // Atualizar o estoque da variante
+      // Obter a variante específica para verificar o tipo de entrega
+      const productVariant = product.variants.find((v: any) => v._id.toString() === variantId);
+      
+      // Verificar se a variante tem entrega manual e preservar essa configuração
+      if (productVariant && productVariant.deliveryType === 'manual') {
+        console.log('Variante com entrega manual: preservando configuração e estoque infinito');
+        
+        // Para variantes com entrega manual, apenas atualizamos o estoque interno
+        // sem alterar o tipo de entrega e mantendo o estoque como "infinito" (99999)
+        return NextResponse.json({
+          message: 'Itens adicionados ao estoque com sucesso (entrega manual preservada)',
+          added: result.length,
+          current_stock: 99999
+        });
+      }
+      
+      // Atualizar o estoque da variante (apenas para variantes com entrega automática)
       await Product.updateOne(
         { _id: productId, 'variants._id': variantId },
         { $set: { 'variants.$.stock': stockCount } }
@@ -238,7 +254,20 @@ export async function POST(request: NextRequest) {
       
       console.log(`Contagem atual de estoque para o produto: ${stockCount}`);
       
-      // Atualizar o estoque do produto
+      // Verificar se o produto tem entrega manual e preservar essa configuração
+      if (product.deliveryType === 'manual') {
+        console.log('Produto com entrega manual: preservando configuração e estoque infinito');
+        
+        // Para produtos com entrega manual, apenas atualizamos o estoque interno
+        // sem alterar o tipo de entrega e mantendo o estoque como "infinito" (99999)
+        return NextResponse.json({
+          message: 'Itens adicionados ao estoque com sucesso (entrega manual preservada)',
+          added: result.length,
+          current_stock: 99999
+        });
+      }
+      
+      // Atualizar o estoque do produto (apenas para produtos com entrega automática)
       await Product.updateOne(
         { _id: productId },
         { $set: { stock: stockCount } }

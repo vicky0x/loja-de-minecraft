@@ -444,7 +444,7 @@ export default function ProductDetailPage() {
               <h4 className="text-lg font-medium text-primary mb-2">Precisa de Ajuda?</h4>
               <p className="text-gray-300">Se você encontrar qualquer dificuldade no processo, entre em contato com nosso suporte:</p>
               <Link 
-                href="/support" 
+                href="/dashboard/support" 
                 className="inline-block mt-3 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
               >
                 Contatar Suporte

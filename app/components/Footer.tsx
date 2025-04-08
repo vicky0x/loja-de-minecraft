@@ -180,28 +180,6 @@ export default function Footer() {
                   <span className="group-hover:translate-x-1 transition-transform duration-200">Meus Pedidos</span>
                 </Link>
               </li>
-              <li className="group">
-                <Link 
-                  href="/products?type=minecraft-java" 
-                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
-                >
-                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
-                    <FaChevronRight size={12} />
-                  </span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-200">Minecraft Java</span>
-                </Link>
-              </li>
-              <li className="group">
-                <Link 
-                  href="/products?type=minecraft-bedrock" 
-                  className="text-slate-300 group-hover:text-primary transition-colors inline-flex items-center"
-                >
-                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 w-3 h-3 block">
-                    <FaChevronRight size={12} />
-                  </span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-200">Minecraft Bedrock</span>
-                </Link>
-              </li>
             </ul>
           </motion.div>
           

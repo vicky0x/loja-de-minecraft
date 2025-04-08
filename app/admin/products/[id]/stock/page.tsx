@@ -24,6 +24,7 @@ interface Variant {
   description: string;
   price: number;
   stock: number;
+  deliveryType?: 'automatic' | 'manual';
 }
 
 export default function ProductStockPage() {
@@ -195,6 +196,12 @@ export default function ProductStockPage() {
         if (product && product.variants) {
           const updatedVariants = product.variants.map((variant: Variant) => {
             if (variant._id === selectedVariant) {
+              // Verificar se a variante tem entrega manual e preservar esse status
+              if (variant.deliveryType === 'manual') {
+                // Para variantes com entrega manual, manter o estoque como 99999
+                return { ...variant, stock: 99999 };
+              }
+              // Para variantes com entrega automática, usar o valor retornado pela API
               return { ...variant, stock: data.current_stock };
             }
             return variant;
@@ -204,8 +211,16 @@ export default function ProductStockPage() {
         }
       } else {
         // Atualizar o estoque direto do produto
-        setDirectProductStock(data.current_stock);
-        setProduct({ ...product, stock: data.current_stock });
+        // Verificar se o produto tem entrega manual e preservar esse status
+        if (product && product.deliveryType === 'manual') {
+          // Para produtos com entrega manual, manter o estoque como 99999
+          setDirectProductStock(99999);
+          setProduct({ ...product, stock: 99999 });
+        } else {
+          // Para produtos com entrega automática, usar o valor retornado pela API
+          setDirectProductStock(data.current_stock);
+          setProduct({ ...product, stock: data.current_stock });
+        }
       }
       
       // Atualizar a lista de itens de estoque
@@ -311,6 +326,12 @@ export default function ProductStockPage() {
         if (product && product.variants) {
           const updatedVariants = product.variants.map((variant: Variant) => {
             if (variant._id === selectedVariant) {
+              // Verificar se a variante tem entrega manual e preservar esse status
+              if (variant.deliveryType === 'manual') {
+                // Para variantes com entrega manual, manter o estoque como 99999
+                return { ...variant, stock: 99999 };
+              }
+              // Para variantes com entrega automática, usar o valor retornado pela API
               return { ...variant, stock: data.current_stock };
             }
             return variant;
@@ -320,8 +341,16 @@ export default function ProductStockPage() {
         }
       } else {
         // Atualizar o estoque direto do produto
-        setDirectProductStock(data.current_stock);
-        setProduct({ ...product, stock: data.current_stock });
+        // Verificar se o produto tem entrega manual e preservar esse status
+        if (product && product.deliveryType === 'manual') {
+          // Para produtos com entrega manual, manter o estoque como 99999
+          setDirectProductStock(99999);
+          setProduct({ ...product, stock: 99999 });
+        } else {
+          // Para produtos com entrega automática, usar o valor retornado pela API
+          setDirectProductStock(data.current_stock);
+          setProduct({ ...product, stock: data.current_stock });
+        }
       }
       
       // Atualizar a lista de itens

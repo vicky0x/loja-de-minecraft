@@ -526,7 +526,7 @@ export default function Dashboard() {
         <div className="bg-dark-200 rounded-lg p-4 md:p-6 shadow-md">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-gray-400 text-sm">Faturamento Total</h3>
+              <h3 className="text-gray-400 text-sm">Total Gasto</h3>
               <p className="text-2xl font-bold mt-1">{formatCurrency(state.stats.revenue)}</p>
               <p className="text-xs mt-2 text-gray-400">Valor total de pedidos processados</p>
             </div>

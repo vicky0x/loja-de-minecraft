@@ -693,7 +693,7 @@ export default function OrderDetailPage() {
       {/* Link para suporte */}
       <div className="bg-dark-200 rounded-lg p-6 text-center">
         <p className="text-gray-400 mb-3">Precisa de ajuda com seu pedido?</p>
-        <Link href="/support" className="text-primary hover:text-primary/80 inline-flex items-center">
+        <Link href="/dashboard/support" className="text-primary hover:text-primary/80 inline-flex items-center">
           <FiAlertCircle className="mr-1" />
           Contatar o Suporte
         </Link>

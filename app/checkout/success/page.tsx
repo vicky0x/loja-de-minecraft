@@ -85,7 +85,7 @@ export default function CheckoutSuccessPage() {
                 Ir para o Dashboard
               </Link>
               <Link
-                href="/contact"
+                href="/dashboard/support"
                 className="bg-primary hover:bg-primary/90 text-white py-3 px-6 rounded-lg flex items-center justify-center"
               >
                 Contatar Suporte
