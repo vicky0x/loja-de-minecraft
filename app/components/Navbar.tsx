@@ -353,15 +353,16 @@ export default function Navbar() {
       // Fechar o dropdown
       setIsDropdownOpen(false);
       
-      // Usar a função de logout do contexto Auth
+      // Usar a função de logout do contexto Auth que agora gerencia todo o processo,
+      // incluindo redirecionamento e limpeza de estado
       await logout();
       
-      // Redirecionar para a página inicial e forçar refresh
-      toast.success('Logout realizado com sucesso');
-      router.refresh();
+      // Não fazer nada aqui - o redirecionamento é tratado pela função logout() no AuthContext
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      toast.error('Falha ao fazer logout. Tente novamente.');
+      console.error('Erro crítico ao fazer logout:', error);
+      
+      // Em caso de erro severo, tentar forçar o redirecionamento
+      window.location.replace('/auth/login?emergency=true&t=' + Date.now());
     }
   };
 

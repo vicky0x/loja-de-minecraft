@@ -70,11 +70,15 @@ const Header: React.FC = () => {
   // Função para lidar com logout
   const handleLogout = async () => {
     try {
+      // Usar a função de logout do contexto que agora gerencia todo o processo
       await logout();
-      router.push('/auth/login');
+      
+      // Não fazer nada aqui - o redirecionamento é tratado pela função logout() no AuthContext
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      router.push('/auth/login');
+      console.error('Erro crítico ao fazer logout:', error);
+      
+      // Em caso de erro severo, tentar forçar o redirecionamento
+      window.location.replace('/auth/login?emergency=true&t=' + Date.now());
     }
   };
 

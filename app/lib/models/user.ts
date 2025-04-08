@@ -82,7 +82,10 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['admin', 'user', 'developer'],
+      enum: {
+        values: ['admin', 'user', 'developer'],
+        message: "O campo 'role' deve ser 'admin', 'user' ou 'developer'"
+      },
       default: 'user',
     },
     memberNumber: {

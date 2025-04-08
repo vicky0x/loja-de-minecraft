@@ -291,12 +291,11 @@ function processQuantity(item: any): number {
 // GET - Obter detalhes de um pedido específico
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Garantir que params seja await no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    const id = context.params.id;
     
     logger.info(`Requisição GET para pedido ${id}`);
     
@@ -483,12 +482,11 @@ export async function GET(
 // PUT - Atualizar status de pedido
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Garantir que params seja await no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    const id = context.params.id;
     
     logger.info(`Requisição PUT para pedido ${id}`);
     

@@ -40,18 +40,16 @@ export default function AuthNav() {
       // Marcar que um processo de logout está em andamento
       sessionStorage.setItem('logout_in_progress', 'true');
       
-      // Chamar a função de logout
+      // Chamar a função de logout do AuthContext que agora gerencia todo o processo,
+      // incluindo redirecionamento e limpeza de estado
       await logout();
       
-      // Forçar recarregamento completo da página
-      window.location.href = '/?logout=' + Date.now();
+      // Não fazer nada aqui - o redirecionamento é tratado pela função logout() no AuthContext
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      toast.error('Falha ao fazer logout');
+      console.error('Erro crítico ao fazer logout:', error);
       
-      // Mesmo com erro, tentar forçar o logout
-      sessionStorage.setItem('logout_in_progress', 'true');
-      window.location.href = '/?logout=' + Date.now();
+      // Em caso de erro severo, tentar forçar o redirecionamento
+      window.location.replace('/auth/login?emergency=true&t=' + Date.now());
     }
   };
 

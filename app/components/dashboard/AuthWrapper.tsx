@@ -66,66 +66,102 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   
   // Verificar autenticação apenas quando o componente for montado
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
     
     const checkAuthentication = () => {
       try {
-        // Verificar se há loop de requisições em andamento
-        const loopDetected = localStorage.getItem('loop_detected') === 'true';
-        const lastRedirectTimeStr = localStorage.getItem('last_redirect_time');
-        const redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
+        // 1. Verificar se há loop de requisições em andamento - AJUSTADO PARA SER MENOS AGRESSIVO
+        let loopDetected = false;
+        let lastRedirectTimeStr = null;
+        let redirectCount = 0;
         const now = Date.now();
         
-        // Se detectamos um loop recentemente
-        if (loopDetected) {
-          const loopDetectedTime = parseInt(localStorage.getItem('loop_detected_time') || '0', 10);
-          // Verificar se o loop foi detectado nos últimos 60 segundos
-          if (now - loopDetectedTime < 60000) {
-            console.warn('[AuthWrapper] Loop de redirecionamento detectado e ainda ativo');
-            setIsAuthenticated(true); // Forçar autenticação para quebrar o loop
-            return;
-          } else {
-            // Resetar detecção de loop após 60 segundos
+        try {
+          // DESATIVADO TEMPORARIAMENTE O SISTEMA DE DETECÇÃO DE LOOP
+          // loopDetected = localStorage.getItem('loop_detected') === 'true';
+          loopDetected = false; // Forçar desativação do sistema de emergência
+          
+          lastRedirectTimeStr = localStorage.getItem('last_redirect_time');
+          redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
+          
+          // Limpar flags de loop para evitar comportamento errático
+          try {
             localStorage.removeItem('loop_detected');
             localStorage.removeItem('loop_detected_time');
             localStorage.setItem('redirect_count', '0');
+          } catch (e) {
+            console.error('[AuthWrapper] Erro ao resetar flags de loop:', e);
           }
+        } catch (storageError) {
+          console.error('[AuthWrapper] Erro ao acessar localStorage:', storageError);
         }
         
-        // Verificar token no localStorage
-        const hasToken = localStorage.getItem('auth_token');
-        const isAuthStored = localStorage.getItem('isAuthenticated') === 'true';
-        
-        // Atualizar contador de redirecionamentos
-        if (lastRedirectTimeStr) {
-          const lastRedirectTime = parseInt(lastRedirectTimeStr, 10);
-          // Se houve um redirecionamento recente (últimos 5 segundos)
-          if (now - lastRedirectTime < 5000) {
-            const newCount = redirectCount + 1;
-            localStorage.setItem('redirect_count', newCount.toString());
-            
-            // Detectar loop após 3 redirecionamentos rápidos
-            if (newCount >= 3) {
-              console.error('[AuthWrapper] Loop de redirecionamento detectado! Interrompendo ciclo.');
-              localStorage.setItem('loop_detected', 'true');
-              localStorage.setItem('loop_detected_time', now.toString());
-              setIsAuthenticated(true); // Forçar autenticação para quebrar o loop
-              return;
-            }
-          } else {
-            // Resetar contador se o último redirecionamento foi há mais de 5 segundos
-            localStorage.setItem('redirect_count', '1');
-          }
+        // DESATIVADO: Sistema anti-loop está causando problemas
+        if (false && loopDetected) {
+          // Antigo código de detecção de loop (desativado)
+          console.warn('[AuthWrapper] Sistema de detecção de loop desativado temporariamente');
         }
         
-        localStorage.setItem('last_redirect_time', now.toString());
+        // 2. Verificação mais robusta da autenticação usando múltiplas fontes
+        let hasToken = false;
+        let isAuthStored = false;
+        let hasAuthCookie = false;
+        let hasUserData = false;
         
-        if (hasToken && isAuthStored) {
-          console.log('[AuthWrapper] Autenticação encontrada no localStorage');
+        try {
+          hasToken = !!localStorage.getItem('auth_token');
+          isAuthStored = localStorage.getItem('isAuthenticated') === 'true';
+          hasUserData = !!localStorage.getItem('user');
+        } catch (storageError) {
+          console.error('[AuthWrapper] Erro ao verificar autenticação no localStorage:', storageError);
+        }
+        
+        // 2.1 Verificar cookies também (método mais confiável)
+        try {
+          hasAuthCookie = document.cookie
+            .split(';')
+            .some(cookie => cookie.trim().startsWith('auth_token='));
+        } catch (cookieError) {
+          console.error('[AuthWrapper] Erro ao verificar cookies de autenticação:', cookieError);
+        }
+        
+        // 3. Lógica de decisão mais robusta - SIMPLIFICADA PARA EVITAR FALSOS POSITIVOS
+        // const isReallyAuthenticated = hasAuthCookie && (isAuthStored || hasUserData);
+        const isReallyAuthenticated = hasAuthCookie || (isAuthStored && hasToken); // Mais permissivo
+        
+        // DESATIVADO: Sistema que monitora redirecionamentos é muito sensível
+        if (false && lastRedirectTimeStr) {
+          // Antigo código de contador de redirecionamentos (desativado)
+          console.warn('[AuthWrapper] Sistema de contagem de redirecionamentos desativado temporariamente');
+        }
+        
+        try {
+          localStorage.setItem('last_redirect_time', now.toString());
+        } catch (e) {
+          console.error('[AuthWrapper] Erro ao atualizar timestamp de redirecionamento:', e);
+        }
+        
+        // 4. Atualizar estado baseado nas verificações robustas
+        if (isReallyAuthenticated) {
+          console.log('[AuthWrapper] Autenticação validada');
           setIsAuthenticated(true);
         } else {
-          console.warn('[AuthWrapper] Autenticação não encontrada, redirecionando para login');
+          console.warn('[AuthWrapper] Autenticação inválida ou incompleta, redirecionando para login');
+          
+          // Limpar dados inconsistentes antes de redirecionar
+          if (!hasAuthCookie && (hasToken || isAuthStored)) {
+            console.warn('[AuthWrapper] Dados de autenticação inconsistentes, limpando localStorage');
+            try {
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('isAuthenticated');
+              localStorage.removeItem('user');
+            } catch (e) {
+              console.error('[AuthWrapper] Erro ao limpar dados inconsistentes:', e);
+            }
+          }
+          
           // Se não estiver autenticado e não estiver na página de login, redirecionar
+          // SIMPLIFICADO: Apenas redireciona, sem parâmetros que ativam sistemas de emergência
           if (!isLoginPage()) {
             router.push('/auth/login');
           }
@@ -133,6 +169,16 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         }
       } catch (error) {
         console.error('[AuthWrapper] Erro ao verificar autenticação:', error);
+        
+        // Em caso de erro crítico, tentar redirecionar para login como fallback
+        try {
+          if (!isLoginPage()) {
+            router.push('/auth/login'); // Removido parâmetros para evitar loop
+          }
+        } catch (routerError) {
+          console.error('[AuthWrapper] Erro ao redirecionar após falha:', routerError);
+        }
+        
         setIsAuthenticated(false);
       } finally {
         setIsMounted(true);
@@ -141,18 +187,38 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     
     checkAuthentication();
     
-    // Definir função global para buscar atribuições (evitar erros em todo o dashboard)
-    window.fetchAssignments = async (page = 1) => {
-      try {
-        return { items: [], totalPages: 0, currentPage: 1 }; // Mock de dados
-      } catch (error) {
-        console.error('Erro ao buscar atribuições', error);
-        return null;
-      }
+    // Adicionar listener para atualizar autenticação quando mudanças ocorrerem
+    const handleAuthChange = () => {
+      console.log('[AuthWrapper] Evento de mudança de autenticação detectado');
+      checkAuthentication();
     };
     
+    try {
+      window.addEventListener('auth-state-changed', handleAuthChange);
+    } catch (e) {
+      console.error('[AuthWrapper] Erro ao adicionar listener de evento:', e);
+    }
+    
+    // Definir função global para buscar atribuições (evitar erros em todo o dashboard)
+    try {
+      window.fetchAssignments = async (page = 1) => {
+        try {
+          return { items: [], totalPages: 0, currentPage: 1 }; // Mock de dados
+        } catch (error) {
+          console.error('Erro ao buscar atribuições', error);
+          return null;
+        }
+      };
+    } catch (e) {
+      console.error('[AuthWrapper] Erro ao definir função global fetchAssignments:', e);
+    }
+    
     return () => {
-      // Limpeza
+      try {
+        window.removeEventListener('auth-state-changed', handleAuthChange);
+      } catch (e) {
+        console.error('[AuthWrapper] Erro ao remover listener de evento:', e);
+      }
     };
   }, [router]);
   

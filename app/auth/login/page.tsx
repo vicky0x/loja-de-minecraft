@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
+import { toast } from 'react-hot-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -134,6 +135,12 @@ export default function LoginPage() {
       console.error('Erro ao verificar estado:', error);
     }
   }, [router]);
+
+  // Adicionar no início do arquivo, após os imports existentes
+  useEffect(() => {
+    // Este useEffect foi desativado temporariamente por estar causando problemas de autenticação
+    console.log('Sistema de limpeza de cookies após logout desativado para corrigir problemas');
+  }, []);
 
   // Login com email e senha
   const handleSubmit = async (e: React.FormEvent) => {

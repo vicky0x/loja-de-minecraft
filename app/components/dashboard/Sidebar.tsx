@@ -76,13 +76,15 @@ const Sidebar = () => {
   // Função de logout simplificada
   const handleLogout = async () => {
     try {
+      // Usar a função de logout do contexto que agora gerencia todo o processo
       await logout();
-      // Redirecionar para a página de login após o logout bem-sucedido
-      window.location.href = '/auth/login';
+      
+      // Não fazer nada aqui - o redirecionamento é tratado pela função logout() no AuthContext
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      // Fallback se o logout falhar
-      window.location.href = '/auth/login';
+      console.error('Erro crítico ao fazer logout:', error);
+      
+      // Em caso de erro severo, tentar forçar o redirecionamento
+      window.location.replace('/auth/login?emergency=true&t=' + Date.now());
     }
   };
 

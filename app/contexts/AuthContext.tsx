@@ -22,7 +22,7 @@ interface AuthContextType {
   setUser: (user: User | null) => void;
   pendingProfileImage: string | null;
   updateProfileImage: (imageUrl: string) => void;
-  logout: () => Promise<void>;
+  logout: () => Promise<boolean>;
 }
 
 // Criação do contexto com valores padrão
@@ -35,7 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   setUser: () => {},
   pendingProfileImage: null,
   updateProfileImage: () => {},
-  logout: async () => {},
+  logout: async () => true,
 });
 
 // Hook personalizado para usar o contexto
@@ -503,97 +503,69 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Função para fazer logout
   const logout = useCallback(async () => {
     try {
-      console.log("Iniciando processo de logout");
+      console.log("Iniciando processo de logout simplificado");
       
-      // Limpar todos os cookies relacionados à autenticação
-      const cookiesToRemove = [
-        'auth_token',
-        'user',
-        'isAuthenticated',
-        'userId',
-        'username',
-        'userEmail',
-        'userRole',
-        'next-auth.session-token',
-        'next-auth.csrf-token',
-        'next-auth.callback-url'
-      ];
-
-      cookiesToRemove.forEach(cookieName => {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      });
+      // Flag para controlar quando redirecionar
+      let redirectComplete = false;
       
-      // Remover dados do localStorage
-      const localStorageKeys = [
-        'auth_token',
-        'user',
-        'isAuthenticated',
-        'userId',
-        'username',
-        'userEmail',
-        'userRole',
-        'next-auth.session-token',
-        'next-auth.csrf-token',
-        'next-auth.callback-url'
-      ];
-      
-      localStorageKeys.forEach(key => localStorage.removeItem(key));
-      
-      // Limpar sessionStorage também
-      sessionStorage.clear();
-      
-      // Chamar a API de logout
+      // 1. Chamar API de logout de forma simplificada
       try {
-        const response = await fetch('/api/auth/logout', {
+        await fetch('/api/auth/logout', {
           method: 'POST',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          },
         });
-        
-        if (!response.ok) {
-          console.error('Erro na resposta da API de logout:', response.status);
-        } else {
-          console.log('API de logout respondeu com sucesso');
-        }
+        console.log('API de logout chamada com sucesso');
       } catch (apiError) {
         console.error('Erro ao chamar API de logout:', apiError);
       }
       
-      // Atualizar o estado
+      // 2. Limpar apenas dados básicos de autenticação
+      try {
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+      } catch (lsError) {
+        console.error('Erro ao limpar localStorage:', lsError);
+      }
+      
+      // 3. Atualizar estado do contexto
       setUser(null);
       setIsAuthenticated(false);
       setLoading(false);
       
-      // Dispatch evento para outros componentes
+      // 4. Disparar evento de mudança de autenticação
       try {
-        const event = new CustomEvent('auth-change', { 
-          detail: { isAuthenticated: false, user: null }
+        const event = new CustomEvent('auth-state-changed', { 
+          detail: { isAuthenticated: false, user: null, logoutSuccess: true }
         });
         window.dispatchEvent(event);
       } catch (eventError) {
-        console.error("Erro ao disparar evento auth-change:", eventError);
+        console.error("Erro ao disparar evento auth-state-changed:", eventError);
       }
       
-      // Forçar recarregamento completo da página
-      window.location.href = '/?logout=' + Date.now();
+      // 5. Redirecionar sem parâmetros problemáticos
+      setTimeout(() => {
+        if (!redirectComplete) {
+          redirectComplete = true;
+          console.log("Redirecionando para login após logout");
+          window.location.href = '/auth/login';
+        }
+      }, 100);
       
-      console.log("Processo de logout concluído");
+      return true;
     } catch (error) {
-      console.error("Erro durante logout:", error);
+      console.error("Erro crítico durante logout:", error);
       
-      // Mesmo com erro, tentar limpar o estado
-      setUser(null);
-      setIsAuthenticated(false);
-      setLoading(false);
+      // Fallback simples em caso de erro
+      try {
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('auth_token');
+        window.location.href = '/auth/login';
+      } catch (finalError) {
+        console.error("Falha total no processo de logout:", finalError);
+      }
       
-      // Forçar recarregamento completo da página
-      window.location.href = '/?logout=' + Date.now();
+      return false;
     }
   }, []);
 

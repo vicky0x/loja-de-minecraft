@@ -4,8 +4,10 @@ import logger from '../logger';
 // Estado de conexão
 const connection: {
   isConnected: number;
+  lastLogTime: number;
 } = {
   isConnected: 0,
+  lastLogTime: 0
 };
 
 // URL do MongoDB
@@ -13,14 +15,22 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fantas
 
 // Função para conectar ao MongoDB
 async function connectDB() {
-  // Não logar a URI, apenas informar que está sendo usada
-  logger.info('Iniciando conexão com MongoDB');
+  const now = Date.now();
+  const LOG_THROTTLE_MS = 2000; // Tempo mínimo entre logs (2 segundos)
   
   // Verificar se já existe uma conexão ativa
   if (connection.isConnected) {
-    logger.info('Utilizando conexão existente com MongoDB');
+    // Limitar logs repetidos usando throttling
+    if (now - connection.lastLogTime > LOG_THROTTLE_MS) {
+      connection.lastLogTime = now;
+      logger.info('Utilizando conexão existente com MongoDB');
+    }
     return mongoose;
   }
+  
+  // Registrar tempo do log para throttling
+  connection.lastLogTime = now;
+  logger.info('Iniciando conexão com MongoDB');
   
   // Se estamos em produção, usar configurações otimizadas
   if (process.env.NODE_ENV === 'production') {

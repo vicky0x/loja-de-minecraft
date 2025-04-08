@@ -54,7 +54,7 @@ const nextConfig = {
     return config;
   },
   experimental: {
-    serverComponentsExternalPackages: ['mongoose']
+    serverExternalPackages: ['mongoose']
   },
 };
 

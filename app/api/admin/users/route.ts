@@ -89,17 +89,28 @@ export async function PUT(req: NextRequest) {
     const data = await req.json();
     const { userId, role } = data;
     
+    // Verificar se role é válido (admin, user ou developer)
     if (!userId || !role || !['admin', 'user', 'developer'].includes(role)) {
+      console.log(`Papel inválido: "${role}". Valores permitidos: admin, user, developer`);
       return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 });
     }
     
     // Conectar ao banco de dados
     await connectDB();
     
+    // Tentar encontrar o usuário para mostrar informações de debug
+    const existingUser = await User.findById(userId).select('role');
+    if (existingUser) {
+      console.log(`Usuário encontrado. Papel atual: "${existingUser.role}". Novo papel: "${role}"`);
+    } else {
+      console.log(`Usuário com ID ${userId} não encontrado`);
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
+    }
+    
     // Atualizar usuário
     const updatedUser = await User.findByIdAndUpdate(
       userId, 
-      { role },
+      { role: role }, // Usando o valor exato passado pelo cliente
       { new: true, runValidators: true }
     ).select('-password');
     
@@ -107,6 +118,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
     
+    console.log(`Usuário ${userId} atualizado com sucesso. Novo papel: "${updatedUser.role}"`);
     return NextResponse.json({ user: updatedUser }, { status: 200 });
   } catch (error) {
     console.error('Erro ao atualizar usuário:', error);

@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// Lista de cookies de autenticação para limpar em caso de logout forçado
+const AUTH_COOKIES = [
+  'auth_token', 'legacy_auth_token', 'isAuthenticated', 'userId', 
+  'username', 'userEmail', 'userRole', 'csrf_token',
+  'next-auth.session-token', 'next-auth.csrf-token', 'next-auth.callback-url'
+];
+
 // Cache para limitar requisições (simulação de rate limiting)
 const loginAttempts = new Map<string, { count: number, timestamp: number }>();
 const MAX_LOGIN_ATTEMPTS = 5; // Máximo de tentativas em um período
@@ -95,6 +102,39 @@ export function middleware(request: NextRequest) {
   }
   
   response.headers.set('Content-Security-Policy', cspDirectives.join('; '));
+  
+  // Tratamento especial para páginas de autenticação (login/logout)
+  if (request.nextUrl.pathname === '/auth/login') {
+    // Verificar se há um logout em andamento (pelo query param)
+    if (request.nextUrl.searchParams.has('t') || 
+        request.nextUrl.searchParams.has('logout') || 
+        request.nextUrl.searchParams.has('force') ||
+        request.nextUrl.searchParams.has('emergency')) {
+      
+      // SISTEMA TEMPORARIAMENTE DESATIVADO
+      console.log('Sistema de detecção de logout desativado temporariamente');
+      
+      /* Código original comentado
+      console.log('Detectado processo de logout em andamento. Configurando headers anti-cache...');
+      
+      // Impedir cache para garantir estado limpo após logout
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      
+      // Se for um logout forçado/emergencial, limpar cookies adicionais
+      if (request.nextUrl.searchParams.has('force') || request.nextUrl.searchParams.has('emergency')) {
+        console.log('Detectado logout emergencial. Limpando cookies no middleware...');
+        
+        // Limpar cookies de autenticação nas headers da resposta
+        AUTH_COOKIES.forEach(cookieName => {
+          response.headers.append('Set-Cookie', 
+            `${cookieName}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`);
+        });
+      }
+      */
+    }
+  }
   
   // Configuração de CORS
   if (request.headers.get('Origin')) {
