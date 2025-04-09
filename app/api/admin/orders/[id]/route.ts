@@ -295,7 +295,7 @@ export async function GET(
 ) {
   try {
     // Garantir que params seja await no Next.js 14
-    const id = context.params.id;
+    const id = (await context.params).id;
     
     logger.info(`Requisição GET para pedido ${id}`);
     
@@ -469,7 +469,7 @@ export async function GET(
       }, { status: 500 });
     }
   } catch (error) {
-    logger.error(`Erro geral ao buscar detalhes do pedido ${id}:`, error);
+    logger.error(`Erro geral ao buscar detalhes do pedido:`, error);
     return NextResponse.json({ 
       error: 'Falha ao buscar detalhes do pedido', 
       details: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -486,7 +486,7 @@ export async function PUT(
 ) {
   try {
     // Garantir que params seja await no Next.js 14
-    const id = context.params.id;
+    const id = (await context.params).id;
     
     logger.info(`Requisição PUT para pedido ${id}`);
     
@@ -650,7 +650,12 @@ export async function PUT(
       }, { status: 500 });
     }
   } catch (error) {
-    logger.error(`Erro geral ao atualizar pedido ${id}:`, error);
+    let orderId = 'desconhecido';
+    try {
+      orderId = (await context.params).id;
+    } catch { /* ignorar erros ao obter id */ }
+    
+    logger.error(`Erro geral ao atualizar pedido ${orderId}:`, error);
     return NextResponse.json({ 
       error: 'Falha ao atualizar pedido', 
       details: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -850,25 +855,45 @@ async function assignProductsToUser(order: any) {
           const remainingStock = await stockItemsCollection.countDocuments(remainingStockFilter);
           logger.info(`Estoque restante para o produto ${productId}: ${remainingStock}`);
           
-          // Atualizar o produto no banco de dados
+          // Obter informações completas do produto antes de atualizar
           const productsCollection = db.collection('products');
+          const productDetails = await productsCollection.findOne({ _id: productObjectId });
           
-          if (hasVariants && variantId) {
-            // Para produtos com variantes, atualizar o estoque da variante
-            await productsCollection.updateOne(
-              { _id: productObjectId, 'variants._id': new mongoose.Types.ObjectId(variantId) },
-              { $set: { 'variants.$.stock': remainingStock } }
-            );
-            logger.info(`Estoque da variante ${variantId} atualizado para ${remainingStock}`);
-          } else if (!hasVariants) {
-            // Para produtos sem variantes, atualizar o estoque diretamente
-            // Se não houver estoque restante, definir como null para evitar o problema da "unidade fantasma"
-            const stockValue = remainingStock > 0 ? remainingStock : null;
-            await productsCollection.updateOne(
-              { _id: productObjectId },
-              { $set: { stock: stockValue } }
-            );
-            logger.info(`Estoque do produto ${productId} (sem variante) atualizado para ${stockValue === null ? 'null (sem estoque)' : stockValue}`);
+          // Verificar se o produto tem entrega manual configurada
+          const isManualDelivery = productDetails && 
+                                  (productDetails.deliveryType === 'manual' || 
+                                   (hasVariants && variantId && 
+                                    productDetails.variants && 
+                                    productDetails.variants.some(v => 
+                                      v._id.toString() === variantId.toString() && 
+                                      v.deliveryType === 'manual'
+                                    )));
+          
+          logger.info(`Produto ${productId} tem entrega manual? ${isManualDelivery ? 'SIM' : 'NÃO'}`);
+          
+          // Se for entrega manual, não alterar o estoque
+          if (isManualDelivery) {
+            logger.info(`Produto ${productId} tem entrega manual configurada. Não alterando o estoque.`);
+            // Não fazer nada, preservar o tipo de entrega manual
+          } else {
+            // Para produtos com entrega automática, atualizar o estoque normalmente
+            if (hasVariants && variantId) {
+              // Para produtos com variantes, atualizar o estoque da variante
+              await productsCollection.updateOne(
+                { _id: productObjectId, 'variants._id': new mongoose.Types.ObjectId(variantId) },
+                { $set: { 'variants.$.stock': remainingStock } }
+              );
+              logger.info(`Estoque da variante ${variantId} atualizado para ${remainingStock}`);
+            } else if (!hasVariants) {
+              // Para produtos sem variantes, atualizar o estoque diretamente
+              // Se não houver estoque restante, definir como null para evitar o problema da "unidade fantasma"
+              const stockValue = remainingStock > 0 ? remainingStock : null;
+              await productsCollection.updateOne(
+                { _id: productObjectId },
+                { $set: { stock: stockValue } }
+              );
+              logger.info(`Estoque do produto ${productId} (sem variante) atualizado para ${stockValue === null ? 'null (sem estoque)' : stockValue}`);
+            }
           }
         } catch (stockUpdateError) {
           logger.error(`Erro ao atualizar o estoque do produto: ${stockUpdateError}`);

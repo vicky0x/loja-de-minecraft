@@ -5,11 +5,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft, FiShoppingCart, FiPackage, FiCheck, FiClock, FiShield, FiDownload, FiAward, FiStar, FiLock, FiUser, FiTrendingUp, FiX, FiInfo, FiAlertOctagon, FiTool, FiCode, FiEye, FiHeart } from 'react-icons/fi';
+import { IconBaseProps } from 'react-icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import VariantStockModal from '@/app/components/VariantStockModal';
 import { useCart } from '@/app/contexts/CartContext';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
+
+// Interface para os ícones
+interface IconProps extends IconBaseProps {
+  className?: string;
+}
 
 interface Variant {
   _id: string;
@@ -45,6 +51,27 @@ interface Product {
 // Cor primária mais clara para efeitos de luz
 const primaryLight = "#6c63ff";  // Ajuste para a cor primária da sua aplicação
 
+// Wrappers para todos os ícones utilizados
+const IconFiArrowLeft = (props: IconProps) => <FiArrowLeft {...props} />;
+const IconFiShoppingCart = (props: IconProps) => <FiShoppingCart {...props} />;
+const IconFiPackage = (props: IconProps) => <FiPackage {...props} />;
+const IconFiCheck = (props: IconProps) => <FiCheck {...props} />;
+const IconFiClock = (props: IconProps) => <FiClock {...props} />;
+const IconFiShield = (props: IconProps) => <FiShield {...props} />;
+const IconFiDownload = (props: IconProps) => <FiDownload {...props} />;
+const IconFiAward = (props: IconProps) => <FiAward {...props} />;
+const IconFiStar = (props: IconProps) => <FiStar {...props} />;
+const IconFiLock = (props: IconProps) => <FiLock {...props} />;
+const IconFiUser = (props: IconProps) => <FiUser {...props} />;
+const IconFiTrendingUp = (props: IconProps) => <FiTrendingUp {...props} />;
+const IconFiX = (props: IconProps) => <FiX {...props} />;
+const IconFiInfo = (props: IconProps) => <FiInfo {...props} />;
+const IconFiAlertOctagon = (props: IconProps) => <FiAlertOctagon {...props} />;
+const IconFiTool = (props: IconProps) => <FiTool {...props} />;
+const IconFiCode = (props: IconProps) => <FiCode {...props} />;
+const IconFiEye = (props: IconProps) => <FiEye {...props} />;
+const IconFiHeart = (props: IconProps) => <FiHeart {...props} />;
+
 export default function ProductPage() {
   const params = useParams();
   const slug = params?.slug as string;
@@ -68,7 +95,7 @@ export default function ProductPage() {
   const [displayedCount, setDisplayedCount] = useState(0);
   const cart = useCart();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const { isAuthenticated, isLoading, checkAuth } = useAuth();
+  const { isAuthenticated, isLoadingAuth: isLoading, checkAuth } = useAuth();
 
   // Ref para o elemento da imagem
   const imageRef = useRef<HTMLDivElement>(null);
@@ -343,12 +370,22 @@ export default function ProductPage() {
   };
   
   const getStockClass = (stock: number) => {
+    // Verificar se o produto ou a variante tem entrega manual
+    if (product.deliveryType === 'manual' || (variant && variant.deliveryType === 'manual')) {
+      return 'text-green-400';
+    }
+    
     if (stock > 10) return 'text-green-400';
     if (stock > 0) return 'text-yellow-400';
     return 'text-red-400';
   };
   
   const getStockText = (stock: number) => {
+    // Verificar se o produto ou a variante tem entrega manual
+    if (product.deliveryType === 'manual' || (variant && variant.deliveryType === 'manual')) {
+      return 'Grande estoque disponível';
+    }
+    
     if (stock === 99999) return 'Grande estoque disponível';
     if (stock > 10) return 'Em estoque';
     if (stock > 0) return `Apenas ${stock} restantes`;
@@ -361,35 +398,35 @@ export default function ProductPage() {
         return {
           color: 'text-green-400',
           bgColor: 'bg-green-900/30',
-          icon: <FiShield className="mr-1" />,
+          icon: <IconFiShield className="mr-1" />,
           text: 'Indetectável'
         };
       case 'detectavel':
         return {
           color: 'text-yellow-400',
           bgColor: 'bg-yellow-900/30',
-          icon: <FiAlertOctagon className="mr-1" />,
+          icon: <IconFiAlertOctagon className="mr-1" />,
           text: 'Detectável'
         };
       case 'manutencao':
         return {
           color: 'text-orange-400',
           bgColor: 'bg-orange-900/30',
-          icon: <FiTool className="mr-1" />,
+          icon: <IconFiTool className="mr-1" />,
           text: 'Em Manutenção'
         };
       case 'beta':
         return {
           color: 'text-blue-400',
           bgColor: 'bg-blue-900/30',
-          icon: <FiCode className="mr-1" />,
+          icon: <IconFiCode className="mr-1" />,
           text: 'Beta'
         };
       default:
         return {
           color: 'text-gray-400',
           bgColor: 'bg-gray-800',
-          icon: <FiInfo className="mr-1" />,
+          icon: <IconFiInfo className="mr-1" />,
           text: 'Status Desconhecido'
         };
     }
@@ -504,7 +541,7 @@ export default function ProductPage() {
             animate={{ scale: 1 }}
             transition={{ type: "spring", damping: 10, stiffness: 200, delay: 0.2 }}
           >
-            <FiX size={36} />
+            <IconFiX size={36} />
           </motion.div>
           <h2 className="text-2xl font-bold text-white text-center mb-2">Produto não encontrado</h2>
           <p className="text-gray-300 text-center mb-8">{error || 'Este produto pode ter sido removido ou está temporariamente indisponível.'}</p>
@@ -535,7 +572,7 @@ export default function ProductPage() {
             href="/" 
             className="flex items-center text-gray-400 hover:text-primary transition-colors group"
           >
-            <FiArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
+            <IconFiArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
             <span>Voltar à loja</span>
           </Link>
           <div className="ml-auto flex items-center space-x-2 text-gray-400">
@@ -622,7 +659,7 @@ export default function ProductPage() {
                 repeat: Infinity
               }}
             >
-              <FiClock size={16} />
+              <IconFiClock size={16} />
             </motion.div>
             <motion.span 
               className="font-medium text-sm"
@@ -832,7 +869,7 @@ export default function ProductPage() {
                                 transition={{ duration: 0.3, delay: index * 0.1 }}
                               >
                                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-3 flex-shrink-0">
-                                  <FiCheck className="text-primary" />
+                                  <IconFiCheck className="text-primary" />
                                 </div>
                                 <div className="text-gray-300">{req}</div>
                               </motion.div>
@@ -863,7 +900,7 @@ export default function ProductPage() {
                             whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2)" }}
                           >
                             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
-                              <FiShield className="text-primary" size={22} />
+                              <IconFiShield className="text-primary" size={22} />
                             </div>
                             <h4 className="font-medium text-white mb-2">Garantia de 30 dias</h4>
                             <p className="text-sm text-gray-400">Garantimos que nossos produtos funcionem exatamente como descrito por 30 dias.</p>
@@ -873,7 +910,7 @@ export default function ProductPage() {
                             whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2)" }}
                           >
                             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
-                              <FiUser className="text-primary" size={22} />
+                              <IconFiUser className="text-primary" size={22} />
                             </div>
                             <h4 className="font-medium text-white mb-2">Suporte técnico 24/7</h4>
                             <p className="text-sm text-gray-400">Nossa equipe está sempre disponível para resolver qualquer problema.</p>
@@ -960,7 +997,7 @@ export default function ProductPage() {
                               repeatType: "reverse" 
                             }}
                           >
-                            <FiTrendingUp className="text-green-400 group-hover:text-green-300 transition-colors duration-300" size={22} />
+                            <IconFiTrendingUp className="text-green-400 group-hover:text-green-300 transition-colors duration-300" size={22} />
                           </motion.div>
                         </div>
                         
@@ -1082,7 +1119,7 @@ export default function ProductPage() {
                                           transition={{ type: "spring", stiffness: 500, damping: 15 }}
                                           className="mr-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center"
                                         >
-                                          <FiCheck className="text-white text-sm" />
+                                          <IconFiCheck className="text-white text-sm" />
                                         </motion.div>
                                       )}
                                       {variantItem.name}
@@ -1103,7 +1140,7 @@ export default function ProductPage() {
                                   {variantItem.deliveryType === 'manual' && (
                                     <div className="mt-2 bg-amber-900/20 border border-amber-500/20 rounded-lg p-2">
                                       <div className="flex items-center text-xs text-amber-400">
-                                        <FiClock className="mr-1.5 flex-shrink-0" />
+                                        <IconFiClock className="mr-1.5 flex-shrink-0" />
                                         <span>Entrega manual em até 24h</span>
                                       </div>
                                     </div>
@@ -1316,7 +1353,7 @@ export default function ProductPage() {
                                   repeat: Infinity
                                 }}
                               >
-                                <FiClock />
+                                <IconFiClock />
                               </motion.div>
                               <span className="relative z-10">
                                 <motion.span 
@@ -1394,7 +1431,7 @@ export default function ProductPage() {
                               whileHover={variant && variant.stock > 0 && !isAddingToCart ? { scale: 1.03 } : {}}
                               whileTap={variant && variant.stock > 0 && !isAddingToCart ? { scale: 0.97 } : {}}
                             >
-                              <FiShoppingCart className="mr-2" />
+                              <IconFiShoppingCart className="mr-2" />
                               <span>Adicionar ao Carrinho</span>
                             </motion.div>
                           </motion.button>
@@ -1522,7 +1559,7 @@ export default function ProductPage() {
                       whileHover={{ x: 2, color: "#fff" }}
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 group-hover:bg-primary/20 transition-colors">
-                        <FiPackage className="text-primary" />
+                        <IconFiPackage className="text-primary" />
                       </div>
                       <span>Entrega garantida</span>
                     </motion.div>
@@ -1531,7 +1568,7 @@ export default function ProductPage() {
                       whileHover={{ x: 2, color: "#fff" }}
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 group-hover:bg-primary/20 transition-colors">
-                        <FiShield className="text-primary" />
+                        <IconFiShield className="text-primary" />
                       </div>
                       <span>Garantia de 30 dias</span>
                     </motion.div>
@@ -1540,7 +1577,7 @@ export default function ProductPage() {
                       whileHover={{ x: 2, color: "#fff" }}
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 group-hover:bg-primary/20 transition-colors">
-                        <FiUser className="text-primary" />
+                        <IconFiUser className="text-primary" />
                       </div>
                       <span>Suporte 24/7</span>
                     </motion.div>
@@ -1549,7 +1586,7 @@ export default function ProductPage() {
                       whileHover={{ x: 2, color: "#fff" }}
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 group-hover:bg-primary/20 transition-colors">
-                        <FiLock className="text-primary" />
+                        <IconFiLock className="text-primary" />
                       </div>
                       <span>Pagamento seguro</span>
                     </motion.div>
@@ -1586,7 +1623,7 @@ export default function ProductPage() {
                       </p>
                       {lastStockUpdate && (
                         <div className="flex items-center text-xs mt-2 text-white/60">
-                          <FiClock className="mr-1.5" size={12} />
+                          <IconFiClock className="mr-1.5" size={12} />
                           <span>Atualizado: {formattedLastUpdate}</span>
                         </div>
                       )}

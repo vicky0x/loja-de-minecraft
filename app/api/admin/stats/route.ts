@@ -126,8 +126,8 @@ async function getTopProducts(limit = 5) {
       $group: { 
         _id: '$orderItems.product', 
         name: { $first: '$orderItems.name' },
-        sales: { $sum: 1 },
-        revenue: { $sum: '$orderItems.price' }
+        sales: { $sum: '$orderItems.quantity' },
+        revenue: { $sum: { $multiply: ['$orderItems.price', '$orderItems.quantity'] } }
       } 
     },
     

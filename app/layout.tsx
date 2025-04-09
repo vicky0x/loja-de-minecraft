@@ -9,7 +9,6 @@ import Footer from "./components/Footer";
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
 import GlobalAppInitializer from './_app/globals';
-import CharlaWidgetWrapper from './components/CharlaWidgetWrapper';
 import InitApp from './components/InitApp';
 
 const inter = Inter({ subsets: ["latin"] });
@@ -65,7 +64,10 @@ export default function RootLayout({
               "sameAs": [
                 "https://facebook.com/fantasystorebr",
                 "https://instagram.com/fantasystorebr",
-                "https://twitter.com/fantasystorebr"
+                "https://twitter.com/fantasystorebr",
+                "https://www.youtube.com/@fantasystoreloja",
+                "https://discord.gg/2q8QrcuP9v",
+                "https://www.trustpilot.com/review/fantasystore.com.br"
               ],
               "contactPoint": {
                 "@type": "ContactPoint",
@@ -240,7 +242,6 @@ export default function RootLayout({
                 {children}
               </main>
               <Footer />
-              <CharlaWidgetWrapper />
             </Providers>
           </CartProvider>
         </AuthProvider>

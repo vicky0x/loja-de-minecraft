@@ -106,6 +106,32 @@ export default function Dashboard() {
   // Verificar se houve redirecionamento recente
   useEffect(() => {
     try {
+      // Verificar parâmetros da URL
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const freshLogin = urlParams.get('fresh_login') === 'true';
+        
+        // Se for um login recente, limpar o histórico de navegação e todas as flags de cache
+        if (freshLogin) {
+          console.log('Login recente detectado, limpando dados anteriores...');
+          
+          // Limpar sessionStorage
+          sessionStorage.removeItem('dashboard_loading_start');
+          sessionStorage.removeItem('auth_check_in_progress');
+          sessionStorage.removeItem('redirect_count');
+          sessionStorage.removeItem('navigation_history');
+          
+          // Limpar localStorage (apenas flags, não dados de autenticação)
+          localStorage.removeItem('loop_detected');
+          localStorage.removeItem('loop_detected_time');
+          localStorage.removeItem('auth_redirect_triggered');
+          localStorage.setItem('redirect_count', '0');
+          
+          // Remover parâmetros da URL para manter a URL limpa
+          window.history.replaceState({}, document.title, '/dashboard');
+        }
+      }
+      
       // Verificar se há detecção de loop
       const loopDetected = localStorage.getItem('loop_detected') === 'true';
       if (loopDetected) {
@@ -241,6 +267,14 @@ export default function Dashboard() {
     
     const loadDashboard = async () => {
       try {
+        console.log("Carregando dados do dashboard...");
+
+        // Limpar flags de sessão que podem estar causando problemas
+        sessionStorage.removeItem('dashboard_loading_start');
+        
+        // Incrementar contador de requisição para evitar chamadas duplicadas
+        const requestId = ++requestCounter;
+        
         // Indicar que o componente foi montado
         setState(prev => ({ ...prev, mounted: true }));
         
@@ -304,7 +338,9 @@ export default function Dashboard() {
                     // Prevenir loop
                     if (localStorage.getItem('auth_redirect_triggered') !== 'multiple') {
                       localStorage.setItem('auth_redirect_triggered', 'true');
-                      router.push('/auth/login');
+                      return router.push('/auth/login').catch(navError => {
+                        console.error('Erro ao redirecionar para login:', navError);
+                      });
                     }
                     return { products: [] };
                   }
@@ -325,7 +361,15 @@ export default function Dashboard() {
                   }));
                 }
               })
-              .catch(error => console.error('Erro ao processar dados de produtos:', error));
+              .catch(error => {
+                console.error('Erro ao processar dados de produtos:', error);
+                // Assegurar que o estado é atualizado mesmo com erro
+                setState(prev => ({
+                  ...prev,
+                  products: [],
+                  error: prev.error || 'Erro ao carregar produtos'
+                }));
+              });
             
             // Carregar pedidos recentes com tratamento de erros
             fetch('/api/user/orders')
@@ -380,10 +424,15 @@ export default function Dashboard() {
                     }
                   }));
                 }
+                return data; // Retornar para encadear then() se necessário
               })
               .catch(error => {
                 console.error('Erro ao processar pedidos:', error);
-                setState(prev => ({ ...prev, recentOrders: [] }));
+                setState(prev => ({ 
+                  ...prev, 
+                  recentOrders: [],
+                  error: prev.error || 'Erro ao carregar pedidos'
+                }));
               });
           } catch (error) {
             console.error('Erro ao atualizar dados:', error);
@@ -548,6 +597,23 @@ export default function Dashboard() {
           <PendingTable orders={state.recentOrders} isLoading={false} />
         </div>
       </div>
+
+      {/* Script do Charla Widget */}
+      <script 
+        type="text/javascript" 
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.addEventListener('load', () => { 
+              const widgetElement = document.createElement('charla-widget'); 
+              widgetElement.setAttribute("p", "fa696af4-1622-4275-8c59-6fa5175705cd"); 
+              document.body.appendChild(widgetElement);
+              const widgetCode = document.createElement('script'); 
+              widgetCode.src = 'https://app.getcharla.com/widget/widget.js'; 
+              document.body.appendChild(widgetCode); 
+            })
+          `
+        }}
+      />
     </div>
   );
 } 

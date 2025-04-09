@@ -35,21 +35,78 @@ export default function AuthNav() {
 
   const handleLogout = async () => {
     try {
+      console.log('Iniciando processo de logout via AuthNav...');
+      
+      // Fechar o dropdown
       setShowMenu(false);
+      
+      // Desabilitar interações do usuário durante o logout
+      const disableInteraction = document.createElement('div');
+      disableInteraction.style.position = 'fixed';
+      disableInteraction.style.top = '0';
+      disableInteraction.style.left = '0';
+      disableInteraction.style.width = '100%';
+      disableInteraction.style.height = '100%';
+      disableInteraction.style.backgroundColor = 'rgba(0,0,0,0.5)';
+      disableInteraction.style.zIndex = '9999';
+      disableInteraction.style.cursor = 'wait';
+      document.body.appendChild(disableInteraction);
       
       // Marcar que um processo de logout está em andamento
       sessionStorage.setItem('logout_in_progress', 'true');
       
-      // Chamar a função de logout do AuthContext que agora gerencia todo o processo,
-      // incluindo redirecionamento e limpeza de estado
-      await logout();
+      // Evitar qualquer redirecionamento enquanto o logout está em andamento
+      try {
+        // Bloquear temporariamente o router para evitar navegações durante o logout
+        const originalPush = router.push;
+        router.push = (url: string) => {
+          console.log(`Navegação para ${url} bloqueada durante logout`);
+          return Promise.resolve(false);
+        };
+        
+        // Restaurar após o logout
+        setTimeout(() => {
+          router.push = originalPush;
+        }, 2000);
+      } catch (routerError) {
+        console.error('Erro ao bloquear navegação durante logout:', routerError);
+      }
       
-      // Não fazer nada aqui - o redirecionamento é tratado pela função logout() no AuthContext
+      // Usar a função de logout do contexto Auth
+      const logoutResult = await logout();
+      
+      if (!logoutResult) {
+        // Se o logout falhar, remover a proteção
+        try {
+          document.body.removeChild(disableInteraction);
+        } catch (e) {
+          console.error('Erro ao remover bloqueio de interação:', e);
+        }
+      }
+      
+      // Não fazer nada aqui - o redirecionamento é tratado pela função logout()
     } catch (error) {
       console.error('Erro crítico ao fazer logout:', error);
       
+      // Limpar qualquer bloqueio visual em caso de erro
+      try {
+        const disableElement = document.querySelector('div[style*="position: fixed"][style*="z-index: 9999"]');
+        if (disableElement && disableElement.parentNode) {
+          disableElement.parentNode.removeChild(disableElement);
+        }
+      } catch (e) {
+        console.error('Erro ao limpar bloqueio visual:', e);
+      }
+      
       // Em caso de erro severo, tentar forçar o redirecionamento
-      window.location.replace('/auth/login?emergency=true&t=' + Date.now());
+      try {
+        sessionStorage.removeItem('logout_in_progress');
+        localStorage.clear();
+        window.location.replace('/auth/login?emergency=true&t=' + Date.now());
+      } catch (finalError) {
+        console.error('Erro final durante logout de emergência:', finalError);
+        alert('Erro ao fazer logout. Por favor, recarregue a página.');
+      }
     }
   };
 

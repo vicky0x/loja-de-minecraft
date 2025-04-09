@@ -111,10 +111,6 @@ export function middleware(request: NextRequest) {
         request.nextUrl.searchParams.has('force') ||
         request.nextUrl.searchParams.has('emergency')) {
       
-      // SISTEMA TEMPORARIAMENTE DESATIVADO
-      console.log('Sistema de detecção de logout desativado temporariamente');
-      
-      /* Código original comentado
       console.log('Detectado processo de logout em andamento. Configurando headers anti-cache...');
       
       // Impedir cache para garantir estado limpo após logout
@@ -132,7 +128,6 @@ export function middleware(request: NextRequest) {
             `${cookieName}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`);
         });
       }
-      */
     }
   }
   

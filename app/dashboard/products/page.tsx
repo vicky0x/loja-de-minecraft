@@ -65,45 +65,65 @@ export default function ProductsPage() {
       setError(null);
       
       console.log('fetchProducts: Iniciando busca de produtos');
-      const response = await fetch('/api/user/products');
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erro ao carregar produtos');
+      try {
+        const response = await fetch('/api/user/products', {
+          signal: AbortSignal.timeout(15000) // 15 segundos timeout
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Você precisa estar autenticado para ver seus produtos');
+          } else if (response.status === 403) {
+            throw new Error('Você não tem permissão para acessar esta página');
+          } else if (response.status === 404) {
+            throw new Error('Recurso não encontrado');
+          } else if (response.status >= 500) {
+            throw new Error('Erro no servidor. Por favor, tente novamente mais tarde');
+          }
+          
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Erro ao carregar produtos (${response.status})`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success || !data.products || !Array.isArray(data.products)) {
+          console.warn('Resposta da API de produtos inválida:', data);
+          throw new Error('Dados de produtos inválidos');
+        }
+        
+        // Verificar e filtrar produtos com valores nulos ou indefinidos
+        const validProducts = data.products.filter(product => {
+          // Verificar se o produto existe e tem propriedades necessárias
+          if (!product || typeof product !== 'object') {
+            console.warn('Produto inválido encontrado:', product);
+            return false;
+          }
+          
+          // Verificar se o produto tem _id e outras propriedades essenciais
+          if (!product._id) {
+            console.warn('Produto sem ID encontrado:', product);
+            return false;
+          }
+          
+          // Garantir que a propriedade variant exista
+          if (!product.variant) {
+            console.warn('Produto sem variante encontrado:', product._id);
+            product.variant = { _id: 'default', name: 'Padrão' };
+          }
+          
+          return true;
+        });
+        
+        console.log(`fetchProducts: ${validProducts.length} produtos válidos encontrados`);
+        setProducts(validProducts);
+      } catch (fetchError) {
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Tempo limite excedido ao buscar produtos. Verifique sua conexão e tente novamente.');
+        }
+        throw fetchError;
       }
-      
-      const data = await response.json();
-      
-      if (!data.success || !data.products || !Array.isArray(data.products)) {
-        console.warn('Resposta da API de produtos inválida:', data);
-        throw new Error('Dados de produtos inválidos');
-      }
-      
-      // Verificar e filtrar produtos com valores nulos ou indefinidos
-      const validProducts = data.products.filter(product => {
-        // Verificar se o produto existe e tem propriedades necessárias
-        if (!product || typeof product !== 'object') {
-          console.warn('Produto inválido encontrado:', product);
-          return false;
-        }
-        
-        // Verificar se o produto tem _id e outras propriedades essenciais
-        if (!product._id) {
-          console.warn('Produto sem ID encontrado:', product);
-          return false;
-        }
-        
-        // Garantir que a propriedade variant exista
-        if (!product.variant) {
-          console.warn('Produto sem variante encontrado:', product._id);
-          product.variant = { _id: 'default', name: 'Padrão' };
-        }
-        
-        return true;
-      });
-      
-      console.log(`fetchProducts: ${validProducts.length} produtos válidos encontrados`);
-      setProducts(validProducts);
     } catch (err) {
       console.error('Erro ao buscar produtos do usuário:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar produtos');
@@ -215,8 +235,19 @@ export default function ProductsPage() {
 
       {error && (
         <div className="bg-red-900/30 border-l-4 border-red-500 p-4 text-red-400">
-          <p className="font-medium">Erro</p>
-          <p>{error}</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="font-medium">Erro</p>
+              <p>{error}</p>
+            </div>
+            <button 
+              onClick={fetchProducts} 
+              className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1 rounded flex items-center gap-2"
+            >
+              <FiRefreshCw size={14} />
+              <span>Tentar novamente</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -276,8 +307,10 @@ export default function ProductsPage() {
                       alt={product.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
+                        console.warn(`Erro ao carregar imagem para produto: ${product._id}`);
                         const target = e.currentTarget as HTMLImageElement;
                         target.src = '/placeholder-image.jpg';
+                        target.onerror = null; // Evita loop infinito
                       }}
                     />
                   ) : (

@@ -344,6 +344,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Adicionar evento para atualizar o estado após login ou alterações
     const handleAuthChanged = () => {
       try {
+        // Verificar se há uma navegação recente para a dashboard após login
+        const freshLoginDetected = sessionStorage.getItem('fresh_login_detected') === 'true';
+        if (freshLoginDetected) {
+          console.log('Ignorando evento auth-state-changed após login recente para evitar loops');
+          return;
+        }
+        
         // Evitar chamadas muito frequentes
         const currentTime = Date.now();
         const timeSinceLastUpdate = currentTime - lastFullUpdateRef.current;
@@ -503,54 +510,105 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Função para fazer logout
   const logout = useCallback(async () => {
     try {
-      console.log("Iniciando processo de logout simplificado");
+      console.log("Iniciando processo de logout completo");
+      
+      // 1. Definir flag para evitar loops de redirecionamento
+      sessionStorage.setItem('logout_in_progress', 'true');
+      
+      // Limpar quaisquer flags de redirecionamento
+      try {
+        sessionStorage.removeItem('redirect_count');
+        sessionStorage.removeItem('last_redirect_time');
+        sessionStorage.removeItem('anti_loop_active');
+        sessionStorage.removeItem('auth_check_in_progress');
+        
+        // Limpar histórico de navegação para evitar falsos positivos de loop após login/logout
+        sessionStorage.removeItem('navigation_history');
+        
+        // Adicionar flag para bloquear verificações de autenticação durante o processo de logout
+        sessionStorage.setItem('block_auth_checks', 'true');
+        
+        // Remover essa flag após um tempo seguro
+        setTimeout(() => {
+          sessionStorage.removeItem('block_auth_checks');
+        }, 3000);
+      } catch (e) {
+        console.error('Erro ao limpar flags de redirecionamento:', e);
+      }
       
       // Flag para controlar quando redirecionar
       let redirectComplete = false;
       
-      // 1. Chamar API de logout de forma simplificada
+      // 2. Chamar API de logout de forma robusta
       try {
         await fetch('/api/auth/logout', {
           method: 'POST',
           credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache, no-store',
+            'Pragma': 'no-cache'
+          },
+          // Adicionar um parâmetro de timestamp para evitar cache
+          cache: 'no-store'
         });
         console.log('API de logout chamada com sucesso');
       } catch (apiError) {
         console.error('Erro ao chamar API de logout:', apiError);
       }
       
-      // 2. Limpar apenas dados básicos de autenticação
+      // 3. Forçar limpeza completa de cookies
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i];
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        
+        // Limpar todos os cookies que possam estar relacionados à autenticação
+        if (name.includes('auth') || name.includes('user') || name === 'isAuthenticated') {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+      }
+      
+      // 4. Limpar completamente o localStorage
       try {
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
+        const keysToRemove = [
+          'isAuthenticated', 'auth_token', 'user', 'userId', 'userRole', 
+          'auth_timestamp', 'lastAuthCheck', 'redirect_history',
+          'csrf_token', 'loop_detected', 'loop_detected_time', 'redirect_count',
+          'last_redirect_time', 'dashboard_redirect_attempts'
+        ];
+        
+        for (const key of keysToRemove) {
+          localStorage.removeItem(key);
+        }
       } catch (lsError) {
         console.error('Erro ao limpar localStorage:', lsError);
       }
       
-      // 3. Atualizar estado do contexto
+      // 5. Atualizar estado do contexto
       setUser(null);
       setIsAuthenticated(false);
       setLoading(false);
       
-      // 4. Disparar evento de mudança de autenticação
-      try {
-        const event = new CustomEvent('auth-state-changed', { 
-          detail: { isAuthenticated: false, user: null, logoutSuccess: true }
-        });
-        window.dispatchEvent(event);
-      } catch (eventError) {
-        console.error("Erro ao disparar evento auth-state-changed:", eventError);
-      }
-      
-      // 5. Redirecionar sem parâmetros problemáticos
+      // 6. Redirecionar para login com parâmetros anti-loop
       setTimeout(() => {
         if (!redirectComplete) {
           redirectComplete = true;
           console.log("Redirecionando para login após logout");
-          window.location.href = '/auth/login';
+          
+          // Limpar flag de logout antes do redirecionamento
+          sessionStorage.removeItem('logout_in_progress');
+          
+          // Registrar que um logout foi realizado com sucesso
+          sessionStorage.setItem('logout_completed', 'true');
+          
+          // Usar um timestamp para evitar cache no redirecionamento
+          const timestamp = Date.now();
+          
+          // Navegar para página inicial com parâmetros de logout
+          window.location.replace(`/auth/login?logout_success=true&t=${timestamp}`);
         }
-      }, 100);
+      }, 300); // Aumentar o tempo para garantir que tudo seja processado
       
       return true;
     } catch (error) {
@@ -558,9 +616,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Fallback simples em caso de erro
       try {
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('auth_token');
-        window.location.href = '/auth/login';
+        sessionStorage.removeItem('logout_in_progress');
+        localStorage.clear(); // Limpar todo localStorage
+        window.location.replace('/auth/login?error=true&t=' + Date.now());
       } catch (finalError) {
         console.error("Falha total no processo de logout:", finalError);
       }

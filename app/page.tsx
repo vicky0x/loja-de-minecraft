@@ -31,8 +31,6 @@ export default function Home() {
     fetchFeaturedProductIds();
   }, []);
 
-
-
   // Features do produto
   const features = [
     {

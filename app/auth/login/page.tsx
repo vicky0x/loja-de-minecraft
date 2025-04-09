@@ -9,19 +9,47 @@ import { toast } from 'react-hot-toast';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
+  const [logoutSuccess, setLogoutSuccess] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
-  // Verificar estado de redirecionamento ao carregar
+  // Verificar estado de autenticação e redirecionamento
   useEffect(() => {
     try {
-      // Verificar se há um parâmetro de reset na URL
-      const searchParams = new URLSearchParams(window.location.search);
-      const isReset = searchParams.get('reset') === '1';
+      // Verificar e limpar qualquer parâmetro de emergência na URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const emergency = urlParams.get('emergency');
+      const logout = urlParams.get('logout');
+      const logoutSuccess = urlParams.get('logout_success');
+      const isReset = urlParams.get('reset') === '1';
       
+      // Se houve um logout de emergência, exibir mensagem
+      if (emergency) {
+        setError('Detectamos um problema com sua sessão. Por favor, faça login novamente.');
+        return;
+      }
+      
+      // Se houve um logout normal com parâmetro antigo, exibir mensagem
+      if (logout === 'success' || logoutSuccess === 'true') {
+        // Exibir mensagem de logout bem-sucedido
+        setError(null); // Limpar qualquer erro
+        setLogoutSuccess(true);
+        
+        // Registrar que um logout foi realizado com sucesso
+        sessionStorage.setItem('logout_completed', 'true');
+        
+        // Adicionar parâmetro para bloquear qualquer redirecionamento automático
+        sessionStorage.setItem('block_auto_redirect', 'true');
+        
+        // Remover parâmetros da URL para manter limpa
+        window.history.replaceState({}, document.title, '/auth/login');
+        return;
+      }
+      
+      // Se foi solicitado um reset completo
       if (isReset) {
         console.log('Reset solicitado via URL. Limpando todos os dados de autenticação...');
         
@@ -47,78 +75,82 @@ export default function LoginPage() {
         return;
       }
       
-      // Verificar se há detecção de loop
-      const loopDetected = localStorage.getItem('loop_detected') === 'true';
-      if (loopDetected) {
-        const loopDetectedTime = parseInt(localStorage.getItem('loop_detected_time') || '0', 10);
+      // Sistema inteligente de detecção de navegação vs. loops
+      try {
+        // Obter histórico de navegação recente do sessionStorage (mais seguro que localStorage)
+        const navigationHistory = JSON.parse(sessionStorage.getItem('navigation_history') || '[]');
         const now = Date.now();
         
-        // Verificar se o loop foi detectado recentemente (últimos 60 segundos)
-        if (now - loopDetectedTime < 60000) {
-          console.warn('Loop de redirecionamento detectado na página de login. Interrompendo ações.');
-          
-          // Remover flags problemáticas para permitir um novo login limpo
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('isAuthenticated');
-          localStorage.setItem('auth_redirect_triggered', 'false');
-          
-          // Mostrar mensagem ao usuário
-          setError('Detectamos um problema com sua sessão. Por favor, faça login novamente.');
-          return;
-        } else {
-          // Reset após 60 segundos
-          localStorage.removeItem('loop_detected');
-          localStorage.removeItem('loop_detected_time');
-          localStorage.setItem('redirect_count', '0');
+        // Adicionar esta página ao histórico
+        const currentPath = window.location.pathname;
+        const currentUrl = window.location.href;
+        navigationHistory.push({
+          path: currentPath,
+          timestamp: now,
+          url: currentUrl
+        });
+        
+        // Manter apenas as últimas 6 navegações
+        if (navigationHistory.length > 6) {
+          navigationHistory.shift();
         }
-      }
-
-      // Limpar o estado de redirecionamento múltiplo para evitar loops
-      if (localStorage.getItem('auth_redirect_triggered') === 'multiple') {
-        localStorage.setItem('auth_redirect_triggered', 'false');
-      }
-      
-      // Atualizar contador de redirecionamentos
-      const lastRedirectTimeStr = localStorage.getItem('last_redirect_time');
-      const redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
-      const now = Date.now();
-      
-      if (lastRedirectTimeStr) {
-        const lastRedirectTime = parseInt(lastRedirectTimeStr, 10);
-        // Se houve um redirecionamento recente (últimos 5 segundos)
-        if (now - lastRedirectTime < 5000) {
-          const newCount = redirectCount + 1;
-          localStorage.setItem('redirect_count', newCount.toString());
+        
+        // Salvar histórico atualizado
+        sessionStorage.setItem('navigation_history', JSON.stringify(navigationHistory));
+        
+        // Verificar se temos um padrão de loop (mesmo URL exato visitado mais de 3 vezes em menos de 3 segundos)
+        const recentVisits = navigationHistory.filter(entry => {
+          return entry.path === currentPath && (now - entry.timestamp < 3000);
+        });
+        
+        // Se encontrarmos mais de 3 visitas ao mesmo URL exato em menos de 3 segundos, isso é um loop
+        if (recentVisits.length >= 3) {
+          console.warn('Possível loop de navegação detectado. Verificando padrão...');
           
-          // Detectar loop após 3 redirecionamentos rápidos
-          if (newCount >= 3) {
-            console.error('Loop de redirecionamento detectado pela página de login! Interrompendo ciclo.');
-            localStorage.setItem('loop_detected', 'true');
-            localStorage.setItem('loop_detected_time', now.toString());
+          // Verificar se é um padrão alternado normal (login -> register -> login) que é navegação esperada
+          const isNormalNavigation = navigationHistory.length >= 3 && 
+            ((navigationHistory[navigationHistory.length-1].path === '/auth/login' && 
+              navigationHistory[navigationHistory.length-2].path === '/auth/register') ||
+             (navigationHistory[navigationHistory.length-1].path === '/auth/register' && 
+              navigationHistory[navigationHistory.length-2].path === '/auth/login'));
+          
+          if (!isNormalNavigation) {
+            console.error('Loop de redirecionamento confirmado! Interrompendo ciclo.');
+            sessionStorage.setItem('loop_detected', 'true');
+            sessionStorage.setItem('loop_detected_time', now.toString());
             setError('Detectamos um problema com sua sessão. Aguarde alguns segundos e tente fazer login novamente.');
+            
+            // Limpar quaisquer dados inconsistentes de autenticação
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('isAuthenticated');
+            localStorage.removeItem('user');
             return;
+          } else {
+            console.log('Navegação normal entre login e cadastro detectada, não é um loop.');
           }
-        } else {
-          // Resetar contador se o último redirecionamento foi há mais de 5 segundos
-          localStorage.setItem('redirect_count', '1');
         }
+      } catch (historyError) {
+        console.error('Erro ao processar histórico de navegação:', historyError);
       }
-      
-      localStorage.setItem('last_redirect_time', now.toString());
       
       // Verificar se o usuário já está logado
       const token = localStorage.getItem('auth_token');
       const isAuthStored = localStorage.getItem('isAuthenticated');
       
       // Se já estiver autenticado, redirecionar para dashboard ou carrinho
-      if (token && isAuthStored === 'true') {
+      if (token && isAuthStored === 'true' && !logoutSuccess) {
         // Verificar se havia um checkout pendente
         const pendingCheckout = localStorage.getItem('pending_checkout');
         
-        // Verificar se redirecionamentos estão acontecendo muito rapidamente
-        if (parseInt(localStorage.getItem('redirect_count') || '0', 10) >= 2) {
-          console.warn('Muitos redirecionamentos detectados, pausando redirecionamento automático');
-          setError('Sua sessão parece estar ativa, mas detectamos um problema. Por favor, clique em "Entrar" para continuar.');
+        // Verificar se há um bloqueio de redirecionamento ativo
+        if (sessionStorage.getItem('block_auto_redirect') === 'true') {
+          console.warn('Redirecionamento automático bloqueado temporariamente');
+          setError('Sua sessão parece estar ativa. Clique em "Entrar" para continuar ou aguarde alguns segundos.');
+          
+          // Remover o bloqueio após 5 segundos
+          setTimeout(() => {
+            sessionStorage.removeItem('block_auto_redirect');
+          }, 5000);
           return;
         }
         
@@ -128,7 +160,21 @@ export default function LoginPage() {
           router.push('/cart');
         } else {
           // Redirecionar para o dashboard normalmente
-          router.push('/dashboard');
+          console.log('Redirecionando para o dashboard após login bem-sucedido');
+          
+          // Registrar o login recente no sessionStorage
+          sessionStorage.setItem('fresh_login_detected', 'true');
+          
+          // Remover essa flag após 30 segundos (tempo suficiente para carregar a dashboard)
+          setTimeout(() => {
+            sessionStorage.removeItem('fresh_login_detected');
+          }, 30000);
+          
+          setTimeout(() => {
+            // Adicionar parâmetro para forçar uma carga limpa da dashboard
+            const timestamp = Date.now();
+            window.location.href = `/dashboard?fresh_login=true&t=${timestamp}`;
+          }, 1000);
         }
       }
     } catch (error) {
@@ -136,10 +182,17 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  // Adicionar no início do arquivo, após os imports existentes
+  // Inicializar estados baseados no sessionStorage
   useEffect(() => {
-    // Este useEffect foi desativado temporariamente por estar causando problemas de autenticação
-    console.log('Sistema de limpeza de cookies após logout desativado para corrigir problemas');
+    // Verificar se houve um logout recente
+    if (sessionStorage.getItem('logout_completed') === 'true') {
+      setLogoutSuccess(true);
+      // Limpar após 1 minuto
+      setTimeout(() => {
+        sessionStorage.removeItem('logout_completed');
+        setLogoutSuccess(false);
+      }, 60000);
+    }
   }, []);
 
   // Login com email e senha
@@ -171,14 +224,24 @@ export default function LoginPage() {
       // Login foi bem-sucedido
       setLoginSuccess(true);
       
-      // Limpar qualquer flag de redirecionamento
+      // Limpar qualquer flag de redirecionamento e valores que podem causar problemas
       try {
+        // LocalStorage
         localStorage.setItem('auth_redirect_triggered', 'false');
         localStorage.removeItem('loop_detected');
         localStorage.removeItem('loop_detected_time');
         localStorage.removeItem('force_login_page');
         localStorage.removeItem('redirect_history');
         localStorage.removeItem('dashboard_redirect_attempts');
+        
+        // SessionStorage - limpar para evitar problemas na dashboard
+        sessionStorage.removeItem('anti_loop_active');
+        sessionStorage.removeItem('auth_check_in_progress');
+        sessionStorage.removeItem('block_auto_redirect');
+        sessionStorage.removeItem('block_auth_checks');
+        sessionStorage.removeItem('dashboard_loading_start');
+        sessionStorage.removeItem('logout_completed');
+        sessionStorage.removeItem('logout_in_progress');
       } catch (e) {
         // Ignorar erros
         console.error('Erro ao limpar flags de redirecionamento:', e);
@@ -205,8 +268,19 @@ export default function LoginPage() {
       } else {
         // Redirecionar para a página de dashboard normalmente
         console.log('Redirecionando para o dashboard após login bem-sucedido');
+        
+        // Registrar o login recente no sessionStorage
+        sessionStorage.setItem('fresh_login_detected', 'true');
+        
+        // Remover essa flag após 30 segundos (tempo suficiente para carregar a dashboard)
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          sessionStorage.removeItem('fresh_login_detected');
+        }, 30000);
+        
+        setTimeout(() => {
+          // Adicionar parâmetro para forçar uma carga limpa da dashboard
+          const timestamp = Date.now();
+          window.location.href = `/dashboard?fresh_login=true&t=${timestamp}`;
         }, 1000);
       }
     } catch (err) {
@@ -230,7 +304,13 @@ export default function LoginPage() {
           </div>
         )}
         
-        {loginSuccess && (
+        {logoutSuccess && (
+          <div className="text-green-400 mb-4 text-center">
+            Logout realizado com sucesso!
+          </div>
+        )}
+        
+        {loginSuccess && !logoutSuccess && (
           <div className="text-green-400 mb-4 text-center">
             Login realizado com sucesso! Redirecionando...
           </div>
@@ -283,10 +363,11 @@ export default function LoginPage() {
           
           <button
             type="submit"
-            disabled={loading || loginSuccess}
+            disabled={loading || (loginSuccess && !logoutSuccess)}
             className="w-full py-3 bg-primary hover:bg-primary-dark text-white rounded-md font-medium transition-colors"
           >
-            {loading ? 'Entrando...' : loginSuccess ? 'Redirecionando...' : 'Entrar'}
+            {loading ? 'Entrando...' : 
+             (loginSuccess && !logoutSuccess) ? 'Redirecionando...' : 'Entrar'}
           </button>
         </form>
         
@@ -304,6 +385,23 @@ export default function LoginPage() {
             Voltar para a página inicial
           </Link>
         </div>
+        
+        {/* Script do Charla Widget */}
+        <script 
+          type="text/javascript" 
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('load', () => { 
+                const widgetElement = document.createElement('charla-widget'); 
+                widgetElement.setAttribute("p", "fa696af4-1622-4275-8c59-6fa5175705cd"); 
+                document.body.appendChild(widgetElement);
+                const widgetCode = document.createElement('script'); 
+                widgetCode.src = 'https://app.getcharla.com/widget/widget.js'; 
+                document.body.appendChild(widgetCode); 
+              })
+            `
+          }}
+        />
       </div>
     </div>
   );

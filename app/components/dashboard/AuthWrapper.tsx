@@ -69,37 +69,114 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     
     const checkAuthentication = () => {
-      try {
-        // 1. Verificar se há loop de requisições em andamento - AJUSTADO PARA SER MENOS AGRESSIVO
-        let loopDetected = false;
-        let lastRedirectTimeStr = null;
-        let redirectCount = 0;
-        const now = Date.now();
+      // Evitar múltiplas verificações simultâneas
+      const checkingInProgress = sessionStorage.getItem('auth_check_in_progress') === 'true';
+      if (checkingInProgress) {
+        console.log('[AuthWrapper] Verificação de autenticação já em andamento, pulando...');
+        return;
+      }
+      
+      // Verificar se as verificações de autenticação estão bloqueadas (durante logout)
+      if (sessionStorage.getItem('block_auth_checks') === 'true') {
+        console.log('[AuthWrapper] Verificações de autenticação bloqueadas temporariamente');
+        return;
+      }
+
+      // Verificar se estamos em um ciclo de carregamento muito longo
+      const loadingStartTime = sessionStorage.getItem('dashboard_loading_start');
+      const now = Date.now();
+      
+      if (loadingStartTime) {
+        const loadingTime = now - parseInt(loadingStartTime);
+        const MAX_LOADING_TIME = 10000; // 10 segundos
         
-        try {
-          // DESATIVADO TEMPORARIAMENTE O SISTEMA DE DETECÇÃO DE LOOP
-          // loopDetected = localStorage.getItem('loop_detected') === 'true';
-          loopDetected = false; // Forçar desativação do sistema de emergência
-          
-          lastRedirectTimeStr = localStorage.getItem('last_redirect_time');
-          redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
-          
-          // Limpar flags de loop para evitar comportamento errático
-          try {
-            localStorage.removeItem('loop_detected');
-            localStorage.removeItem('loop_detected_time');
-            localStorage.setItem('redirect_count', '0');
-          } catch (e) {
-            console.error('[AuthWrapper] Erro ao resetar flags de loop:', e);
-          }
-        } catch (storageError) {
-          console.error('[AuthWrapper] Erro ao acessar localStorage:', storageError);
+        if (loadingTime > MAX_LOADING_TIME) {
+          console.warn('[AuthWrapper] Carregamento da dashboard está demorando muito. Resetando o estado para evitar tela de loading infinita.');
+          setIsAuthenticated(false);
+          setIsMounted(true);
+          sessionStorage.removeItem('dashboard_loading_start');
+          return;
+        }
+      } else {
+        // Registrar hora de início do carregamento
+        sessionStorage.setItem('dashboard_loading_start', now.toString());
+      }
+      
+      sessionStorage.setItem('auth_check_in_progress', 'true');
+      
+      try {
+        // Verificar se há processo de logout em andamento
+        const logoutInProgress = sessionStorage.getItem('logout_in_progress') === 'true';
+        
+        // Se houver processo de logout, não interferir com verificações de autenticação
+        if (logoutInProgress) {
+          console.log('[AuthWrapper] Processo de logout em andamento, ignorando verificações de autenticação');
+          setIsAuthenticated(false);
+          sessionStorage.removeItem('auth_check_in_progress');
+          return;
         }
         
-        // DESATIVADO: Sistema anti-loop está causando problemas
-        if (false && loopDetected) {
-          // Antigo código de detecção de loop (desativado)
-          console.warn('[AuthWrapper] Sistema de detecção de loop desativado temporariamente');
+        // Verificar se já houve muitos redirecionamentos
+        try {
+          // Obter histórico de navegação do sessionStorage
+          const navigationHistory = JSON.parse(sessionStorage.getItem('navigation_history') || '[]');
+          const now = Date.now();
+          
+          // Adicionar esta página ao histórico
+          const currentPath = window.location.pathname;
+          const currentUrl = window.location.href;
+          navigationHistory.push({
+            path: currentPath,
+            timestamp: now,
+            url: currentUrl
+          });
+          
+          // Manter apenas as últimas 8 navegações
+          if (navigationHistory.length > 8) {
+            navigationHistory.shift();
+          }
+          
+          // Salvar histórico atualizado
+          sessionStorage.setItem('navigation_history', JSON.stringify(navigationHistory));
+          
+          // Verificar se temos um padrão de loop real (mesmo URL exato visitado mais de 3 vezes em menos de 3 segundos)
+          const recentVisits = navigationHistory.filter(entry => {
+            return entry.path === currentPath && (now - entry.timestamp < 3000);
+          });
+          
+          // Se encontrarmos mais de 3 visitas ao mesmo URL exato em menos de 3 segundos, isso é um loop
+          if (recentVisits.length >= 3) {
+            console.warn('[AuthWrapper] Possível loop de navegação detectado. Verificando padrão...');
+            
+            // Verificar se há um padrão de alternância de URLs que não é realmente um loop
+            // Por exemplo: dashboard -> login -> dashboard pode ser navegação normal, não um loop
+            const isNormalNavigation = navigationHistory.length >= 3 && 
+              navigationHistory.slice(-3).some(entry => entry.path !== currentPath);
+            
+            if (!isNormalNavigation) {
+              console.error('[AuthWrapper] Loop de redirecionamento confirmado! Ativando proteção anti-loop');
+              sessionStorage.setItem('anti_loop_active', 'true');
+              sessionStorage.setItem('anti_loop_timestamp', now.toString());
+              
+              // Forçar autenticação temporariamente para quebrar o loop
+              setIsAuthenticated(true);
+              setIsMounted(true);
+              sessionStorage.removeItem('auth_check_in_progress');
+              return;
+            } else {
+              console.log('[AuthWrapper] Navegação alternada detectada, não é um loop.');
+            }
+          }
+          
+          // Limpar proteção anti-loop se passou mais de 60 segundos desde sua ativação
+          const antiLoopTimestamp = parseInt(sessionStorage.getItem('anti_loop_timestamp') || '0');
+          if (sessionStorage.getItem('anti_loop_active') === 'true' && (now - antiLoopTimestamp > 60000)) {
+            console.log('[AuthWrapper] Desativando proteção anti-loop após 60 segundos');
+            sessionStorage.removeItem('anti_loop_active');
+            sessionStorage.removeItem('anti_loop_timestamp');
+          }
+        } catch (e) {
+          console.error('[AuthWrapper] Erro ao verificar histórico de navegação:', e);
         }
         
         // 2. Verificação mais robusta da autenticação usando múltiplas fontes
@@ -125,63 +202,63 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
           console.error('[AuthWrapper] Erro ao verificar cookies de autenticação:', cookieError);
         }
         
-        // 3. Lógica de decisão mais robusta - SIMPLIFICADA PARA EVITAR FALSOS POSITIVOS
-        // const isReallyAuthenticated = hasAuthCookie && (isAuthStored || hasUserData);
-        const isReallyAuthenticated = hasAuthCookie || (isAuthStored && hasToken); // Mais permissivo
+        // 3. Lógica de decisão mais robusta
+        // Considerar qualquer um dos dois como válido para evitar problemas de sincronização
+        const isReallyAuthenticated = hasAuthCookie || (isAuthStored && hasToken && hasUserData);
         
-        // DESATIVADO: Sistema que monitora redirecionamentos é muito sensível
-        if (false && lastRedirectTimeStr) {
-          // Antigo código de contador de redirecionamentos (desativado)
-          console.warn('[AuthWrapper] Sistema de contagem de redirecionamentos desativado temporariamente');
+        // 4. Corrigir inconsistências sem redirecionar
+        if (!isReallyAuthenticated && (hasToken || isAuthStored || hasUserData)) {
+          console.warn('[AuthWrapper] Dados de autenticação inconsistentes, limpando localStorage');
+          try {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('isAuthenticated');
+            localStorage.removeItem('user');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('auth_timestamp');
+            localStorage.removeItem('lastAuthCheck');
+          } catch (e) {
+            console.error('[AuthWrapper] Erro ao limpar dados inconsistentes:', e);
+          }
         }
         
-        try {
-          localStorage.setItem('last_redirect_time', now.toString());
-        } catch (e) {
-          console.error('[AuthWrapper] Erro ao atualizar timestamp de redirecionamento:', e);
-        }
-        
-        // 4. Atualizar estado baseado nas verificações robustas
+        // 5. Atualizar estado baseado nas verificações robustas
         if (isReallyAuthenticated) {
           console.log('[AuthWrapper] Autenticação validada');
           setIsAuthenticated(true);
+          
+          // Limpar o timestamp de carregamento da dashboard
+          sessionStorage.removeItem('dashboard_loading_start');
         } else {
           console.warn('[AuthWrapper] Autenticação inválida ou incompleta, redirecionando para login');
           
-          // Limpar dados inconsistentes antes de redirecionar
-          if (!hasAuthCookie && (hasToken || isAuthStored)) {
-            console.warn('[AuthWrapper] Dados de autenticação inconsistentes, limpando localStorage');
+          // Se não estiver autenticado e não estiver na página de login, redirecionar
+          // Incrementar contador de redirecionamentos
+          if (!isLoginPage()) {
             try {
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('isAuthenticated');
-              localStorage.removeItem('user');
+              const redirectCount = parseInt(sessionStorage.getItem('redirect_count') || '0');
+              sessionStorage.setItem('redirect_count', (redirectCount + 1).toString());
+              sessionStorage.setItem('last_redirect_time', Date.now().toString());
             } catch (e) {
-              console.error('[AuthWrapper] Erro ao limpar dados inconsistentes:', e);
+              console.error('[AuthWrapper] Erro ao atualizar contador de redirecionamentos:', e);
+            }
+            
+            // Verificar novamente se não estamos em um loop antes de redirecionar
+            if (sessionStorage.getItem('anti_loop_active') !== 'true') {
+              router.push('/auth/login?redirect=dashboard');
+            } else {
+              console.warn('[AuthWrapper] Redirecionamento bloqueado pela proteção anti-loop');
             }
           }
           
-          // Se não estiver autenticado e não estiver na página de login, redirecionar
-          // SIMPLIFICADO: Apenas redireciona, sem parâmetros que ativam sistemas de emergência
-          if (!isLoginPage()) {
-            router.push('/auth/login');
-          }
           setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('[AuthWrapper] Erro ao verificar autenticação:', error);
-        
-        // Em caso de erro crítico, tentar redirecionar para login como fallback
-        try {
-          if (!isLoginPage()) {
-            router.push('/auth/login'); // Removido parâmetros para evitar loop
-          }
-        } catch (routerError) {
-          console.error('[AuthWrapper] Erro ao redirecionar após falha:', routerError);
-        }
-        
         setIsAuthenticated(false);
       } finally {
         setIsMounted(true);
+        sessionStorage.removeItem('auth_check_in_progress');
       }
     };
     

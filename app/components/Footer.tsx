@@ -85,7 +85,7 @@ export default function Footer() {
                 </span>
               </motion.a>
               <motion.a 
-                href="https://discord.gg" 
+                href="https://discord.gg/2q8QrcuP9v" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-slate-300 transition-colors hover:text-[#5865F2]"
@@ -99,7 +99,7 @@ export default function Footer() {
                 </span>
               </motion.a>
               <motion.a 
-                href="https://youtube.com" 
+                href="https://www.youtube.com/@fantasystoreloja" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-slate-300 transition-colors hover:text-[#FF0000]"
@@ -113,7 +113,7 @@ export default function Footer() {
                 </span>
               </motion.a>
               <motion.a 
-                href="https://trustpilot.com" 
+                href="https://www.trustpilot.com/review/fantasystore.com.br" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-slate-300 transition-colors hover:text-[#00B67A]"
