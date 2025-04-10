@@ -47,17 +47,16 @@ async function checkAuth(request: NextRequest) {
   }
 }
 
-// GET /api/categories/[id] - Buscar uma categoria pelo ID
+// GET /api/categories/[id] - Obter uma categoria pelo ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
     await connectDB();
     
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID da categoria
+    const id = params?.id;
     
     // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -88,10 +87,10 @@ export async function GET(
   }
 }
 
-// PUT /api/categories/[id] - Atualizar uma categoria (apenas admin)
+// PUT /api/categories/[id] - Atualizar uma categoria
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
     // Verificar autenticação e permissões
@@ -113,9 +112,8 @@ export async function PUT(
     
     await connectDB();
     
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID da categoria
+    const id = params?.id;
     
     // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -205,10 +203,10 @@ export async function PUT(
   }
 }
 
-// DELETE /api/categories/[id] - Excluir uma categoria (apenas admin)
+// DELETE /api/categories/[id] - Excluir uma categoria
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
     // Verificar autenticação e permissões
@@ -230,9 +228,8 @@ export async function DELETE(
     
     await connectDB();
     
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID da categoria
+    const id = params?.id;
     
     // Verificar se o ID é válido
     if (!mongoose.Types.ObjectId.isValid(id)) {

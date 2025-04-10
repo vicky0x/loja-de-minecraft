@@ -25,12 +25,11 @@ async function getCouponModel() {
 // GET /api/coupons/[id] - Obter detalhes de um cupom específico
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
-    // Garantir que params seja await no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID do cupom
+    const id = params?.id;
     
     logger.info(`Buscando detalhes do cupom ${id}`);
     await connectDB();
@@ -98,12 +97,11 @@ export async function GET(
 // PUT /api/coupons/[id] - Atualizar um cupom existente
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
-    // Garantir que params seja await no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID do cupom
+    const id = params?.id;
     
     logger.info(`Requisição para atualizar cupom ${id}`);
     
@@ -207,12 +205,11 @@ export async function PUT(
 // DELETE /api/coupons/[id] - Excluir um cupom
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
-    // Garantir que params seja await no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID do cupom
+    const id = params?.id;
     
     logger.info(`Requisição para excluir cupom ${id}`);
     
