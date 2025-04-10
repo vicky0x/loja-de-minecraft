@@ -475,12 +475,12 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
 .product-description br {
   display: block;
   content: "";
-  margin-top: 0.4rem;
+  margin-top: 0.15rem;
 }
 
 /* Espaçamento entre parágrafos */
 .product-description p + p {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 /* Efeitos de hover aprimorados */
@@ -1788,4 +1788,10 @@ body.modal-open {
   border-radius: 20px !important;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
   object-fit: cover !important;
+}
+
+.product-description strong {
+  color: white;
+  font-weight: 600;
+  font-size: 1.1em;
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose, { isValidObjectId } from 'mongoose';
 import dbConnect from '@/app/lib/db/mongodb';
+import Logger from '@/app/lib/logger';
 
 /**
  * API para gerenciamento de pedidos (admin)
@@ -10,12 +11,7 @@ import dbConnect from '@/app/lib/db/mongodb';
  * para os parâmetros de rota para evitar erros de tipagem.
  */
 
-// Logger para depuração
-const logger = {
-  info: (message: string, ...args: any[]) => console.log(`[API:ADMIN:ORDER] ${message}`, ...args),
-  error: (message: string, ...args: any[]) => console.error(`[API:ADMIN:ORDER] ${message}`, ...args),
-  warn: (message: string, ...args: any[]) => console.warn(`[API:ADMIN:ORDER] ${message}`, ...args)
-};
+const logger = new Logger('api/admin/orders/[id]');
 
 // Função para carregar os modelos necessários de forma segura
 async function getModels() {
@@ -395,6 +391,9 @@ export async function PUT(
       updatedAt: new Date()
     };
     
+    // Verificar se é uma aprovação manual de pagamento (status = 'paid')
+    const isPaymentApproval = status === 'paid' && order.paymentInfo.status !== 'paid';
+    
     // Atualizar status, se fornecido
     if (status && typeof status === 'string') {
       const adminUsername = auth.user?.username || 'admin';
@@ -412,6 +411,12 @@ export async function PUT(
       
       updateData.statusHistory = order.statusHistory;
       updateData.status = status;
+      
+      // Atualizar também paymentInfo.status
+      if (!updateData.paymentInfo) {
+        updateData.paymentInfo = { ...order.paymentInfo };
+      }
+      updateData.paymentInfo.status = status;
       
       logger.info(`Status do pedido ${id} atualizado para "${status}" por ${adminUsername}`);
     }
@@ -457,6 +462,29 @@ export async function PUT(
       { new: true }
     ).populate('user', 'username email name');
     
+    // Se for uma aprovação de pagamento, atribuir produtos ao usuário
+    if (isPaymentApproval) {
+      logger.info(`Iniciando atribuição de produtos para pedido ${id} após aprovação manual de pagamento`);
+      try {
+        const result = await assignProductsToUser(updatedOrder);
+        logger.info(`Resultado da atribuição de produtos: ${JSON.stringify(result)}`);
+        
+        if (result.success) {
+          // Marcar produtos como atribuídos
+          await Order.findByIdAndUpdate(id, { 
+            $set: { 
+              productAssigned: true,
+              orderStatus: 'processing',
+              'metadata.productsAssignedAt': new Date()
+            }
+          });
+        }
+      } catch (assignError) {
+        logger.error(`Erro ao atribuir produtos após aprovação manual: ${assignError}`);
+        // Não falhar a operação principal se a atribuição falhar
+      }
+    }
+    
     logger.info(`Pedido ${id} atualizado com sucesso`);
     return NextResponse.json({ 
       message: 'Pedido atualizado com sucesso',
@@ -481,14 +509,7 @@ async function assignProductsToUser(order: any) {
     }
     
     // Estabelecer conexão com o banco de dados
-    await dbConnect();
-    
-    const connection = mongoose.connection;
-    if (!connection || !connection.db) {
-      throw new Error('Falha na conexão com o banco de dados');
-    }
-    
-    const db = connection.db;
+    const db = (await dbConnect()).db;
     const stockItemsCollection = db.collection('stockitems');
     const usersCollection = db.collection('users');
     const ordersCollection = db.collection('orders');
@@ -539,7 +560,7 @@ async function assignProductsToUser(order: any) {
       try {
         // Verificar se o item possui os campos necessários
         let productId = null;
-        let variantId = 'default';
+        let variantId = null;
         
         // Extrair productId e variantId de diferentes formatos
         if (item.productId) {
@@ -596,9 +617,9 @@ async function assignProductsToUser(order: any) {
           assignedTo: null
         };
         
-        if (hasVariants) {
+        if (hasVariants && variantId) {
           // Para produtos com variantes, incluir o ID da variante
-          stockFilter.variant = variantId;
+          stockFilter.variant = new mongoose.Types.ObjectId(variantId);
         } else {
           // Para produtos sem variantes, procurar por variant: null
           stockFilter.variant = null;
@@ -609,35 +630,34 @@ async function assignProductsToUser(order: any) {
         // Buscar itens disponíveis no estoque
         const stockItems = await stockItemsCollection.find(stockFilter).limit(itemQty).toArray();
         
-        if (stockItems.length < itemQty) {
-          logger.error(`Estoque insuficiente. Encontrados: ${stockItems.length}, Necessários: ${itemQty}`);
+        if (!stockItems || stockItems.length < itemQty) {
+          logger.error(`Estoque insuficiente para o produto ${productId}. Solicitado: ${itemQty}, Disponível: ${stockItems?.length || 0}`);
           allItemsSuccessful = false;
           continue;
         }
         
+        logger.info(`Encontrado ${stockItems.length} itens no estoque para o produto ${productId}`);
+        
         // Atribuir cada item ao usuário
         for (const stockItem of stockItems) {
-          // Atualizar o item no estoque
-          const updateStockResult = await stockItemsCollection.updateOne(
-            { _id: stockItem._id },
-            {
-              $set: {
-                assignedTo: new mongoose.Types.ObjectId(userId),
-                assignedAt: new Date(),
-                isUsed: true,
-                'metadata.orderId': order._id.toString(),
-                'metadata.assignedBy': 'admin-api',
-                'metadata.assignmentMethod': hasVariants ? 'admin-variants' : 'admin-noVariants',
-                updatedAt: new Date()
+          try {
+            await stockItemsCollection.updateOne(
+              { _id: stockItem._id },
+              { 
+                $set: { 
+                  assignedTo: new mongoose.Types.ObjectId(userId),
+                  isUsed: true,
+                  orderId: new mongoose.Types.ObjectId(order._id.toString()),
+                  assignedAt: new Date()
+                } 
               }
-            }
-          );
-          
-          logger.info(`Item ${stockItem._id} atribuído ao usuário ${userId} - resultado: ${JSON.stringify(updateStockResult)}`);
-          
-          // Guardar o ID do produto para adicionar à lista do usuário
-          if (stockItem.product) {
-            assignedProductIds.push(stockItem.product);
+            );
+            
+            assignedProductIds.push(stockItem._id.toString());
+            logger.info(`Item ${stockItem._id} atribuído ao usuário ${userId}`);
+          } catch (updateError) {
+            logger.error(`Erro ao atualizar item de estoque ${stockItem._id}: ${updateError}`);
+            allItemsSuccessful = false;
           }
         }
         
@@ -651,7 +671,7 @@ async function assignProductsToUser(order: any) {
           
           // Adicionar condição de variante adequada
           if (hasVariants && variantId) {
-            remainingStockFilter['variant'] = variantId;
+            remainingStockFilter['variant'] = new mongoose.Types.ObjectId(variantId);
           } else if (!hasVariants) {
             remainingStockFilter['variant'] = null;
           }
@@ -705,35 +725,6 @@ async function assignProductsToUser(order: any) {
         }
       } catch (itemError) {
         logger.error(`Erro ao processar item: ${itemError}`);
-        allItemsSuccessful = false;
-      }
-    }
-    
-    // Adicionar produtos à lista do usuário
-    if (assignedProductIds.length > 0) {
-      try {
-        // Log detalhado dos produtos atribuídos
-        logger.info(`Produtos a serem adicionados ao usuário ${userId}: ${assignedProductIds.map(p => p.toString()).join(', ')}`);
-        
-        // Atualizar a lista de produtos do usuário usando $addToSet para evitar duplicatas
-        const updateResult = await usersCollection.updateOne(
-          { _id: new mongoose.Types.ObjectId(userId) },
-          { $addToSet: { products: { $each: assignedProductIds } } }
-        );
-        
-        logger.info(`Resultado da atualização do usuário: ${JSON.stringify(updateResult)}`);
-        logger.info(`${assignedProductIds.length} produtos adicionados à lista do usuário ${userId}`);
-        
-        // Verificar quantos produtos o usuário tem agora
-        const updatedUser = await usersCollection.findOne(
-          { _id: new mongoose.Types.ObjectId(userId) }
-        );
-        
-        if (updatedUser && updatedUser.products) {
-          logger.info(`Usuário ${userId} agora tem ${updatedUser.products.length} produtos no total`);
-        }
-      } catch (userError) {
-        logger.error(`Erro ao atualizar a lista de produtos do usuário: ${userError}`);
         allItemsSuccessful = false;
       }
     }
