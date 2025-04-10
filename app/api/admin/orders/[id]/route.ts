@@ -289,10 +289,7 @@ function processQuantity(item: any): number {
 }
 
 // GET - Obter detalhes de um pedido específico
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // Verificar se o usuário é administrador
     const adminCheck = await verifyAdmin(request);
@@ -304,8 +301,9 @@ export async function GET(
       );
     }
     
-    // Obter ID do pedido da URL
-    const { id } = params;
+    // Garantir que params seja await corretamente no Next.js 15
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     
     // Validar ID do pedido
     if (!id || !isValidObjectId(id)) {
@@ -365,10 +363,7 @@ export async function GET(
 }
 
 // PUT - Atualizar status de pedido
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // Verificar autenticação de admin
     const adminCheck = await verifyAdmin(request);
@@ -380,8 +375,9 @@ export async function PUT(
       );
     }
     
-    // Obter ID do pedido
-    const { id } = params;
+    // Garantir que params seja await corretamente no Next.js 15
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     
     // Validar ID do pedido
     if (!id || !isValidObjectId(id)) {
