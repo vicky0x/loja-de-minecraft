@@ -10,11 +10,11 @@ const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
 // GET - Obter detalhes do produto do usuário
 export async function GET(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
   try {
     // Obter ID do produto
-    const id = context?.params?.id;
+    const id = params?.id;
     const url = new URL(request.url);
     const skipCache = url.searchParams.get('skipCache') === 'true';
     
@@ -130,11 +130,11 @@ export async function GET(
 // PUT - Atualizar produto do usuário
 export async function PUT(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
   try {
     // Obter ID do produto
-    const id = context?.params?.id;
+    const id = params?.id;
     
     // Restante do código permanece inalterado
   } catch (error) {
@@ -145,11 +145,11 @@ export async function PUT(
 // DELETE - Excluir produto do usuário
 export async function DELETE(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
   try {
     // Obter ID do produto
-    const id = context?.params?.id;
+    const id = params?.id;
     
     // Restante do código permanece inalterado
   } catch (error) {

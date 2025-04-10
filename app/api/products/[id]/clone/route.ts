@@ -6,11 +6,11 @@ import { checkAuth } from '@/app/lib/auth';
 
 export async function POST(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
   try {
     // Obter ID do produto a ser clonado
-    const id = context?.params?.id;
+    const id = params?.id;
     
     // Verificar autenticação
     const auth = await checkAuth(request);

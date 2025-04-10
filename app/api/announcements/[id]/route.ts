@@ -6,9 +6,9 @@ import User from '@/app/lib/models/user';
 // GET - Obter um anúncio específico
 export async function GET(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
-  const id = context?.params?.id;
+  const id = params?.id;
 
   try {
     await dbConnect();
@@ -46,9 +46,9 @@ export async function GET(
 // PUT - Atualizar um anúncio (apenas para admins)
 export async function PUT(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
-  const id = context?.params?.id;
+  const id = params?.id;
   
   try {
     await dbConnect();
@@ -136,9 +136,9 @@ export async function PUT(
 // DELETE - Excluir um anúncio (apenas para admins)
 export async function DELETE(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
-  const id = context?.params?.id;
+  const id = params?.id;
   
   try {
     await dbConnect();

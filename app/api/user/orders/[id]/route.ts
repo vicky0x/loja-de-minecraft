@@ -99,11 +99,11 @@ try {
 // GET - Obter detalhes de um pedido específico do usuário
 export async function GET(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
   try {
     // Obter ID do pedido
-    const id = context?.params?.id;
+    const id = params?.id;
     
     // Verificar autenticação
     const authData = await checkAuth(request);

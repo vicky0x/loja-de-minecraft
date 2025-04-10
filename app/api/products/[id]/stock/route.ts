@@ -49,11 +49,11 @@ async function checkAuth(request: NextRequest) {
 // PATCH /api/products/[id]/stock - Atualizar estoque de um produto (apenas admin)
 export async function PATCH(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
   try {
     // Obter ID do produto
-    const id = context?.params?.id;
+    const id = params?.id;
     
     // Verificar autenticação
     const user = await checkAuth(request);
@@ -138,11 +138,11 @@ export async function PATCH(
 // PUT - Alternativa ao PATCH, faz a mesma coisa para compatibilidade
 export async function PUT(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
   try {
     // Obter ID do produto dos parâmetros da rota
-    const id = context?.params?.id;
+    const id = params?.id;
     
     // Verificar autenticação
     const user = await checkAuth(request);

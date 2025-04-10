@@ -5,7 +5,7 @@ import { checkAuth } from '@/app/lib/auth';
 
 export async function POST(
   request: NextRequest,
-  context: any
+  { params }: any
 ) {
   try {
     // Verificar autenticação e permissões
@@ -29,7 +29,7 @@ export async function POST(
     await connectDB();
 
     // Obter ID do pedido e item a ser marcado como entregue
-    const id = context?.params?.id;
+    const id = params?.id;
     const { itemId, note } = await request.json();
 
     if (!id || !itemId) {
