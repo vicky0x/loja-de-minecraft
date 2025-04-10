@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FiSearch, FiFilter, FiRefreshCw, FiChevronDown, FiChevronUp, FiAlertTriangle } from 'react-icons/fi';
 import Link from 'next/link';
@@ -41,7 +41,24 @@ interface Category {
   icon?: string;
 }
 
-export default function ProductsPage() {
+// Componente de fallback para o Suspense
+function ProductsLoading() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col space-y-8">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-white">Produtos</h1>
+        </div>
+        <div className="w-full h-64 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Componente principal com a lógica da página
+function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -420,5 +437,14 @@ export default function ProductsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Componente de página principal que usa Suspense
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<ProductsLoading />}>
+      <ProductsContent />
+    </Suspense>
   );
 } 

@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/app/lib/db/mongodb';
-import Logger from '@/app/lib/logger';
 
-const logger = new Logger('api/system/reset-db');
+// Substituir o Logger por funções simples de log
+function logInfo(message: string) {
+  console.log(`[api/system/reset-db] INFO: ${message}`);
+}
+
+function logError(message: string, error?: any) {
+  console.error(`[api/system/reset-db] ERROR: ${message}`, error);
+}
 
 export async function GET() {
   // Não permitir em produção, proteção dupla
   if (process.env.NODE_ENV === 'production' || process.env.DISABLE_DEV_ROUTES === 'true') {
-    logger.error('Tentativa de acesso à rota de reset de banco de dados em ambiente de produção');
+    logError('Tentativa de acesso à rota de reset de banco de dados em ambiente de produção');
     return NextResponse.json(
       { message: 'Esta operação não é permitida em ambiente de produção' },
       { status: 403 }
@@ -17,7 +23,7 @@ export async function GET() {
   try {
     // Conectar ao MongoDB
     const mongoose = await connectDB();
-    logger.info('Iniciando limpeza de coleções do banco de dados');
+    logInfo('Iniciando limpeza de coleções do banco de dados');
     
     // Lista das coleções que queremos limpar
     const collections = ['users', 'products', 'orders', 'categories', 'coupons'];
@@ -26,9 +32,9 @@ export async function GET() {
     for (const collection of collections) {
       try {
         await mongoose.connection.db.collection(collection).deleteMany({});
-        logger.info(`Coleção ${collection} foi limpa com sucesso`);
+        logInfo(`Coleção ${collection} foi limpa com sucesso`);
       } catch (err) {
-        logger.error(`Erro ao limpar coleção ${collection}:`, err);
+        logError(`Erro ao limpar coleção ${collection}:`, err);
       }
     }
     
@@ -37,7 +43,7 @@ export async function GET() {
       message: 'Banco de dados limpo com sucesso'
     });
   } catch (error: any) {
-    logger.error('Erro ao limpar banco de dados:', error);
+    logError('Erro ao limpar banco de dados:', error);
     
     return NextResponse.json({
       success: false,

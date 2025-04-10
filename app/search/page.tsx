@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FiSearch, FiRefreshCw } from 'react-icons/fi';
 import Link from 'next/link';
@@ -34,7 +34,31 @@ interface Product {
   discountPercentage?: number;
 }
 
-export default function SearchPage() {
+// Componente de fallback para o Suspense
+function SearchLoading() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="space-y-8">
+        <div className="flex flex-col space-y-4">
+          <h1 className="text-3xl font-bold text-white">Pesquisar Produtos</h1>
+          <div className="max-w-xl">
+            <div className="relative">
+              <div className="w-full pl-10 pr-4 py-3 bg-dark-300 text-dark-300 border border-dark-400 rounded-md">
+                Carregando...
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Componente principal que utiliza useSearchParams
+function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -168,5 +192,14 @@ export default function SearchPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Página principal que usa Suspense para envolver o componente que utiliza useSearchParams
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchLoading />}>
+      <SearchContent />
+    </Suspense>
   );
 } 

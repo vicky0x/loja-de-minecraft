@@ -1,32 +1,113 @@
-"use client";
+'use client';
+
+// Esta página só funciona no lado do cliente
+// Não será renderizada corretamente no lado do servidor
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FiAlertTriangle, FiRefreshCw, FiCheckCircle, FiXCircle, FiArrowLeft, FiDatabase, FiLoader, FiWifi } from 'react-icons/fi';
 
+// Componente para verificar se estamos no lado do cliente
+function ClientSideCheck() {
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-dark-100 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto bg-dark-200 rounded-lg shadow-xl p-8">
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="text-yellow-500 text-6xl mb-6">
+              <FiAlertTriangle className="mx-auto" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-4">Carregando Debug Tool</h1>
+            <p className="text-gray-300 mb-2">
+              Esta página só funciona no lado do cliente.
+            </p>
+            <div className="w-12 h-12 border-t-2 border-primary border-r-2 rounded-full animate-spin mt-4"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return <ProductDebugPageContent />;
+}
+
+// Componente que só será renderizado no lado do cliente
+function ClientOnlyNetworkStatus() {
+  const [isOnline, setIsOnline] = useState(true);
+  
+  useEffect(() => {
+    // Acessar navigator apenas no lado do cliente, após a montagem do componente
+    if (typeof window !== 'undefined') {
+      setIsOnline(navigator.onLine);
+      
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+  
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+  
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+  }, []);
+  
+  return (
+    <div className="mb-4">
+      <h2 className="text-lg font-semibold text-white mb-2">Conexão com a Internet</h2>
+      <div className="flex items-center gap-2 mb-1">
+        <FiWifi className={isOnline ? "text-green-400" : "text-red-400"} />
+        <span className={isOnline ? "text-green-400" : "text-red-400"}>
+          {isOnline ? "Conectado à internet" : "Sem conexão com a internet"}
+        </span>
+      </div>
+      {!isOnline && (
+        <div className="bg-red-900/30 p-3 rounded mt-2 text-red-300 text-sm">
+          <FiAlertTriangle className="inline mr-2" />
+          Sem conexão com a internet. Verifique sua rede e tente novamente.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente para informações do sistema que dependem do navegador
+function ClientOnlySystemInfo() {
+  const [userAgent, setUserAgent] = useState('Carregando...');
+  const [isOnline, setIsOnline] = useState(true);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUserAgent(navigator.userAgent);
+      setIsOnline(navigator.onLine);
+    }
+  }, []);
+  
+  return (
+    <div className="grid grid-cols-2 gap-4 bg-gray-800/50 p-4 rounded mt-4">
+      <div><strong>User Agent:</strong> {userAgent}</div>
+      <div><strong>Conexão Online:</strong> {isOnline ? 'Sim' : 'Não'}</div>
+    </div>
+  );
+}
+
 // Página para diagnóstico da API de produtos
-export default function ProductDebugPage() {
+function ProductDebugPageContent() {
   const [dbStatus, setDbStatus] = useState<'loading' | 'success' | 'error' | null>(null);
   const [dbDetails, setDbDetails] = useState<any>(null);
   const [apiStatus, setApiStatus] = useState<'loading' | 'success' | 'error' | null>(null);
   const [apiResponse, setApiResponse] = useState<any>(null);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [networkStatus, setNetworkStatus] = useState<boolean>(navigator.onLine);
   const [loadTimes, setLoadTimes] = useState<{db?: number, api?: number}>({});
-
-  // Verificar status da conexão com a internet
-  useEffect(() => {
-    const handleOnline = () => setNetworkStatus(true);
-    const handleOffline = () => setNetworkStatus(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   // Testar conexão com o MongoDB
   const testDatabaseConnection = async () => {
@@ -169,22 +250,8 @@ export default function ProductDebugPage() {
       <div className="bg-dark-200 rounded-lg p-6 shadow-lg mb-8">
         <h1 className="text-2xl font-bold text-white mb-6">Diagnóstico da API de Produtos</h1>
         
-        {/* Status da conexão com a internet */}
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-white mb-2">Conexão com a Internet</h2>
-          <div className="flex items-center gap-2 mb-1">
-            <FiWifi className={networkStatus ? "text-green-400" : "text-red-400"} />
-            <span className={networkStatus ? "text-green-400" : "text-red-400"}>
-              {networkStatus ? "Conectado à internet" : "Sem conexão com a internet"}
-            </span>
-          </div>
-          {!networkStatus && (
-            <div className="bg-red-900/30 p-3 rounded mt-2 text-red-300 text-sm">
-              <FiAlertTriangle className="inline mr-2" />
-              Sem conexão com a internet. Verifique sua rede e tente novamente.
-            </div>
-          )}
-        </div>
+        {/* Status da conexão com a internet - renderizado apenas no cliente */}
+        <ClientOnlyNetworkStatus />
         
         {/* Status da conexão com o banco de dados */}
         <div className="mb-8">
@@ -236,6 +303,12 @@ export default function ProductDebugPage() {
           )}
         </div>
         
+        {/* Informações do sistema */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-2">Informações do Sistema</h2>
+          <ClientOnlySystemInfo />
+        </div>
+        
         {/* Botões de ação */}
         <div className="flex gap-4 mt-8">
           <button 
@@ -277,7 +350,7 @@ export default function ProductDebugPage() {
             <div className="bg-dark-400 p-4 rounded text-sm font-mono text-gray-300 whitespace-pre">
               <div>MongoDB: {dbStatus === 'success' ? '✓ Conectado' : dbStatus === 'error' ? '✗ Falha' : '⟳ Testando'}</div>
               <div>API: {apiStatus === 'success' ? '✓ Funcionando' : apiStatus === 'error' ? '✗ Falha' : '⟳ Testando'}</div>
-              <div>Internet: {networkStatus ? '✓ Conectado' : '✗ Sem conexão'}</div>
+              <div>Internet: {navigator.onLine ? '✓ Conectado' : '✗ Sem conexão'}</div>
               <div>Servidor: {Date.now() % 2 === 0 ? '✓ Respondendo' : '✓ Respondendo'}</div>
             </div>
           </div>
@@ -299,4 +372,9 @@ export default function ProductDebugPage() {
       </div>
     </div>
   );
+}
+
+// Componente principal que verifica se estamos no lado do cliente
+export default function ProductDebugPage() {
+  return <ClientSideCheck />;
 } 

@@ -66,6 +66,155 @@ export const metadata: Metadata = {
   },
 };
 
+// Dados JSON-LD para SEO
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Fantasy Store",
+  "url": "https://fantasystore.com.br",
+  "logo": "https://fantasystore.com.br/images/logo.png",
+  "description": "Loja especializada em contas originais de Minecraft com garantia e preço justo",
+  "sameAs": [
+    "https://www.youtube.com/@fantasystoreloja",
+    "https://discord.gg/2q8QrcuP9v",
+    "https://www.trustpilot.com/review/fantasystore.com.br"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer service",
+    "availableLanguage": "Portuguese"
+  }
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "url": "https://fantasystore.com.br",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://fantasystore.com.br/search?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+};
+
+const productJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "Minecraft Java + Bedrock Edition Full Acesso",
+  "image": "https://fantasystore.com.br/images/products/minecraft-java-bedrock.jpg",
+  "description": "Conta de Minecraft Original com Java e Bedrock Edition, full acesso, entrega imediata após pagamento confirmado.",
+  "brand": {
+    "@type": "Brand",
+    "name": "Microsoft"
+  },
+  "offers": {
+    "@type": "Offer",
+    "url": "https://fantasystore.com.br/product/minecraft-java-bedrock-edition",
+    "priceCurrency": "BRL",
+    "price": "149.99",
+    "priceValidUntil": "2024-12-31",
+    "availability": "https://schema.org/InStock",
+    "seller": {
+      "@type": "Organization",
+      "name": "Fantasy Store"
+    }
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "reviewCount": "352"
+  }
+};
+
+const breadcrumbsJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fantasystore.com.br"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Produtos",
+      "item": "https://fantasystore.com.br/products"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Minecraft Java + Bedrock Edition",
+      "item": "https://fantasystore.com.br/product/minecraft-java-bedrock-edition"
+    }
+  ]
+};
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "As contas de Minecraft vendidas são originais?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sim, todas as nossas contas são 100% originais e legítimas, adquiridas através de fornecedores autorizados. Oferecemos garantia de até 365 dias em todas as nossas contas."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Como funciona a entrega das contas?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A entrega é automática e imediata após a confirmação do pagamento. Você receberá os dados de acesso da sua conta por e-mail e na área do cliente."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Qual a diferença entre a Fantasy Store e outras lojas?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A Fantasy Store vende apenas contas 100% legítimas, obtidas através de parcerias com fornecedores autorizados. Oferecemos garantia de até 365 dias e suporte 24/7, diferente de outras lojas que podem vender contas obtidas por meios ilegais."
+      }
+    }
+  ]
+};
+
+const reviewsJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "itemListElement": [
+    {
+      "@type": "Review",
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": "5",
+        "bestRating": "5"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Pedro Silva"
+      },
+      "reviewBody": "Excelente loja! Comprei minha conta de Minecraft e recebi em menos de 5 minutos após o pagamento."
+    },
+    {
+      "@type": "Review",
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": "5",
+        "bestRating": "5"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Maria Santos"
+      },
+      "reviewBody": "Super recomendo! Conta entregue rapidamente e com suporte ótimo quando precisei de ajuda."
+    }
+  ]
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -78,188 +227,32 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/favicon/favicon-180x180.png" />
         <meta name="theme-color" content="#6C63FF" />
-        <Script
-          id="schema-organization"
+        
+        {/* JSON-LD Scripts para SEO */}
+        <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              "name": "Fantasy Store",
-              "url": "https://fantasystore.com.br",
-              "logo": "https://fantasystore.com.br/images/logo.png",
-              "description": "Loja especializada em contas originais de Minecraft com garantia e preço justo",
-              "sameAs": [
-                "https://facebook.com/fantasystorebr",
-                "https://instagram.com/fantasystorebr",
-                "https://twitter.com/fantasystorebr",
-                "https://www.youtube.com/@fantasystoreloja",
-                "https://discord.gg/2q8QrcuP9v",
-                "https://www.trustpilot.com/review/fantasystore.com.br"
-              ],
-              "contactPoint": {
-                "@type": "ContactPoint",
-                "telephone": "+55-11-99999-9999",
-                "contactType": "customer service",
-                "availableLanguage": "Portuguese"
-              }
-            })
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        <Script
-          id="schema-webshop"
+        <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              "url": "https://fantasystore.com.br",
-              "potentialAction": {
-                "@type": "SearchAction",
-                "target": "https://fantasystore.com.br/search?q={search_term_string}",
-                "query-input": "required name=search_term_string"
-              }
-            })
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
-        <Script
-          id="schema-product"
+        <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              "name": "Minecraft Java + Bedrock Edition Full Acesso",
-              "image": "https://fantasystore.com.br/images/products/minecraft-java-bedrock.jpg",
-              "description": "Conta de Minecraft Original com Java e Bedrock Edition, full acesso, entrega imediata após pagamento confirmado.",
-              "brand": {
-                "@type": "Brand",
-                "name": "Microsoft"
-              },
-              "offers": {
-                "@type": "Offer",
-                "url": "https://fantasystore.com.br/product/minecraft-java-bedrock-edition",
-                "priceCurrency": "BRL",
-                "price": "149.99",
-                "priceValidUntil": "2024-12-31",
-                "availability": "https://schema.org/InStock",
-                "seller": {
-                  "@type": "Organization",
-                  "name": "Fantasy Store"
-                }
-              },
-              "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": "4.8",
-                "reviewCount": "352"
-              }
-            })
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
         />
-        <Script
-          id="schema-breadcrumbs"
+        <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "BreadcrumbList",
-              "itemListElement": [
-                {
-                  "@type": "ListItem",
-                  "position": 1,
-                  "name": "Home",
-                  "item": "https://fantasystore.com.br"
-                },
-                {
-                  "@type": "ListItem",
-                  "position": 2,
-                  "name": "Produtos",
-                  "item": "https://fantasystore.com.br/products"
-                },
-                {
-                  "@type": "ListItem",
-                  "position": 3,
-                  "name": "Minecraft Java + Bedrock Edition",
-                  "item": "https://fantasystore.com.br/product/minecraft-java-bedrock-edition"
-                }
-              ]
-            })
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsJsonLd) }}
         />
-        <Script
-          id="schema-faq"
+        <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "FAQPage",
-              "mainEntity": [
-                {
-                  "@type": "Question",
-                  "name": "As contas de Minecraft vendidas são originais?",
-                  "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Sim, todas as nossas contas são 100% originais e legítimas, adquiridas através de fornecedores autorizados. Oferecemos garantia de até 365 dias em todas as nossas contas."
-                  }
-                },
-                {
-                  "@type": "Question",
-                  "name": "Como funciona a entrega das contas?",
-                  "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "A entrega é automática e imediata após a confirmação do pagamento. Você receberá os dados de acesso da sua conta por e-mail e na área do cliente."
-                  }
-                },
-                {
-                  "@type": "Question",
-                  "name": "Qual a diferença entre a Fantasy Store e outras lojas?",
-                  "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "A Fantasy Store vende apenas contas 100% legítimas, obtidas através de parcerias com fornecedores autorizados. Oferecemos garantia de até 365 dias e suporte 24/7, diferente de outras lojas que podem vender contas obtidas por meios ilegais."
-                  }
-                }
-              ]
-            })
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
         />
-        <Script
-          id="schema-reviews"
+        <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "ItemList",
-              "itemListElement": [
-                {
-                  "@type": "Review",
-                  "reviewRating": {
-                    "@type": "Rating",
-                    "ratingValue": "5",
-                    "bestRating": "5"
-                  },
-                  "author": {
-                    "@type": "Person",
-                    "name": "Pedro Silva"
-                  },
-                  "reviewBody": "Excelente loja! Comprei minha conta de Minecraft e recebi em menos de 5 minutos após o pagamento."
-                },
-                {
-                  "@type": "Review",
-                  "reviewRating": {
-                    "@type": "Rating",
-                    "ratingValue": "5",
-                    "bestRating": "5"
-                  },
-                  "author": {
-                    "@type": "Person",
-                    "name": "Maria Santos"
-                  },
-                  "reviewBody": "Super recomendo! Conta entregue rapidamente e com suporte ótimo quando precisei de ajuda."
-                }
-              ]
-            })
-              }}
-            />
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(reviewsJsonLd) }}
+        />
       </head>
       <body className={inter.className}>
           <AuthProvider>

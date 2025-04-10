@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/app/lib/db/mongodb';
-import Logger from '@/app/lib/logger';
+import { MongoClient } from 'mongodb';
 
-const logger = new Logger('api/dev/approve-payment');
+// Substituir o Logger por funções simples de log
+function logInfo(message: string) {
+  console.log(`[api/dev/approve-payment] INFO: ${message}`);
+}
+
+function logError(message: string, error?: any) {
+  console.error(`[api/dev/approve-payment] ERROR: ${message}`, error);
+}
+
+type RouteParams = {
+  params: {
+    paymentId: string;
+  };
+};
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { paymentId: string } }
+  { params }: RouteParams
 ) {
   try {
     // Em produção, desabilitar esta rota completamente
@@ -17,11 +30,14 @@ export async function POST(
       );
     }
 
-    await connectToDatabase();
+    // Conectar ao banco de dados
+    const connection = await connectToDatabase();
+    // Obter um cliente MongoDB para acessar as coleções
+    const client = connection.connection.getClient() as MongoClient;
+    const db = client.db();
     
     // Obter o ID do pagamento
-    const paymentParams = await params;
-    const paymentId = paymentParams.paymentId;
+    const paymentId = params.paymentId;
     
     if (!paymentId) {
       return NextResponse.json(
@@ -30,7 +46,6 @@ export async function POST(
       );
     }
   
-    const db = (await connectToDatabase()).db;
     const ordersCollection = db.collection('orders');
     
     // Encontrar o pedido com este ID de pagamento
@@ -53,7 +68,7 @@ export async function POST(
       });
     }
     
-    logger.info(`Simulando aprovação do pagamento ${paymentId} para pedido ${order._id}`);
+    logInfo(`Simulando aprovação do pagamento ${paymentId} para pedido ${order._id}`);
     
     // Atualizar o status do pagamento no pedido (mas não atribuir produtos)
     // A atribuição será feita pelo endpoint check-status
@@ -76,7 +91,7 @@ export async function POST(
     });
     
   } catch (error) {
-    logger.error('Erro ao simular aprovação de pagamento:', error);
+    logError('Erro ao simular aprovação de pagamento:', error);
     
     return NextResponse.json(
       { error: 'Erro ao simular aprovação de pagamento', details: error instanceof Error ? error.message : String(error) },

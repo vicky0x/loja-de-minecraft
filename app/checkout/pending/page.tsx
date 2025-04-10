@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FiClock, FiArrowLeft, FiShoppingBag, FiRefreshCw } from 'react-icons/fi';
 
-export default function CheckoutPendingPage() {
+// Componente principal que utiliza useSearchParams
+function PendingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [orderDetails, setOrderDetails] = useState<any>(null);
@@ -177,5 +178,28 @@ export default function CheckoutPendingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Componente de fallback para o Suspense
+function Loading() {
+  return (
+    <div className="min-h-screen bg-dark-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto bg-dark-200 rounded-lg shadow-xl p-8">
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="w-12 h-12 border-t-2 border-primary border-r-2 rounded-full animate-spin mb-4"></div>
+          <p className="text-white text-lg">Carregando...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Página principal que usa Suspense para envolver o componente que utiliza useSearchParams
+export default function CheckoutPendingPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <PendingContent />
+    </Suspense>
   );
 } 
