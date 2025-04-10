@@ -24,6 +24,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
+import { formatProductName } from '@/app/utils/formatters';
 
 // Tipos necessários
 interface OrderItem {
@@ -1040,14 +1041,10 @@ export default function OrderDetailPage() {
                         )}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-white">{item.name}</div>
-                        {item.variant && (
-                          <div className="text-xs text-gray-500">
-                            Variante: {item.variant.name}
-                          </div>
-                        )}
-                        <div className="text-xs text-primary mt-1">
-                          R$ {item.price.toFixed(2)}
+                        <h4 className="text-white font-medium text-lg">{formatProductName(item.name)}</h4>
+                        <p className="text-gray-400 text-sm">Variante: {item.variant?.name || 'Padrão'}</p>
+                        <div className="mt-1">
+                          <span className="text-primary font-bold">R$ {item.price.toFixed(2)}</span>
                         </div>
                         
                         {/* Mostrar quantidade */}

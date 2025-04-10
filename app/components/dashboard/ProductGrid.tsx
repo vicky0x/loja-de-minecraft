@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { FiPackage, FiEye, FiShield, FiClock, FiX, FiAward } from 'react-icons/fi';
+import { formatProductName } from '@/app/utils/formatters';
 
 // Interface para produtos
 interface Product {
@@ -159,7 +160,9 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
             {/* Conteúdo do card */}
             <div className="p-6 pt-5 pb-4">
               {/* Título do produto */}
-              <h3 className="text-white font-semibold text-xl mb-2">{productName}</h3>
+              <h3 className="text-white font-semibold text-xl mb-2">
+                {formatProductName(productName)}
+              </h3>
               
               {/* Tipo do produto/variante */}
               <p className="text-gray-400 text-sm mb-1">

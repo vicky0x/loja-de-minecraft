@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import VariantStockModal from './VariantStockModal';
 import ProductRating from './ProductRating';
+import { formatProductName } from '@/app/utils/formatters';
 
 interface Variant {
   _id: string;
@@ -256,7 +257,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="p-5 flex flex-col justify-between h-[200px] relative z-10 bg-gradient-to-b from-dark-300/90 to-dark-200">
           {/* Título com efeito mais sutil */}
           <div className="relative">
-            <h3 className="text-white font-medium text-base mb-1 group-hover:text-primary transition-colors duration-300">{product.name}</h3>
+            <h3 className="text-white font-medium text-base mb-1 group-hover:text-primary transition-colors duration-300">{formatProductName(product.name)}</h3>
             <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-primary/30 group-hover:w-1/4 transition-all duration-500"></span>
           </div>
           

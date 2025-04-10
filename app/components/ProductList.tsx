@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FiStar, FiAlertCircle } from 'react-icons/fi';
+import { FiStar, FiAlertCircle, FiPlus, FiShoppingCart, FiGrid, FiList, FiChevronDown, FiChevronUp, FiFilter, FiX } from 'react-icons/fi';
 import ErrorDisplay from './ui/ErrorDisplay';
 import { toast } from 'react-hot-toast';
+import { formatProductName } from '@/app/utils/formatters';
 
 interface Product {
   _id: string;
@@ -639,7 +640,7 @@ export default function ProductList({
                   {/* Product Info */}
                   <div className="flex flex-col flex-grow px-4 py-3">
                     <h3 className="text-base font-medium text-white mb-1 group-hover:text-primary transition-colors duration-300">
-                      {product.name}
+                      {formatProductName(product.name)}
                     </h3>
                     
                     {/* Ratings */}
@@ -784,7 +785,7 @@ export default function ProductList({
                   {/* Product Info */}
                   <div className="flex flex-col flex-grow px-4 py-3">
                     <h3 className="text-base font-medium text-white mb-1 group-hover:text-primary transition-colors duration-300">
-                      {product.name}
+                      {formatProductName(product.name)}
                     </h3>
                     
                     {/* Ratings */}

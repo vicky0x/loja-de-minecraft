@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiGrid, FiList, FiShoppingBag, FiFilter, FiX, FiArrowLeft, FiTag, FiPackage, FiStar, FiCheck, FiArrowRight, FiChevronDown } from 'react-icons/fi';
 import ProductList from '../../components/ProductList';
+import { formatProductName } from '@/app/utils/formatters';
 
 interface Category {
   _id: string;
@@ -414,7 +415,7 @@ export default function CategoryPage() {
                           href={`/product/${product.slug}`}
                           className="block text-xl font-medium text-white hover:text-primary transition-colors"
                         >
-                          {product.name}
+                          {formatProductName(product.name)}
                         </Link>
                         
                         {product.shortDescription && (

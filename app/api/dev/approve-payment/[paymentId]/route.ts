@@ -8,28 +8,28 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { paymentId: string } }
 ) {
-  // Verificar se estamos no ambiente de desenvolvimento
-  // Proteção dupla: verifica NODE_ENV e também a variável DISABLE_DEV_ROUTES
-  if (process.env.NODE_ENV !== 'development' || process.env.DISABLE_DEV_ROUTES === 'true') {
-    logger.error('Tentativa de acesso a rota de desenvolvimento em ambiente de produção');
-    return NextResponse.json(
-      { error: 'Esta rota só está disponível em ambiente de desenvolvimento' },
-      { status: 403 }
-    );
-  }
-  
-  const paymentId = params.paymentId;
-  
-  if (!paymentId) {
-    return NextResponse.json(
-      { error: 'ID do pagamento é obrigatório' },
-      { status: 400 }
-    );
-  }
-  
   try {
+    // Em produção, desabilitar esta rota completamente
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { message: 'Esta rota não está disponível em produção' },
+        { status: 404 }
+      );
+    }
+
     await connectToDatabase();
     
+    // Obter o ID do pagamento
+    const paymentParams = await params;
+    const paymentId = paymentParams.paymentId;
+    
+    if (!paymentId) {
+      return NextResponse.json(
+        { error: 'ID do pagamento é obrigatório' },
+        { status: 400 }
+      );
+    }
+  
     const db = (await connectToDatabase()).db;
     const ordersCollection = db.collection('orders');
     

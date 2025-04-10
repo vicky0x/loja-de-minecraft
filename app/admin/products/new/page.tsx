@@ -38,7 +38,7 @@ export default function NewProductPage() {
     status: 'indetectavel',
     useVariants: true,
     price: 0,
-    stock: null,
+    stock: 0,
     originalPrice: 0,
     discountPercentage: 0,
     deliveryType: 'automatic',
@@ -65,9 +65,36 @@ export default function NewProductPage() {
     notas_adicionais: '',
   });
 
+  // Função auxiliar para formatar nomes que estão em formato de slug
+  const formatSlugToName = (text: string): string => {
+    if (!text) return '';
+    
+    return text
+      .replace(/-/g, ' ') // substituir hífens por espaços
+      .replace(/\b\w/g, l => l.toUpperCase()) // capitalizar primeira letra de cada palavra
+      .replace(/\s+\(copia\)/gi, ' (Cópia)') // formatar "copia" para "Cópia" com espaço antes
+      .replace(/\s+copia\s+\d+/gi, (match) => { // formatar "copia 1234" para "Cópia 1234"
+        return match.replace(/copia/i, 'Cópia');
+      });
+  };
+
   useEffect(() => {
     // Carregar categorias ao montar o componente
     fetchCategories();
+
+    // Verificar se há um nome predefinido na URL e formatá-lo adequadamente
+    const urlParams = new URLSearchParams(window.location.search);
+    const presetName = urlParams.get('name');
+    
+    if (presetName) {
+      // Converter formato de slug para texto normal
+      const formattedName = formatSlugToName(presetName);
+      
+      setProductData(prev => ({
+        ...prev,
+        name: formattedName
+      }));
+    }
   }, []);
 
   async function fetchCategories() {
@@ -97,10 +124,19 @@ export default function NewProductPage() {
         [name]: checked,
       });
     } else {
-      setProductData({
-        ...productData,
-        [name]: value,
-      });
+      // Para o campo de nome, garantir que não está em formato de slug
+      if (name === 'name') {
+        const formattedValue = formatSlugToName(value);
+        setProductData({
+          ...productData,
+          [name]: formattedValue,
+        });
+      } else {
+        setProductData({
+          ...productData,
+          [name]: value,
+        });
+      }
     }
   };
 
@@ -275,8 +311,8 @@ export default function NewProductPage() {
       
       // Preparar objeto para enviar à API
       const productToSave = {
-        name: productData.name,
-        slug: productData.name.toLowerCase().replace(/ /g, '-'),
+        name: productData.name.trim(),
+        slug: productData.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
         shortDescription: productData.short_description,
         description: productData.description,
         category: productData.category,
@@ -371,6 +407,7 @@ export default function NewProductPage() {
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 required
+                aria-label="Nome do produto"
               />
             </div>
             
@@ -407,10 +444,11 @@ export default function NewProductPage() {
               type="text"
               id="short_description"
               name="short_description"
-              value={productData.short_description}
+              value={productData.short_description || ''}
               onChange={handleInputChange}
               className="w-full px-3 py-2 bg-dark-300 text-white border border-dark-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Breve descrição do produto (opcional)"
+              aria-label="Descrição curta do produto"
             />
           </div>
 

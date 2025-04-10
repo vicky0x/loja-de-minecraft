@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/app/lib/db/mongodb';
 import { checkAuth } from '@/app/lib/auth';
 import mongoose from 'mongoose';
+import { formatProductName } from '@/app/utils/formatters';
 
 // Cache para produtos do usuário (validade de 5 minutos)
 const userProductsCache = new Map<string, { data: any, timestamp: number }>();
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
       .map(item => ({
         _id: item._id.toString(),
         productId: item.product._id.toString(),
-        name: item.product.name,
+        name: formatProductName(item.product.name),
         slug: item.product.slug,
         status: mapStatusToPortuguese(item.product.status), // Converter para formato visível
         image: item.product.images && item.product.images.length > 0 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { cookies } from 'next/headers';
 
 // Estrutura comum de armazenamento de sessão
 export interface AuthSession {
@@ -25,7 +24,37 @@ export function useSession() {
     async function checkSession() {
       try {
         console.log("Verificando sessão do usuário...");
-        console.log("Cookies disponíveis:", document.cookie);
+        
+        // Primeiro, tentar verificar no localStorage para resposta rápida
+        const localAuthString = localStorage.getItem('isAuthenticated');
+        const localUserString = localStorage.getItem('user');
+        let localAuth = false;
+        let userData = null;
+        
+        if (localAuthString === 'true' && localUserString) {
+          try {
+            userData = JSON.parse(localUserString);
+            if (userData) {
+              localAuth = true;
+              console.log("Autenticação encontrada no localStorage:", userData);
+            }
+          } catch (e) {
+            console.error("Erro ao processar dados do usuário do localStorage:", e);
+          }
+        }
+        
+        // Se autenticado no localStorage, definir sessão imediatamente
+        if (localAuth && userData) {
+          setSession({
+            isAuthenticated: true,
+            userId: userData.uid || userData.id || userData._id,
+            role: userData.role || 'user',
+            username: userData.username || userData.displayName,
+            email: userData.email,
+          });
+          setLoading(false);
+          return;
+        }
         
         // Verificar se o cookie de autenticação existe
         const cookiesExist = document.cookie
@@ -62,24 +91,32 @@ export function useSession() {
           return;
         }
 
-        const userData = await response.json();
-        console.log("Dados do usuário recebidos:", userData);
+        const apiUserData = await response.json();
+        console.log("Dados do usuário recebidos:", apiUserData);
         
-        if (!userData || !userData.id) {
+        if (!apiUserData || !apiUserData.id) {
           console.log("Dados do usuário inválidos");
           setSession({ isAuthenticated: false });
           setLoading(false);
           return;
         }
         
-        console.log("Usuário autenticado:", userData.username, "role:", userData.role);
+        console.log("Usuário autenticado:", apiUserData.username, "role:", apiUserData.role);
+        
+        // Atualizar localStorage com dados mais recentes para uso futuro
+        try {
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('user', JSON.stringify(apiUserData));
+        } catch (e) {
+          console.error("Erro ao salvar dados no localStorage:", e);
+        }
         
         setSession({
           isAuthenticated: true,
-          userId: userData.id,
-          role: userData.role,
-          username: userData.username,
-          email: userData.email,
+          userId: apiUserData.id,
+          role: apiUserData.role,
+          username: apiUserData.username,
+          email: apiUserData.email,
         });
       } catch (error) {
         console.error("Erro ao verificar sessão:", error);

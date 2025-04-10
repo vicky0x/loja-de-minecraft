@@ -11,6 +11,7 @@ import VariantStockModal from '@/app/components/VariantStockModal';
 import { useCart } from '@/app/contexts/CartContext';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
+import { formatProductName } from '@/app/utils/formatters';
 
 // Interface para os ícones
 interface IconProps extends IconBaseProps {
@@ -600,7 +601,7 @@ export function ProductClient({ initialProduct, slug }: { initialProduct: Produc
                 <span>/</span>
               </>
             )}
-            <span className="text-white">{product.name}</span>
+            <span className="text-white">{formatProductName(product.name)}</span>
           </div>
         </motion.div>
 

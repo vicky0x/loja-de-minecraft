@@ -11,12 +11,13 @@ export async function GET(
   try {
     await connectDB();
     
-    // Obter o slug do produto
-    const slug = params?.slug;
+    // Obter o slug do produto com await
+    const slugParams = await params;
+    const slug = slugParams?.slug;
     
     if (!slug) {
       return NextResponse.json(
-        { message: 'Slug de produto é obrigatório' },
+        { message: 'Slug de produto não fornecido' },
         { status: 400 }
       );
     }

@@ -345,55 +345,132 @@ export default function Navbar() {
       // Fechar o dropdown
       setIsDropdownOpen(false);
       
-      // Chamar o logout do AuthContext
-      if (logout) {
-        await logout();
-      } else {
-        // Proteção para navegação durante o logout
-        try {
-          const originalPush = router.push;
-          router.push = (url: string) => {
-            return Promise.resolve(false);
-          };
-          
-          // Restaurar após 2 segundos
-          setTimeout(() => {
-            router.push = originalPush;
-          }, 2000);
-        } catch (routerError) {
-          // Erro silencioso
+      // Exibir toast de logout
+      toast.loading('Saindo da conta...', { id: 'logout' });
+
+      // Mostrar overlay de carregamento
+      const overlayElement = document.createElement('div');
+      overlayElement.style.position = 'fixed';
+      overlayElement.style.inset = '0';
+      overlayElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+      overlayElement.style.backdropFilter = 'blur(5px)';
+      overlayElement.style.zIndex = '9999';
+      overlayElement.style.display = 'flex';
+      overlayElement.style.alignItems = 'center';
+      overlayElement.style.justifyContent = 'center';
+      overlayElement.style.flexDirection = 'column';
+      overlayElement.style.color = 'white';
+      overlayElement.style.fontFamily = 'sans-serif';
+      
+      const spinnerElement = document.createElement('div');
+      spinnerElement.style.width = '40px';
+      spinnerElement.style.height = '40px';
+      spinnerElement.style.border = '3px solid rgba(255, 255, 255, 0.3)';
+      spinnerElement.style.borderRadius = '50%';
+      spinnerElement.style.borderTopColor = '#fff';
+      spinnerElement.style.animation = 'spin 1s ease-in-out infinite';
+      
+      const styleElement = document.createElement('style');
+      styleElement.textContent = `
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
+      `;
+      
+      const textElement = document.createElement('div');
+      textElement.textContent = 'Saindo da conta...';
+      textElement.style.marginTop = '16px';
+      textElement.style.fontSize = '16px';
+      
+      document.head.appendChild(styleElement);
+      overlayElement.appendChild(spinnerElement);
+      overlayElement.appendChild(textElement);
+      document.body.appendChild(overlayElement);
+      
+      // Evitar que o usuário navegue durante o logout
+      const beforeUnloadHandler = (e) => {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      };
+      window.addEventListener('beforeunload', beforeUnloadHandler);
+      
+      // Definir flags para prevenir redirecionamentos indesejados
+      sessionStorage.setItem('logout_in_progress', 'true');
+      sessionStorage.setItem('block_auth_checks', 'true');
+      
+      // Limpar todos os dados relevantes no localStorage
+      try {
+        // Limpar dados de redirecionamento
+        localStorage.removeItem('redirectAfterLogin');
+        localStorage.removeItem('isAuthenticated');
+        localStorage.setItem('isAuthenticated', 'false');
+        localStorage.removeItem('user');
+        localStorage.removeItem('auth_token');
         
-        // Bloqueio visual para o usuário
-        let disableInteraction = document.createElement('div');
-        disableInteraction.style.position = 'fixed';
-        disableInteraction.style.zIndex = '10000';
-        disableInteraction.style.left = '0';
-        disableInteraction.style.top = '0';
-        disableInteraction.style.width = '100vw';
-        disableInteraction.style.height = '100vh';
-        disableInteraction.style.background = 'rgba(0,0,0,0.2)';
-        disableInteraction.style.backdropFilter = 'blur(2px)';
-        document.body.appendChild(disableInteraction);
-        
-        // Remover bloqueio após logout
-        const removeBlock = () => {
-          try {
-            document.body.removeChild(disableInteraction);
-          } catch (e) {
-            // Erro silencioso
-          }
-        }
-        
-        // Fazer logout
-        await logout();
-        
-        // Remover bloqueio visual após um delay
-        setTimeout(removeBlock, 1000);
+        // Limpar flags de redirecionamento
+        sessionStorage.removeItem('redirect_count');
+        sessionStorage.removeItem('anti_loop_active');
+        sessionStorage.removeItem('navigation_history');
+      } catch (e) {
+        console.error('Erro ao limpar storage antes do logout:', e);
       }
+      
+      // Desabilitar o Next.js Router temporariamente
+      const originalPush = router.push;
+      const originalReplace = router.replace;
+      try {
+        router.push = () => Promise.resolve(false);
+        router.replace = () => Promise.resolve(false);
+      } catch (e) {
+        console.error('Erro ao sobrescrever router:', e);
+      }
+
+      // Chamar a função de logout do contexto
+      const success = await logout();
+
+      // Atualizar o toast com base no resultado
+      if (success) {
+        toast.success('Logout realizado com sucesso!', { id: 'logout' });
+      } else {
+        toast.error('Erro ao fazer logout', { id: 'logout' });
+      }
+      
+      // Se não houver redirecionamento após 2 segundos, forçar
+      setTimeout(() => {
+        // Remover o overlay
+        try {
+          document.body.removeChild(overlayElement);
+          document.head.removeChild(styleElement);
+        } catch (e) {
+          console.error('Erro ao remover overlay:', e);
+        }
+        
+        // Remover o handler de beforeunload
+        window.removeEventListener('beforeunload', beforeUnloadHandler);
+        
+        // Verificar se ainda estamos na mesma página
+        if (window.location.pathname !== '/auth/login') {
+          console.log('Redirecionamento de logout não ocorreu, forçando...');
+          
+          // Limpar tudo e forçar redirecionamento
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Redirecionar direto para login
+          window.location.href = `/auth/login?forced_logout=true&t=${Date.now()}`;
+        }
+      }, 2000);
     } catch (error) {
-      // Erro silencioso
-      alert('Erro ao fazer logout. Por favor, recarregue a página.');
+      console.error('Erro crítico durante logout:', error);
+      toast.error('Erro ao fazer logout. Por favor, recarregue a página.', { id: 'logout' });
+      
+      // Tentar logout direto como fallback
+      setTimeout(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/auth/login';
+      }, 1000);
     }
   };
 

@@ -17,6 +17,7 @@ import PixPaymentModal from '../components/PixPaymentModal';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { HiOutlineShoppingCart } from 'react-icons/hi';
+import { formatProductName } from '@/app/utils/formatters';
 
 // Componentes de ícone com tipagem correta
 interface IconProps extends IconBaseProps {
@@ -1568,7 +1569,7 @@ export default function CartPage() {
                               )}
                             </div>
                             <div className="mt-4 sm:mt-0 sm:ml-4 flex-grow">
-                              <h3 className="text-white font-medium text-lg group-hover:text-primary transition-colors duration-300">{item.productName}</h3>
+                              <h3 className="text-white font-medium text-lg group-hover:text-primary transition-colors duration-300">{formatProductName(item.productName)}</h3>
                               <p className="text-gray-400 text-sm mt-1">Variante: {item.variantName}</p>
                               <div className="flex items-center mt-2">
                                 <p className="text-primary font-bold text-lg">R$ {item.price.toFixed(2)}</p>

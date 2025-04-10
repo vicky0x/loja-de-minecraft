@@ -11,6 +11,7 @@ import VariantStockModal from '@/app/components/VariantStockModal';
 import { useCart } from '@/app/contexts/CartContext';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
+import { formatProductName } from '@/app/utils/formatters';
 
 // Interface para os ícones
 interface IconProps extends IconBaseProps {
@@ -46,6 +47,8 @@ interface Product {
   requirements: string[];
   status: 'indetectavel' | 'detectavel' | 'manutencao' | 'beta';
   deliveryType?: 'automatic' | 'manual';
+  originalPrice?: number;
+  discountPercentage?: number;
 }
 
 // Cor primária mais clara para efeitos de luz
@@ -311,6 +314,45 @@ export default function ProductPage() {
     return variant.price * quantity;
   };
   
+  // Obter o preço original para exibição
+  const getOriginalPrice = () => {
+    // Se o produto tiver um preço original definido, use-o
+    if (product.originalPrice) {
+      return product.originalPrice;
+    }
+    
+    // Se tiver um percentual de desconto definido, calcule o preço original
+    if (product.discountPercentage && product.discountPercentage > 0) {
+      const basePrice = variant?.price || 0;
+      return basePrice / (1 - (product.discountPercentage / 100));
+    }
+    
+    // Caso contrário, retorne null (sem preço original)
+    return null;
+  };
+  
+  // Verificar se tem desconto
+  const hasDiscount = () => {
+    return getOriginalPrice() !== null;
+  };
+  
+  // Obter o percentual de desconto
+  const getDiscountPercentage = () => {
+    if (product.discountPercentage) {
+      return product.discountPercentage;
+    }
+    
+    const originalPrice = getOriginalPrice();
+    const basePrice = variant?.price || 0;
+    
+    if (originalPrice && basePrice) {
+      const discount = ((originalPrice - basePrice) / originalPrice) * 100;
+      return Math.round(discount);
+    }
+    
+    return 0;
+  };
+  
   const handleAddToCart = async () => {
     try {
       if (!variant || !variant.stock || variant.stock <= 0) return false;
@@ -571,91 +613,8 @@ export default function ProductPage() {
                 <span>/</span>
               </>
             )}
-            <span className="text-white">{product.name}</span>
+            <span className="text-white">{formatProductName(product.name)}</span>
           </div>
-        </motion.div>
-
-        {/* Aviso de estoque limitado no topo */}
-        <motion.div 
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ 
-            opacity: 1, 
-            y: 0,
-            transition: {
-              duration: 0.4,
-              delay: 0.6
-            }
-          }}
-          className="bg-dark-400/40 text-amber-300 mb-6 px-4 py-2.5 rounded-lg border border-amber-500/20 flex items-center justify-center relative overflow-hidden group"
-        >
-          {/* Efeito de pulsar borda - mantida fixa, sem desaparecer no hover */}
-          <motion.div 
-            className="absolute inset-0 border border-amber-500/40 rounded-lg"
-            animate={{ 
-              boxShadow: ["0 0 0px rgba(217, 119, 6, 0)", "0 0 8px rgba(217, 119, 6, 0.3)", "0 0 0px rgba(217, 119, 6, 0)"]
-            }}
-            transition={{ 
-              duration: 2,
-              repeat: Infinity
-            }}
-          />
-          
-          {/* Efeito de brilho radial - modificado para ser sempre visível */}
-          <motion.div 
-            className="absolute inset-0"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: [0, 0.2, 0] }}
-            transition={{ 
-              duration: 2,
-              repeat: Infinity
-            }}
-            style={{
-              background: "radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0) 70%)"
-            }}
-          />
-          
-          {/* Efeito de brilho deslizante */}
-          <motion.div 
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"
-            initial={{ x: "-100%" }}
-            animate={{ x: "100%" }}
-            transition={{ 
-              duration: 2,
-              repeat: Infinity,
-              repeatDelay: 1
-            }}
-          />
-          
-          <motion.div 
-            className="flex items-center space-x-2 relative z-10"
-            whileHover={{ scale: 1.02 }}
-          >
-            <motion.div 
-              className="text-amber-300"
-              animate={{ 
-                scale: [1, 1.2, 1],
-                rotate: [0, 5, 0, -5, 0]
-              }}
-              transition={{ 
-                duration: 1.5,
-                repeat: Infinity
-              }}
-            >
-              <IconFiClock size={16} />
-            </motion.div>
-            <motion.span 
-              className="font-medium text-sm"
-              animate={{ 
-                textShadow: ["0 0 0px rgba(251, 191, 36, 0)", "0 0 3px rgba(251, 191, 36, 0.5)", "0 0 0px rgba(251, 191, 36, 0)"]
-              }}
-              transition={{ 
-                duration: 2,
-                repeat: Infinity
-              }}
-            >
-              Estoque limitado!
-            </motion.span>
-          </motion.div>
         </motion.div>
 
         {/* Corpo do produto */}
@@ -932,7 +891,7 @@ export default function ProductPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
                   >
-                    {product.name}
+                    {formatProductName(product.name)}
                   </motion.h1>
                   
                   {product.shortDescription && (
@@ -1045,8 +1004,14 @@ export default function ProductPage() {
                             <h3 className="text-lg font-medium text-white">Preço:</h3>
                             <div className="flex flex-col items-end">
                               <div className="flex items-center space-x-2 mb-1">
-                                <span className="text-gray-400 text-sm line-through">R$ 370,00</span>
-                                <span className="bg-green-900/30 text-green-400 text-xs font-medium py-0.5 px-2 rounded-full">-87%</span>
+                                <span className="text-gray-400 text-sm line-through">
+                                  {hasDiscount() ? `R$ ${getOriginalPrice().toFixed(2).replace('.', ',')}` : ''}
+                                </span>
+                                {hasDiscount() && (
+                                  <span className="bg-green-900/30 text-green-400 text-xs font-medium py-0.5 px-2 rounded-full">
+                                    -{getDiscountPercentage()}%
+                                  </span>
+                                )}
                               </div>
                               <div className="text-primary text-2xl font-bold">
                                 R$ {product.price?.toFixed(2).replace('.', ',')}
@@ -1109,8 +1074,14 @@ export default function ProductPage() {
                                     
                                     <div className="flex flex-col items-end">
                                       <div className="flex items-center space-x-2 mb-1">
-                                        <span className="text-gray-400 text-xs line-through">R$ 370,00</span>
-                                        <span className="bg-green-900/30 text-green-400 text-xs font-medium py-0.5 px-1.5 rounded-full">-87%</span>
+                                        <span className="text-gray-400 text-xs line-through">
+                                          {hasDiscount() ? `R$ ${getOriginalPrice().toFixed(2).replace('.', ',')}` : ''}
+                                        </span>
+                                        {hasDiscount() && (
+                                          <span className="bg-green-900/30 text-green-400 text-xs font-medium py-0.5 px-1.5 rounded-full">
+                                            -{getDiscountPercentage()}%
+                                          </span>
+                                        )}
                                       </div>
                                       <div className="text-primary font-medium">
                                         R$ {variantItem.price.toFixed(2).replace('.', ',')}

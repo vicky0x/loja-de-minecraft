@@ -3,6 +3,7 @@ import connectDB from '@/app/lib/db/mongodb';
 import Product from '@/app/lib/models/product';
 import mongoose from 'mongoose';
 import { checkAuth } from '@/app/lib/auth';
+import { formatProductName } from '@/app/utils/formatters';
 
 export async function POST(
   request: NextRequest,
@@ -54,7 +55,7 @@ export async function POST(
     
     // Criar objeto para o novo produto
     const newProductData: any = {
-      name: `${originalProduct.name} (Cópia)`,
+      name: `${formatProductName(originalProduct.name)} (Cópia)`,
       slug: `${originalProduct.slug}-copia-${Date.now().toString().slice(-4)}`,
       description: originalProduct.description,
       shortDescription: originalProduct.shortDescription,

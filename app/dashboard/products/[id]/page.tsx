@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { FiArrowLeft, FiDownload, FiCopy, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { formatProductName } from '@/app/utils/formatters';
 
 interface ProductDetail {
   _id: string;
@@ -253,26 +254,31 @@ export default function ProductDetailPage() {
             
             {/* Informações do produto */}
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-white">{product.name}</h1>
-              
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                {product.status && (
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${product.statusClass}`}>
-                    {product.status}
-                  </span>
+              <div className="mt-4">
+                <h1 className="text-3xl font-bold text-white">
+                  {formatProductName(product.name)}
+                </h1>
+                
+                {product.variant && (
+                  <p className="text-gray-400 mt-2 text-lg">
+                    Variante: {product.variant.name}
+                  </p>
                 )}
                 
-                <span className="text-gray-400 text-sm">
-                  Adquirido em: {formatDate(product.assignedAt)}
-                </span>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  {product.status && (
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${product.statusClass}`}>
+                      {product.status}
+                    </span>
+                  )}
+                  
+                  <span className="text-gray-400 text-sm">
+                    Adquirido em: {formatDate(product.assignedAt)}
+                  </span>
+                </div>
               </div>
               
               <div className="mt-6 space-y-4">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-300">Variante:</h3>
-                  <p className="text-white">{product.variant?.name || 'Padrão'}</p>
-                </div>
-                
                 <div>
                   <h3 className="text-lg font-medium text-gray-300">Informações da conta:</h3>
                   <div className="bg-dark-300 rounded-md p-3 flex justify-between items-center mt-1">
