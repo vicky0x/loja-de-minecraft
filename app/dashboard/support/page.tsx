@@ -100,7 +100,7 @@ export default function SupportPage() {
         </div>
 
         {/* Telegram */}
-        <div className="bg-dark-200 rounded-lg p-6 border-l-4 border-blue-500 shadow-lg hover:transform hover:scale-105 transition-transform duration-200">
+        <div className="bg-dark-200 rounded-lg p-6 border-l-4 border-red-500 shadow-lg hover:transform hover:scale-105 transition-transform duration-200">
           <div className="flex items-center mb-4">
             <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
               <FaTelegram size={24} />
@@ -108,25 +108,25 @@ export default function SupportPage() {
             <div className="ml-4">
               <h3 className="font-bold text-lg">Telegram</h3>
               <div className="flex items-center">
-                <span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
-                <span className="text-blue-500 text-sm font-medium">Disponível</span>
+                <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                <span className="text-red-500 text-sm font-medium">Indisponível</span>
               </div>
             </div>
           </div>
           <p className="text-gray-300 mb-3 text-sm">
-            Atendimento rápido pelo nosso canal oficial no Telegram.
+            Nosso canal oficial no Telegram está temporariamente em manutenção.
           </p>
           <div className="mt-3 text-sm text-gray-400">
             <span className="flex items-center mb-1">
-              <FiMessageSquare className="mr-2" /> @fantasystorefc
+              <FiAlertCircle className="mr-2" /> Em manutenção
             </span>
             <span className="flex items-center">
-              <FiClock className="mr-2" /> Resposta em até 1h
+              <FiClock className="mr-2" /> Retorno em breve
             </span>
           </div>
-          <a href="https://t.me/fantasystorefc" target="_blank" rel="noopener noreferrer" className="mt-4 block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-center transition-colors">
-            Abrir Telegram
-          </a>
+          <button disabled className="mt-4 w-full bg-gray-600 cursor-not-allowed text-gray-300 py-2 px-4 rounded opacity-70">
+            Indisponível
+          </button>
         </div>
 
         {/* Email */}
@@ -225,7 +225,7 @@ export default function SupportPage() {
                 <span>12:00 às 16:00</span>
               </div>
               <p className="text-sm text-gray-400 mt-2">
-                Atendimento reduzido (Chat e Telegram)
+                Atendimento reduzido (Apenas Chat)
               </p>
             </div>
           </div>
@@ -255,7 +255,7 @@ export default function SupportPage() {
                 </div>
                 <span>Telegram</span>
               </div>
-              <span className="text-blue-500">Até 1h</span>
+              <span className="text-red-500">Indisponível</span>
             </div>
             
             <div className="flex items-center justify-between pb-2 border-b border-dark-400">
