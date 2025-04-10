@@ -13,8 +13,12 @@ const logger = {
   warn: (message: string, ...args: any[]) => console.warn(`[API:ORDERS:CREATE WARN] ${message}`, ...args)
 };
 
-// Segredo para JWT
-const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_jwt_aqui';
+// JWT Secret para autenticação
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('ERRO: JWT_SECRET não está definido nas variáveis de ambiente');
+  throw new Error('JWT_SECRET não configurado');
+}
 
 export async function POST(request: NextRequest) {
   try {

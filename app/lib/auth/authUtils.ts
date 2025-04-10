@@ -4,7 +4,11 @@ import User from '@/app/lib/models/user';
 import connectDB from '@/app/lib/db/mongodb';
 
 // Segredo usado para assinar os tokens JWT
-const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_jwt_aqui';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('ERRO: JWT_SECRET não está definido nas variáveis de ambiente');
+  throw new Error('JWT_SECRET não configurado');
+}
 
 interface AuthUser {
   _id: string;

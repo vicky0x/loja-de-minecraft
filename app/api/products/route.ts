@@ -6,8 +6,12 @@ import mongoose from 'mongoose';
 import User from '@/app/lib/models/user';
 import Category from '@/app/lib/models/category';
 
-// Segredo usado para verificar os tokens JWT
-const JWT_SECRET = process.env.JWT_SECRET || 'seu_segredo_jwt_aqui';
+// JWT Secret para autenticação
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('ERRO: JWT_SECRET não está definido nas variáveis de ambiente');
+  throw new Error('JWT_SECRET não configurado');
+}
 
 // GET /api/products - Listar todos os produtos com opções de filtro e ordenação
 export async function GET(request: NextRequest) {

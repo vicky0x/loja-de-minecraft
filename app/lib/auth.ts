@@ -9,15 +9,12 @@ import { v4 as uuidv4 } from 'uuid';
 import redisService, { isTokenRevoked as isTokenRevokedRedis, revokeToken as revokeTokenRedis } from './redis';
 
 // Segredo usado para assinar os tokens JWT
-// Obter do ambiente, com fallback para erro em produção e valor padrão em desenvolvimento
-const JWT_SECRET = process.env.JWT_SECRET || 
-  (process.env.NODE_ENV === 'production' 
-    ? undefined 
-    : 'fantasystore_dev_jwt_secret_insecure');
+// Obter do ambiente, sem fallback inseguro
+const JWT_SECRET = process.env.JWT_SECRET;
 
-// Verificar se temos JWT_SECRET em produção
-if (process.env.NODE_ENV === 'production' && !JWT_SECRET) {
-  console.error('ERRO CRÍTICO: JWT_SECRET não está definido no ambiente de produção!');
+// Verificar se temos JWT_SECRET
+if (!JWT_SECRET) {
+  console.error('ERRO CRÍTICO: JWT_SECRET não está definido nas variáveis de ambiente!');
 }
 
 // Mapa para armazenar tokens revogados em memória (em produção, usar Redis)
