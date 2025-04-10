@@ -289,7 +289,12 @@ function processQuantity(item: any): number {
 }
 
 // GET - Obter detalhes de um pedido específico
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: any
+) {
+  const id = context?.params?.id;
+
   try {
     // Verificar se o usuário é administrador
     const adminCheck = await verifyAdmin(request);
@@ -300,10 +305,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         { status: adminCheck.status || 401 }
       );
     }
-    
-    // Garantir que params seja await corretamente no Next.js 15
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
     
     // Validar ID do pedido
     if (!id || !isValidObjectId(id)) {
@@ -363,7 +364,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PUT - Atualizar status de pedido
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  context: any
+) {
+  const id = context?.params?.id;
+
   try {
     // Verificar autenticação de admin
     const adminCheck = await verifyAdmin(request);
@@ -374,10 +380,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         { status: adminCheck.status || 401 }
       );
     }
-    
-    // Garantir que params seja await corretamente no Next.js 15
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
     
     // Validar ID do pedido
     if (!id || !isValidObjectId(id)) {
