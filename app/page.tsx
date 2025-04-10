@@ -187,7 +187,7 @@ export default function Home() {
                 Contas de Minecraft <span className="text-primary">Full Acesso</span> e <span className="text-primary">Premium</span>
               </h2>
               <p className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-                Compre Minecraft original com garantia e preço justo. Contas Microsoft com Java e Bedrock Edition, acesso completo, entrega imediata e suporte 24h.
+                Contas de Minecraft original com as versões Java e Bedrock Edition, garantia e preço justo. Acesso completo, entrega imediata e suporte 24h.
               </p>
             </div>
             

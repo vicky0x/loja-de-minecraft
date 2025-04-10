@@ -156,28 +156,13 @@ export default function ProductPage() {
     const verifyAuth = async () => {
       try {
         await checkAuth();
-        console.log('[PRODUTO] Verificação de autenticação realizada');
       } catch (error) {
-        console.error('[PRODUTO] Erro na verificação de autenticação:', error);
+        // Erro silencioso
       }
     };
     
     verifyAuth();
     
-    // Verificação de cookies do cliente
-    if (typeof window !== 'undefined') {
-      const hasAuthToken = document.cookie
-        .split('; ')
-        .some(row => row.startsWith('auth_token='));
-      
-      const storedAuth = localStorage.getItem('isAuthenticated') === 'true';
-      
-      console.log('[PRODUTO] Estado de autenticação:', 
-        isAuthenticated ? 'Autenticado' : 'Não autenticado',
-        'Token presente:', hasAuthToken,
-        'Local Storage:', storedAuth
-      );
-    }
   }, [isAuthenticated, checkAuth]);
 
   const fetchProduct = async () => {
@@ -234,7 +219,6 @@ export default function ProductPage() {
       }
     } catch (error: any) {
       setError(error.message);
-      console.error('Erro ao buscar produto:', error);
     } finally {
       setLoading(false);
     }
@@ -276,7 +260,7 @@ export default function ProductPage() {
         }
       }
     } catch (error) {
-      console.error('Erro ao atualizar estoque:', error);
+      // Erro silencioso
     } finally {
       setIsRefreshingStock(false);
     }
@@ -339,7 +323,6 @@ export default function ProductPage() {
       // Verificar se foi uma requisição duplicada dentro de 2 segundos
       const lastRequestTime = localStorage.getItem(`lastAddToCart-${product?._id}-${variant._id}`);
       if (lastRequestTime && Date.now() - parseInt(lastRequestTime) < 2000) {
-        console.log('Ignorando requisição duplicada de adicionar ao carrinho');
         setIsAddingToCart(false);
         return false;
       }
@@ -362,7 +345,6 @@ export default function ProductPage() {
       
       return true;
     } catch (error) {
-      console.error('Erro ao adicionar ao carrinho:', error);
       return false;
     } finally {
       setIsAddingToCart(false);
@@ -1386,7 +1368,7 @@ export default function ProductPage() {
                                 try {
                                   localStorage.setItem('redirectAfterLogin', '/cart');
                                 } catch (error) {
-                                  console.error('[PRODUTO] Erro ao salvar redirecionamento:', error);
+                                  // Erro silencioso
                                 }
                                 
                                 // Verificar novamente o estado de autenticação antes de mostrar o toast
@@ -1441,15 +1423,12 @@ export default function ProductPage() {
                             onClick={async () => {
                               if (variant && variant.stock && variant.stock > 0 && !isAddingToCart) {
                                 try {
-                                  console.log('Clicou em Comprar Agora');
                                   // Se não estiver autenticado, salvar URL do carrinho e redirecionar
                                   if (!isAuthenticated) {
-                                    console.log('[PRODUTO] Comprar agora: usuário não autenticado');
                                     try {
                                       localStorage.setItem('redirectAfterLogin', '/cart');
-                                      console.log('[PRODUTO] URL do carrinho salva para redirecionamento');
                                     } catch (error) {
-                                      console.error('[PRODUTO] Erro ao salvar redirecionamento para o carrinho:', error);
+                                      // Erro silencioso
                                     }
                                     
                                     // Verificar novamente o estado de autenticação antes de mostrar o toast
@@ -1463,24 +1442,24 @@ export default function ProductPage() {
                                       const addedToCart = await handleAddToCart();
                                       
                                       if (addedToCart === true) {
+                                        setTimeout(() => {
                                         router.push('/cart');
+                                        }, 500);
                                       }
                                     }
                                     return;
                                   }
                                   
-                                  console.log('[PRODUTO] Comprar agora: usuário autenticado, adicionando ao carrinho');
                                   // Se estiver autenticado, adicionar ao carrinho e redirecionar
                                   const addedToCart = await handleAddToCart();
                                   
                                   if (addedToCart === true) {
-                                    console.log('Redirecionando para o carrinho...');
                                     setTimeout(() => {
                                       router.push('/cart');
                                     }, 500);
                                   }
                                 } catch (error) {
-                                  console.error('Erro ao processar compra:', error);
+                                  // Erro silencioso
                                 }
                               }
                             }}

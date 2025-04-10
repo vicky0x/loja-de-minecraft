@@ -119,7 +119,7 @@ const detectRedirectLoop = () => {
         lastURLs[i+3].includes('/dashboard');
       
       if (pattern1 || pattern2) {
-        console.warn('Loop de redirecionamento detectado! Interrompendo...', lastURLs);
+        // Loop de redirecionamento detectado
         
         try {
           // Limpar TODOS os dados relacionados à autenticação e redirecionamento
@@ -147,7 +147,7 @@ const detectRedirectLoop = () => {
           }, 200);
           
         } catch (e) {
-          console.error('Erro ao limpar dados durante detecção de loop:', e);
+          // Erro silencioso
         }
         
         return true;
@@ -157,6 +157,29 @@ const detectRedirectLoop = () => {
   
   return false;
 };
+
+// Função para verificar se o token está próximo da expiração
+export function isTokenExpiringSoon(token: string) {
+  try {
+    // Decodificar o token (sem verificação)
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+
+    const { exp } = JSON.parse(jsonPayload);
+    if (!exp) {
+      return false;
+    }
+
+    // Se o token expirar em menos de 5 minutos (300 segundos)
+    const currentTime = Math.floor(Date.now() / 1000);
+    return exp - currentTime < 300;
+  } catch (e) {
+    return false;
+  }
+}
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -181,14 +204,12 @@ export function useAuth() {
       
       // Se estamos sendo forçados a ir para a página de login, mas não estamos na página de login
       if (forceLoginPage && !isLoginPage()) {
-        console.warn('Forçando redirecionamento para página de login após detecção de loop');
         router.push('/auth/login?reset=1');
         return;
       }
       
       // Se um loop foi detectado nos últimos 30 segundos, evitar qualquer verificação
       if (loopDetected && (currentTime - loopTime < 30000)) {
-        console.warn('Recuperando de um loop de redirecionamento. Aguardando...');
         setIsAuthenticated(false);
         setIsLoadingAuth(false);
         return;
@@ -208,7 +229,7 @@ export function useAuth() {
           const userData = JSON.parse(userJson);
           setUser(userData);
         } catch (e) {
-          console.error('Erro ao analisar dados do usuário:', e);
+          // Erro silencioso
         }
       }
     } catch (e) {
@@ -235,7 +256,7 @@ export function useAuth() {
           }
         }
       } catch (error) {
-        console.error('Erro ao verificar localStorage:', error);
+        // Erro silencioso
       }
       return false;
     };
@@ -351,7 +372,7 @@ export function useAuth() {
         user: data.user || null 
       };
     } catch (error) {
-      console.error('Erro ao verificar autenticação:', error);
+      // Erro silencioso
       setErrorAuth('Erro ao verificar autenticação');
       setIsAuthenticated(false);
       setUser(null);
@@ -366,7 +387,6 @@ export function useAuth() {
   const safeRedirect = (url: string) => {
     // Não redirecionar para o login se já estamos em uma página pública
     if (isPublicPage() && url.includes('/auth/login')) {
-      console.log(`Redirecionamento para ${url} ignorado pois já estamos em uma página pública`);
       return;
     }
     
@@ -382,15 +402,12 @@ export function useAuth() {
         { url, time: now }
       ]));
       
-      console.log(`Redirecionando para ${url}`);
       router.push(url);
       
       // Resetar flag após um timeout
       setTimeout(() => {
         isRedirecting = false;
       }, REDIRECT_COOLDOWN);
-    } else {
-      console.log(`Redirecionamento para ${url} bloqueado (cooldown ou já redirecionando)`);
     }
   };
 
@@ -414,11 +431,9 @@ export function useAuth() {
           }
         });
         
-        // Mesmo que o logout falhe no servidor, continuamos com o processo de logout local
-        console.log(`Logout no servidor: status ${response.status}`);
+        // Continuar com logout local mesmo com erro no servidor
       } catch (serverError) {
-        console.error('Erro ao comunicar com servidor para logout:', serverError);
-        // Continuamos com o logout local mesmo com erro no servidor
+        // Continuar com o logout local mesmo com erro no servidor
       }
       
       // Limpar todos os dados de autenticação do localStorage
@@ -452,8 +467,6 @@ export function useAuth() {
         message: 'Logout realizado com sucesso'
       };
     } catch (error) {
-      console.error('Erro ao processar logout:', error);
-      
       // Tentar limpar os dados mesmo com erro
       try {
         localStorage.removeItem('auth_token');
@@ -465,7 +478,7 @@ export function useAuth() {
         setIsAuthenticated(false);
         setUser(null);
       } catch (cleanupError) {
-        console.error('Erro ao limpar dados durante falha de logout:', cleanupError);
+        // Erro silencioso
       }
       
       return {
@@ -482,8 +495,6 @@ export function useAuth() {
       setIsLoadingAuth(true);
       setErrorAuth(null);
       
-      console.log(`Iniciando requisição de login para email: ${email}`);
-      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         credentials: 'include', // Importante para receber e enviar cookies
@@ -493,14 +504,10 @@ export function useAuth() {
         body: JSON.stringify({ email, password }),
       });
       
-      console.log(`Resposta do servidor: status ${response.status}`);
-      
       const data = await response.json();
-      console.log('Dados recebidos:', { success: data.success, hasToken: !!data.token, hasUser: !!data.user });
       
       if (!response.ok) {
         const errorMsg = data.message || 'Erro ao fazer login';
-        console.error(`Erro de login: ${errorMsg}`);
         setErrorAuth(errorMsg);
         return { 
           success: false, 
@@ -510,7 +517,6 @@ export function useAuth() {
       
       // Verificar se temos todos os dados necessários
       if (!data.token || !data.user || !data.csrfToken) {
-        console.error('Resposta de login inválida: faltam campos obrigatórios');
         setErrorAuth('Erro no processo de login: resposta incompleta');
         return {
           success: false,
@@ -553,7 +559,6 @@ export function useAuth() {
         message: 'Login realizado com sucesso'
       };
     } catch (error) {
-      console.error('Erro ao processar login:', error);
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido ao fazer login';
       setErrorAuth(errorMsg);
       return {

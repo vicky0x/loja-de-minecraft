@@ -1,82 +1,29 @@
-# Arquivo robots.txt para Fantasy Store
-# Versão: 1.1
+# robots.txt para minecraftloja.com.br
+# Atualizado em 2023
 
 User-agent: *
 Allow: /
-Disallow: /auth/
-Disallow: /admin/
-Disallow: /dashboard/
-Disallow: /profile/
-Disallow: /checkout/
-Disallow: /api/
-Disallow: /products?*
-Disallow: /search?*
-Disallow: /*/404
-
-# Parâmetros de consulta que não devem ser indexados
-Disallow: /*?ref=*
-Disallow: /*?utm_source=*
-Disallow: /*?fbclid=*
-Disallow: /*?gclid=*
-
-# Permitir arquivos e diretórios específicos para rastreamento
 Allow: /products/
 Allow: /product/
-Allow: /category/
-Allow: /search/
-Allow: /terms/
-Allow: /privacy/
-Allow: /refund/
-Allow: /images/
-Allow: /sitemap.xml
+Allow: /products/category/
+Allow: /auth/login
+Allow: /auth/register
 
-# Permitir bots específicos a acessar tudo
-User-agent: Googlebot
-Allow: /
+# Desabilitar acesso a áreas administrativas e sensíveis
+Disallow: /admin/
+Disallow: /dashboard/
 Disallow: /api/
+Disallow: /cart/checkout
+Disallow: /auth/reset-password/
 
-User-agent: Googlebot-Image
-Allow: /
-Allow: /images/
+# Não rastrear páginas duplicadas ou de utilidade
+Disallow: /*?sort=
+Disallow: /*?filter=
+Disallow: /*?page=
+Disallow: /search?q=
 
-User-agent: Bingbot
-Allow: /
-Disallow: /api/
-
-User-agent: Slurp
-Allow: /
-Disallow: /api/
-
-# Regras para o renderizador do Google
-User-agent: Storebot-Google
-Allow: /
-
-# Desativar bots potencialmente prejudiciais
-User-agent: AhrefsBot
-Disallow: /
-
-User-agent: SemrushBot
-Disallow: /
-
-User-agent: MJ12bot
-Disallow: /
-
-User-agent: Baiduspider
-Disallow: /
-
-User-agent: PetalBot
-Disallow: /
-
-User-agent: DotBot
-Disallow: /
-
-# Taxa de rastreamento para o bot do Google
-User-agent: Googlebot
+# Velocidade de rastreamento recomendada
 Crawl-delay: 1
 
-# Limitar a taxa para o Bing
-User-agent: Bingbot
-Crawl-delay: 2
-
-# Localização do sitemap
-Sitemap: https://fantasystore.com.br/sitemap.xml 
+# Sitemap
+Sitemap: https://minecraftloja.com.br/sitemap.xml 

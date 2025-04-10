@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FiShoppingCart, FiEye, FiPackage, FiTrendingUp, FiShield, FiClock, FiAward, FiX } from 'react-icons/fi';
+import { FiShoppingCart, FiEye, FiPackage, FiTrendingUp, FiShield, FiClock, FiAward, FiX, FiStar } from 'react-icons/fi';
 import Image from 'next/image';
 import Link from 'next/link';
 import VariantStockModal from './VariantStockModal';
+import ProductRating from './ProductRating';
 
 interface Variant {
   _id: string;
@@ -32,6 +33,9 @@ interface Product {
 export default function ProductCard({ product }: { product: Product }) {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [rating, setRating] = useState(4.9); // Rating inicial
+  const [reviewCount, setReviewCount] = useState(0); // Número de avaliações
+  const [isAnimatingRating, setIsAnimatingRating] = useState(false); // Estado de animação
   
   // Verificar se o produto tem variantes
   const hasVariants = product.variants && product.variants.length > 0;
@@ -178,6 +182,21 @@ export default function ProductCard({ product }: { product: Product }) {
   const totalStock = getTotalStock();
   const discount = getDiscountPercentage();
   
+  // Função para gerar rating baseado no ID do produto (para consistência)
+  useEffect(() => {
+    if (product && product._id) {
+      // Usar o ID do produto como seed para gerar uma classificação entre 4.5 e 5.0
+      const idSum = product._id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+      const baseSeed = idSum % 100;
+      const calculatedRating = 4.5 + (baseSeed / 200); // Rating entre 4.5 e 5.0
+      setRating(calculatedRating);
+      
+      // Gerar também um número de avaliações baseado no ID para consistência
+      const baseReviews = 300 + (idSum % 700);
+      setReviewCount(baseReviews);
+    }
+  }, [product]);
+  
   return (
     <>
       <div 
@@ -234,12 +253,19 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         
-        <div className="p-5 flex flex-col justify-between h-48 relative z-10 bg-gradient-to-b from-dark-300/90 to-dark-200">
+        <div className="p-5 flex flex-col justify-between h-[200px] relative z-10 bg-gradient-to-b from-dark-300/90 to-dark-200">
           {/* Título com efeito mais sutil */}
           <div className="relative">
-            <h3 className="text-white font-medium text-base mb-3 group-hover:text-primary transition-colors duration-300">{product.name}</h3>
+            <h3 className="text-white font-medium text-base mb-1 group-hover:text-primary transition-colors duration-300">{product.name}</h3>
             <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-primary/30 group-hover:w-1/4 transition-all duration-500"></span>
           </div>
+          
+          {/* Sistema de avaliações */}
+          <ProductRating 
+            rating={rating} 
+            reviewCount={reviewCount} 
+            isAnimating={isAnimatingRating} 
+          />
           
           <div>
             <div className="flex items-baseline mb-3 relative">

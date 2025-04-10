@@ -36,9 +36,33 @@ export const metadata: Metadata = {
       follow: true,
     },
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
-    apple: "/apple-touch-icon.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon/favicon-16x16.png", sizes: "16x16" },
+      { url: "/favicon/favicon-32x32.png", sizes: "32x32" },
+      { url: "/favicon/favicon-48x48.png", sizes: "48x48" },
+      { url: "/favicon/favicon-64x64.png", sizes: "64x64" },
+      { url: "/favicon/favicon-96x96.png", sizes: "96x96" },
+      { url: "/favicon/favicon-128x128.png", sizes: "128x128" },
+      { url: "/favicon/favicon-196x196.png", sizes: "196x196" }
+    ],
+    shortcut: "/favicon/favicon-196x196.png",
+    apple: [
+      { url: "/favicon/favicon-152x152.png", sizes: "152x152", type: "image/png" },
+      { url: "/favicon/favicon-180x180.png", sizes: "180x180", type: "image/png" },
+      { url: "/favicon/favicon-167x167.png", sizes: "167x167", type: "image/png" }
+    ],
+    other: [
+      {
+        rel: "apple-touch-icon-precomposed",
+        url: "/favicon/favicon-180x180.png",
+      },
+      {
+        rel: "mask-icon",
+        url: "/favicon/favicon-512x512.png",
+        color: "#6C63FF", // cor primária do site
+      }
+    ]
   },
 };
 
@@ -50,6 +74,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
+        <link rel="manifest" href="/site.webmanifest" />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/favicon/favicon-180x180.png" />
+        <meta name="theme-color" content="#6C63FF" />
         <Script
           id="schema-organization"
           type="application/ld+json"

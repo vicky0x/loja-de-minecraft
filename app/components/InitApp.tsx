@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import logger from '@/app/lib/logger';
 
 /**
  * Componente responsável por inicializar serviços globais do aplicativo
@@ -23,9 +22,8 @@ export default function InitApp() {
         // ...
         
         setInitialized(true);
-        logger.debug('Serviços do cliente inicializados');
       } catch (error) {
-        logger.error('Erro durante inicialização de serviços', error);
+        // Erro silencioso
       }
     }
 

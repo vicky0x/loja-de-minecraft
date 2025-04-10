@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { FiSearch, FiShoppingCart, FiUser, FiLogOut, FiSettings, FiPackage, FiCode } from 'react-icons/fi';
+import { FiSearch, FiShoppingCart, FiUser, FiLogOut, FiSettings, FiPackage, FiCode, FiX } from 'react-icons/fi';
 import { useCart } from '@/app/contexts/CartContext';
 import { IoWifi } from 'react-icons/io5';
 import { useAuth } from '../hooks/useAuth';
@@ -134,7 +134,6 @@ export default function Navbar() {
   useEffect(() => {
     // Forçar atualização sempre que a imagem mudar
     if (user?.profileImage) {
-      console.log('Imagem de perfil atualizada:', user.profileImage);
       
       // Limpar qualquer animação anterior
       setImageTransition(prev => {
@@ -179,13 +178,12 @@ export default function Navbar() {
   useEffect(() => {
     const handleFocus = () => {
       const currentTime = Date.now();
-      const timeSinceLastUpdate = currentTime - lastUpdateTimeRef.current;
-      const minUpdateInterval = 5 * 60 * 1000; // 5 minutos em milissegundos
-      
-      const returningFromProfilePage = document.referrer.includes('/dashboard/profile');
+      const timeSinceLastUpdate = currentTime - (lastUpdateTimeRef.current || 0);
+      const minUpdateInterval = 10000; // 10 segundos
+      const returningFromProfilePage = window.location.pathname.includes('/profile') || 
+                                      document.referrer.includes('/profile');
       
       if (returningFromProfilePage || timeSinceLastUpdate > minUpdateInterval) {
-        console.log('Verificando atualizações após foco...');
         refreshUserData();
         lastUpdateTimeRef.current = currentTime;
       }
@@ -196,27 +194,23 @@ export default function Navbar() {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [refreshUserData]);
+  }, []);
 
   // Efeito para monitorar eventos de autenticação e imagem de perfil
   useEffect(() => {
     const handleAuthEvent = () => {
-      console.log('Evento de autenticação detectado na Navbar, atualizando dados...');
       // Atualizar apenas após delay para evitar loops
       setTimeout(() => {
-        // Não forçar atualização para evitar loops (true → false)
-        refreshUserData(false);
-      }, 100);
+        refreshUserData();
+      }, 500);
     };
     
-    const handleProfileImageUpdate = (event: Event) => {
+    const handleProfileImageUpdated = (event: Event) => {
       if (event instanceof CustomEvent && event.detail?.imageUrl) {
         const newImageUrl = event.detail.imageUrl;
-        console.log('Evento de atualização de imagem recebido:', newImageUrl);
         
         // Evitar atualização se a imagem for a mesma
         if (user && user.profileImage === newImageUrl) {
-          console.log('Mesma imagem, ignorando atualização');
           return;
         }
         
@@ -253,7 +247,7 @@ export default function Navbar() {
               localStorage.setItem('user', JSON.stringify(userData));
             }
           } catch (error) {
-            console.error('Erro ao atualizar localStorage:', error);
+            // Erro silencioso
           }
         }
       }
@@ -274,21 +268,21 @@ export default function Navbar() {
           // Se houver discrepância entre o cookie e o estado atual, atualizar
           if ((hasAuthCookie && !user) || (!hasAuthCookie && user) || 
               (isLocalStorageAuthenticated && !user) || (!isLocalStorageAuthenticated && user)) {
-            console.log('Estado de autenticação alterado, atualizando Navbar...');
             // Atualizar timestamp para evitar loops
             localStorage.setItem('lastAuthCheck', currentTime.toString());
-            // Não forçar atualização para evitar loops
-            refreshUserData(false);
+            
+            // Forçar atualização dos dados
+            refreshUserData();
           }
         }
       } catch (error) {
-        console.error('Erro ao verificar estado de autenticação:', error);
+        // Erro silencioso
       }
     };
     
     // Adicionar os event listeners
     window.addEventListener('auth-state-changed', handleAuthEvent);
-    window.addEventListener('profile-image-updated', handleProfileImageUpdate);
+    window.addEventListener('profile-image-updated', handleProfileImageUpdated);
     window.addEventListener('focus', handlePageFocus);
     window.addEventListener('storage', (e) => {
       if (e.key === 'isAuthenticated' || e.key === 'user') {
@@ -301,7 +295,7 @@ export default function Navbar() {
     
     return () => {
       window.removeEventListener('auth-state-changed', handleAuthEvent);
-      window.removeEventListener('profile-image-updated', handleProfileImageUpdate);
+      window.removeEventListener('profile-image-updated', handleProfileImageUpdated);
       window.removeEventListener('focus', handlePageFocus);
       window.removeEventListener('storage', handlePageFocus);
     };
@@ -333,7 +327,7 @@ export default function Navbar() {
           try {
             localStorage.setItem('user', JSON.stringify(updatedUser));
           } catch (storageError) {
-            console.error('Erro ao salvar estatísticas no localStorage:', storageError);
+            // Erro silencioso
           }
           
           // Atualizar o contexto
@@ -341,92 +335,75 @@ export default function Navbar() {
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar estatísticas do usuário:', error);
+      // Erro silencioso
     }
   };
 
   // Função para lidar com logout
   const handleLogout = async () => {
     try {
-      console.log('Iniciando processo de logout via Navbar...');
-      
       // Fechar o dropdown
       setIsDropdownOpen(false);
       
-      // Desabilitar interações do usuário durante o logout
-      // para evitar cliques múltiplos ou ações durante o processo
-      const disableInteraction = document.createElement('div');
-      disableInteraction.style.position = 'fixed';
-      disableInteraction.style.top = '0';
-      disableInteraction.style.left = '0';
-      disableInteraction.style.width = '100%';
-      disableInteraction.style.height = '100%';
-      disableInteraction.style.backgroundColor = 'rgba(0,0,0,0.5)';
-      disableInteraction.style.zIndex = '9999';
-      disableInteraction.style.cursor = 'wait';
-      document.body.appendChild(disableInteraction);
-      
-      // Marcar que um processo de logout está em andamento (bloqueia verificações de autenticação)
-      sessionStorage.setItem('logout_in_progress', 'true');
-      
-      // Evitar qualquer redirecionamento enquanto o logout está em andamento
-      try {
-        // Bloquear temporariamente o router para evitar navegações durante o logout
-        const originalPush = router.push;
-        router.push = (url: string) => {
-          console.log(`Navegação para ${url} bloqueada durante logout`);
-          return Promise.resolve(false);
-        };
-        
-        // Restaurar após o logout
-        setTimeout(() => {
-          router.push = originalPush;
-        }, 2000);
-      } catch (routerError) {
-        console.error('Erro ao bloquear navegação durante logout:', routerError);
-      }
-      
-      // Usar a função de logout do contexto Auth
-      const logoutResult = await logout();
-      
-      if (!logoutResult) {
-        // Se o logout falhar, remover a proteção
+      // Chamar o logout do AuthContext
+      if (logout) {
+        await logout();
+      } else {
+        // Proteção para navegação durante o logout
         try {
-          document.body.removeChild(disableInteraction);
-        } catch (e) {
-          console.error('Erro ao remover bloqueio de interação:', e);
+          const originalPush = router.push;
+          router.push = (url: string) => {
+            return Promise.resolve(false);
+          };
+          
+          // Restaurar após 2 segundos
+          setTimeout(() => {
+            router.push = originalPush;
+          }, 2000);
+        } catch (routerError) {
+          // Erro silencioso
         }
+        
+        // Bloqueio visual para o usuário
+        let disableInteraction = document.createElement('div');
+        disableInteraction.style.position = 'fixed';
+        disableInteraction.style.zIndex = '10000';
+        disableInteraction.style.left = '0';
+        disableInteraction.style.top = '0';
+        disableInteraction.style.width = '100vw';
+        disableInteraction.style.height = '100vh';
+        disableInteraction.style.background = 'rgba(0,0,0,0.2)';
+        disableInteraction.style.backdropFilter = 'blur(2px)';
+        document.body.appendChild(disableInteraction);
+        
+        // Remover bloqueio após logout
+        const removeBlock = () => {
+          try {
+            document.body.removeChild(disableInteraction);
+          } catch (e) {
+            // Erro silencioso
+          }
+        }
+        
+        // Fazer logout
+        await logout();
+        
+        // Remover bloqueio visual após um delay
+        setTimeout(removeBlock, 1000);
       }
-      
-      // Não fazer nada aqui - o redirecionamento é tratado pela função logout() no AuthContext
     } catch (error) {
-      console.error('Erro crítico ao fazer logout:', error);
-      
-      // Limpar qualquer bloqueio visual em caso de erro
-      try {
-        const disableElement = document.querySelector('div[style*="position: fixed"][style*="z-index: 9999"]');
-        if (disableElement && disableElement.parentNode) {
-          disableElement.parentNode.removeChild(disableElement);
-        }
-      } catch (e) {
-        console.error('Erro ao limpar bloqueio visual:', e);
-      }
-      
-      // Em caso de erro severo, tentar forçar o redirecionamento
-      try {
-        sessionStorage.removeItem('logout_in_progress');
-        localStorage.clear();
-        window.location.replace('/auth/login?emergency=true&t=' + Date.now());
-      } catch (finalError) {
-        console.error('Erro final durante logout de emergência:', finalError);
-        alert('Erro ao fazer logout. Por favor, recarregue a página.');
-      }
+      // Erro silencioso
+      alert('Erro ao fazer logout. Por favor, recarregue a página.');
     }
   };
 
-  // Função para pesquisar
+  // Remover o estado usado pelo SearchPreview
+  const [showSearchPreview, setShowSearchPreview] = useState(false);
+
+  // Modificamos a função handleSearch para remover a referência ao preview
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSearchPreview(false);
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
@@ -515,7 +492,7 @@ export default function Navbar() {
           {/* Barra de pesquisa - versão desktop */}
           <form 
             onSubmit={handleSearch}
-            className="hidden md:flex mx-4 flex-1 max-w-md relative"
+            className="hidden md:flex mx-4 flex-1 max-w-md relative search-container"
           >
             <input 
               type="text" 
@@ -523,6 +500,7 @@ export default function Navbar() {
               className="w-full bg-dark-300/70 rounded-full py-2 px-4 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 border border-dark-400 hover:border-primary/30 transition-all duration-300"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setShowSearchPreview(true)}
             />
             <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
               <FiSearch size={16} />
@@ -594,15 +572,18 @@ export default function Navbar() {
                               className="object-cover w-full h-full"
                               style={{ objectFit: 'cover', objectPosition: 'center' }}
                               onError={(e) => {
-                                console.log('Erro ao carregar imagem:', user.profileImage);
                                 // Usar um fallback diretamente em vez de um arquivo
                                 e.currentTarget.style.display = 'none';
-                                // Mostrar a primeira letra do nome do usuário como fallback
                                 const parent = e.currentTarget.parentElement;
                                 if (parent) {
-                                  parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
-                                    <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
-                                  </div>`;
+                                  parent.classList.add('bg-gray-600');
+                                  parent.classList.add('flex');
+                                  parent.classList.add('items-center');
+                                  parent.classList.add('justify-center');
+                                  
+                                  const iconElement = document.createElement('div');
+                                  iconElement.innerHTML = '<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400" height="22" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                                  parent.appendChild(iconElement);
                                 }
                               }}
                               unoptimized={true}
@@ -621,15 +602,18 @@ export default function Navbar() {
                                 className="object-cover w-full h-full"
                                 style={{ objectFit: 'cover', objectPosition: 'center' }}
                                 onError={(e) => {
-                                  console.log('Erro ao carregar nova imagem:', imageTransition.newImage);
                                   // Usar um fallback diretamente em vez de um arquivo
                                   e.currentTarget.style.display = 'none';
-                                  // Mostrar a primeira letra do nome do usuário como fallback
                                   const parent = e.currentTarget.parentElement;
                                   if (parent) {
-                                    parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
-                                      <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
-                                    </div>`;
+                                    parent.classList.add('bg-gray-600');
+                                    parent.classList.add('flex');
+                                    parent.classList.add('items-center');
+                                    parent.classList.add('justify-center');
+                                    
+                                    const iconElement = document.createElement('div');
+                                    iconElement.innerHTML = '<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400" height="22" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                                    parent.appendChild(iconElement);
                                   }
                                 }}
                                 unoptimized={true}
@@ -756,6 +740,15 @@ export default function Navbar() {
 
           {/* Botão de Menu Mobile - Enhanced */}
           <div className="flex md:hidden items-center space-x-4">
+            {/* Botão de pesquisa para mobile */}
+            <button
+              className="text-white p-2 rounded-lg hover:bg-dark-300/50 transition-colors duration-300"
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              aria-label="Pesquisar"
+            >
+              <FiSearch className="h-6 w-6" />
+            </button>
+            
             {/* Botão de carrinho para mobile - Enhanced */}
             {user && (
               <Link 
@@ -772,7 +765,7 @@ export default function Navbar() {
               </Link>
             )}
             
-            {/* Botão de busca para mobile - Enhanced */}
+            {/* Botão de menu para mobile */}
             <button
               className="text-white p-2 rounded-lg hover:bg-dark-300/50 transition-colors duration-300"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -796,6 +789,36 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Barra de pesquisa mobile */}
+      {isSearchOpen && (
+        <div className="absolute top-[calc(100%)] left-0 right-0 p-3 bg-dark-300/95 backdrop-blur-lg border-t border-dark-400/30 search-container z-[60]">
+          <form onSubmit={handleSearch} className="relative">
+            <input 
+              type="text" 
+              placeholder="Buscar produtos..." 
+              className="w-full bg-dark-400/50 rounded-lg py-2.5 px-4 pl-10 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-dark-500/30 hover:border-primary/30 transition-all duration-300"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setShowSearchPreview(true)}
+              autoFocus
+            />
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <FiSearch size={18} />
+            </div>
+            <button 
+              type="button" 
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+              onClick={() => {
+                setIsSearchOpen(false);
+                setShowSearchPreview(false);
+              }}
+            >
+              <FiX size={18} />
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Menu Mobile - Enhanced */}
       <div 
@@ -848,25 +871,6 @@ export default function Navbar() {
             </Link>
           </nav>
           
-          {/* Barra de pesquisa para mobile - Enhanced */}
-          <form onSubmit={handleSearch} className="relative">
-            <input 
-              type="text" 
-              placeholder="Buscar produtos..." 
-              className="w-full bg-dark-300/70 rounded-full py-2 px-4 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 border border-dark-400"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <FiSearch size={16} />
-            </div>
-            <button type="submit" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-primary/20 hover:bg-primary/40 text-primary rounded-full p-1 transition-all duration-300">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-          </form>
-
           {loadingUser ? (
             // Botões de login/cadastro para usuários durante carregamento - Mobile
             <div className="flex flex-col space-y-3 pt-2 border-t border-dark-300/50">
@@ -908,15 +912,18 @@ export default function Navbar() {
                           className="object-cover w-full h-full"
                           style={{ objectFit: 'cover', objectPosition: 'center' }}
                           onError={(e) => {
-                            console.log('Erro ao carregar imagem:', user.profileImage);
                             // Usar um fallback diretamente em vez de um arquivo
                             e.currentTarget.style.display = 'none';
-                            // Mostrar a primeira letra do nome do usuário como fallback
                             const parent = e.currentTarget.parentElement;
                             if (parent) {
-                              parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
-                                <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
-                              </div>`;
+                              parent.classList.add('bg-gray-600');
+                              parent.classList.add('flex');
+                              parent.classList.add('items-center');
+                              parent.classList.add('justify-center');
+                              
+                              const iconElement = document.createElement('div');
+                              iconElement.innerHTML = '<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400" height="22" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                              parent.appendChild(iconElement);
                             }
                           }}
                           unoptimized={true}
@@ -935,15 +942,18 @@ export default function Navbar() {
                             className="object-cover w-full h-full"
                             style={{ objectFit: 'cover', objectPosition: 'center' }}
                             onError={(e) => {
-                              console.log('Erro ao carregar nova imagem:', imageTransition.newImage);
                               // Usar um fallback diretamente em vez de um arquivo
                               e.currentTarget.style.display = 'none';
-                              // Mostrar a primeira letra do nome do usuário como fallback
                               const parent = e.currentTarget.parentElement;
                               if (parent) {
-                                parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary/30 to-primary-dark/30 flex items-center justify-center">
-                                  <span class="text-white text-lg font-semibold">${user.username.charAt(0).toUpperCase()}</span>
-                                </div>`;
+                                parent.classList.add('bg-gray-600');
+                                parent.classList.add('flex');
+                                parent.classList.add('items-center');
+                                parent.classList.add('justify-center');
+                                
+                                const iconElement = document.createElement('div');
+                                iconElement.innerHTML = '<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400" height="22" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                                parent.appendChild(iconElement);
                               }
                             }}
                             unoptimized={true}
