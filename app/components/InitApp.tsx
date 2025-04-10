@@ -37,6 +37,77 @@ export default function InitApp() {
     };
   }, [initialized]);
 
+  // Configurar manipuladores globais de erros
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Manipulador para erros não capturados
+    const handleError = (event: ErrorEvent) => {
+      // Verificar se é um erro que podemos ignorar silenciosamente
+      if (event.error && 
+         (String(event.error).includes('[object Event]') || 
+          String(event.error).includes('navigation') ||
+          String(event.error).includes('abort'))) {
+        event.preventDefault();
+        return;
+      }
+      
+      console.error('Erro global interceptado:', event.error);
+      // Prevenir que o erro seja exibido no console do browser
+      event.preventDefault();
+    };
+
+    // Manipulador para promessas não tratadas
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // Verificar se é o erro de [object Event]
+      const reason = event.reason;
+      const reasonStr = String(reason);
+      
+      // Lista de padrões de erro que devem ser tratados silenciosamente
+      const silentErrorPatterns = [
+        '[object Event]',
+        'navigation',
+        'abort',
+        'cancel',
+        'redirect',
+        'loading chunk',
+        'Failed to fetch',
+        'NetworkError',
+        'timeout',
+        'ECONNREFUSED',
+        'Aborted',
+        'Navigation interrupted'
+      ];
+      
+      // Verificar se o erro corresponde a algum padrão que deve ser tratado silenciosamente
+      const isSilentError = silentErrorPatterns.some(pattern => 
+        reasonStr.includes(pattern) || 
+        (reason instanceof Event) ||
+        (reason instanceof DOMException && reason.name === 'AbortError')
+      );
+      
+      if (isSilentError) {
+        console.warn('Erro não crítico interceptado silenciosamente');
+        event.preventDefault();
+        return;
+      }
+      
+      // Para outros erros, registrar mas não interromper o uso
+      console.error('Promessa não tratada:', reason);
+      event.preventDefault();
+    };
+
+    // Registrar manipuladores
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    // Limpar manipuladores na desmontagem
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
   // Componente não renderiza nada visível, apenas inicializa serviços
   return null;
 } 

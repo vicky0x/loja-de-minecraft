@@ -31,7 +31,17 @@ export default function NavigationInterceptor() {
           
           // Atrasar um pouco para evitar conflitos com outras navegações
           setTimeout(() => {
-            router.push(redirectPath);
+            try {
+              router.push(redirectPath);
+            } catch (error) {
+              console.error('[NAVIGATION] Erro ao redirecionar:', error);
+              // Fallback para redirecionamento convencional se o router falhar
+              try {
+                window.location.href = redirectPath;
+              } catch (innerError) {
+                console.error('[NAVIGATION] Fallback de redirecionamento também falhou:', innerError);
+              }
+            }
           }, 100);
         }
       } catch (error) {
@@ -44,15 +54,27 @@ export default function NavigationInterceptor() {
     
     // Adicionar verificação também quando o usuário volta para a página
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        checkPendingRedirects();
+      try {
+        if (!document.hidden) {
+          checkPendingRedirects();
+        }
+      } catch (error) {
+        console.error('[NAVIGATION] Erro no manipulador de visibilidade:', error);
       }
     };
     
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    try {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    } catch (error) {
+      console.error('[NAVIGATION] Erro ao registrar listener de visibilidade:', error);
+    }
     
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      try {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      } catch (error) {
+        console.error('[NAVIGATION] Erro ao remover listener de visibilidade:', error);
+      }
     };
   }, [pathname, router]);
 
