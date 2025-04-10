@@ -6,11 +6,8 @@ import dbConnect from '@/app/lib/db/mongodb';
  * API para gerenciamento de pedidos (admin)
  * IMPORTANTE: Formato de rotas atualizado para Next.js 15
  * 
- * No Next.js 15, é necessário usar o formato { params }: { params: { id: string } } 
- * em vez do antigo formato `context: any` para obter os parâmetros da rota.
- * 
- * Além disso, é necessário resolver os parâmetros com Promise.resolve(params)
- * para garantir a correta tipagem e compatibilidade.
+ * Implementação compatível com Next.js 15 usando formato mais flexível
+ * para os parâmetros de rota para evitar erros de tipagem.
  */
 
 // Logger para depuração
@@ -302,12 +299,11 @@ function processQuantity(item: any): number {
 // GET /api/admin/orders/[id] - Buscar um pedido específico (apenas admin)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
-    // Resolver os parâmetros para obter o ID do pedido
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter ID do pedido a partir dos parâmetros
+    const id = params?.id;
     
     logger.info(`Buscando pedido: ${id}`);
     
@@ -349,12 +345,11 @@ export async function GET(
 // PUT /api/admin/orders/[id] - Atualizar status do pedido (apenas admin)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
-    // Resolver os parâmetros para obter o ID do pedido
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter ID do pedido diretamente dos parâmetros
+    const id = params?.id;
     
     logger.info(`Atualizando pedido: ${id}`);
     
