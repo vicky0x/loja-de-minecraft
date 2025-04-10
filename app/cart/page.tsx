@@ -1121,109 +1121,20 @@ export default function CartPage() {
     }
   };
 
-  // Função para regenerar o código PIX quando expirado
-  const handleRegeneratePixCode = async () => {
-    try {
-      if (!pixPaymentData?.orderId) {
-        toast.error('Dados do pedido incompletos. Por favor, tente novamente.');
-        return;
-      }
-      
-      setIsProcessingPayment(true);
-      
-      // Função para obter dados de pagamento do usuário
-      const getUserPaymentInfo = () => {
-        // Se não tivermos os dados do cliente no estado, tentamos restaurá-los a partir do localStorage
-        if (!customerData || !customerData.email || !customerData.firstName || !customerData.lastName || !customerData.cpf) {
-          // Tentar recuperar informações do localStorage
-          try {
-            const storedCustomerData = localStorage.getItem('customerData');
-            if (storedCustomerData) {
-              const parsedData = JSON.parse(storedCustomerData);
-              // Atualizar o estado com os dados recuperados
-              setCustomerData(parsedData);
-              
-              // Retornar os dados recuperados do localStorage
-              return {
-                email: parsedData.email,
-                cpf: parsedData.cpf.replace(/\D/g, ''),
-                firstName: parsedData.firstName,
-                lastName: parsedData.lastName
-              };
-            }
-          } catch (error) {
-            console.error('Erro ao tentar recuperar dados do cliente:', error);
-          }
-          
-          // Se não conseguimos recuperar os dados, lançamos um erro
-          throw new Error("Dados do cliente incompletos");
-        }
-        
-        // Validar formato do email
-        if (!customerData.email.includes('@')) {
-          throw new Error("Email inválido");
-        }
-        
-        return {
-          email: customerData.email,
-          cpf: customerData.cpf.replace(/\D/g, ''), // Remover caracteres não numéricos
-          firstName: customerData.firstName,
-          lastName: customerData.lastName
-        };
-      };
-      
-      // Obter os dados do usuário para o pagamento
-      const userInfo = getUserPaymentInfo();
-      
-      // Preparar os dados para criar um novo pagamento PIX
-      const paymentData = {
-        order_id: pixPaymentData.orderId,
-        transaction_amount: pixPaymentData.total || cartTotal,
-        email: userInfo.email,
-        cpf: userInfo.cpf,
-        first_name: userInfo.firstName,
-        last_name: userInfo.lastName,
-        reference_id: `order_${pixPaymentData.orderId}_regenerated_${Date.now()}`
-      };
-
-      console.log('Regenerando código PIX para pedido:', pixPaymentData.orderId);
-      
-      // Enviar solicitação para criar novo pagamento
-      const response = await fetch('/api/payment/mercadopago', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentData)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao regenerar código PIX');
-      }
-      
-      const responseData = await response.json();
-      
-      // Atualizar os dados do pagamento com o novo código PIX
-      setPixPaymentData({
-        orderId: pixPaymentData.orderId,
-        paymentId: responseData.paymentId,
-        pixCopiaECola: responseData.pixCopiaECola,
-        qrCodeBase64: responseData.qrCodeBase64,
-        qrCodeUrl: responseData.qrCodeUrl,
-        expiresAt: responseData.expiresAt,
-        total: pixPaymentData.total || cartTotal,
-        isPaid: false
-      });
-      
-      toast.success('Um novo código PIX foi gerado com sucesso!');
-      
-    } catch (error) {
-      console.error('Erro ao regenerar código PIX:', error);
-      toast.error(error instanceof Error ? error.message : 'Erro ao regenerar código PIX');
-    } finally {
-      setIsProcessingPayment(false);
+  // Renderizar o modal de pagamento PIX
+  const renderPixPaymentModal = () => {
+    if (pixPaymentData) {
+      return (
+        <PixPaymentModal
+          isOpen={isPixModalOpen}
+          onClose={() => setIsPixModalOpen(false)}
+          paymentData={pixPaymentData}
+          onPaymentConfirmed={handlePaymentConfirmed}
+          clearCart={handleClearCart}
+        />
+      );
     }
+    return null;
   };
 
   // Efeito para detectar e corrigir possíveis estados inconsistentes
@@ -1983,7 +1894,6 @@ export default function CartPage() {
               }
             }}
             clearCart={clearCart}
-            onRegeneratePixCode={handleRegeneratePixCode}
           />
         </div>
       ) : null}

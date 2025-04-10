@@ -41,7 +41,6 @@ interface PixPaymentModalProps {
   };
   onPaymentConfirmed?: () => void;
   clearCart?: () => void;
-  onRegeneratePixCode?: () => void;
 }
 
 // Componente PixPaymentModal
@@ -50,8 +49,7 @@ function PixPaymentModal({
   onClose,
   paymentData,
   onPaymentConfirmed,
-  clearCart,
-  onRegeneratePixCode
+  clearCart
 }: PixPaymentModalProps) {
   // Estados do componente
   const [isPaid, setIsPaid] = useState(false);
@@ -776,29 +774,17 @@ function PixPaymentModal({
                     <span className="mr-2 mt-0.5 flex-shrink-0"><IconFiAlertCircle size={16} /></span>
                     <div>
                       <p className="font-medium">Tempo para pagamento expirado</p>
-                      <p className="text-sm mt-1">Você precisará gerar um novo código PIX para continuar com a compra.</p>
+                      <p className="text-sm mt-1">Por favor, crie um novo pedido para continuar com a compra.</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="py-3 px-4 rounded-md bg-dark-400 hover:bg-dark-500 focus:outline-none focus:ring-2 focus:ring-dark-300 text-white font-medium flex items-center justify-center"
-                    >
-                      <span className="mr-2"><IconFiX size={18} /></span>
-                      <span>Cancelar</span>
-                    </button>
-                    {onRegeneratePixCode && (
-                      <button
-                        type="button"
-                        onClick={onRegeneratePixCode}
-                        className="py-3 px-4 rounded-md bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary text-white font-medium flex items-center justify-center"
-                      >
-                        <span className="mr-2"><IconFiRefreshCw size={18} /></span>
-                        <span>Novo PIX</span>
-                      </button>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-3 px-4 rounded-md bg-dark-400 hover:bg-dark-500 focus:outline-none focus:ring-2 focus:ring-dark-300 text-white font-medium flex items-center justify-center"
+                  >
+                    <span className="mr-2"><IconFiX size={18} /></span>
+                    <span>Cancelar</span>
+                  </button>
                 </div>
               ) : (
                 <button
