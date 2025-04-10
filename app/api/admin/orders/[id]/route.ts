@@ -294,188 +294,73 @@ export async function GET(
   context: { params: { id: string } }
 ) {
   try {
-    // Garantir que params seja await no Next.js 14
-    const id = (await context.params).id;
+    // Verificar se o usuário é administrador
+    const adminCheck = await verifyAdmin(request);
     
-    logger.info(`Requisição GET para pedido ${id}`);
+    if (!adminCheck.isAdmin) {
+      return NextResponse.json(
+        { error: adminCheck.error || 'Não autorizado' }, 
+        { status: adminCheck.status || 401 }
+      );
+    }
     
-    // Verificar autenticação
-    const authResult = await verifyAdmin(request);
-    if (!authResult.isAdmin) {
-      logger.warn(`Acesso não autorizado ao pedido ${id}`);
-      return NextResponse.json({ 
-        error: authResult.error, 
-        success: false 
-      }, { status: authResult.status });
+    // Obter ID do pedido da URL
+    const { id } = context.params;
+    
+    // Validar ID do pedido
+    if (!id || !isValidObjectId(id)) {
+      return NextResponse.json(
+        { error: "ID de pedido inválido" }, 
+        { status: 400 }
+      );
     }
-
-    // Validar ID
-    if (!isValidObjectId(id)) {
-      logger.warn(`ID de pedido inválido: ${id}`);
-      return NextResponse.json({ 
-        error: 'ID de pedido inválido', 
-        success: false 
-      }, { status: 400 });
+    
+    // Conectar à base de dados e carregar modelos
+    const { Order, User, Product } = await getModels();
+    
+    // Buscar o pedido com suas relações
+    const order = await Order.findById(id)
+      .populate({
+        path: 'user',
+        select: 'email username name cpf phone address'
+      })
+      .populate({
+        path: 'orderItems.product',
+        select: 'name slug images variants price deliveryType featured status'
+      })
+      .lean();
+    
+    if (!order) {
+      return NextResponse.json(
+        { error: "Pedido não encontrado" }, 
+        { status: 404 }
+      );
     }
-
-    const { Order } = await getModels();
-
-    // Buscar o pedido com relacionamentos populados
-    try {
-      const order = await Order.findById(id)
-        .populate('user', 'username email name cpf phone address')
-        .populate({
-          path: 'orderItems.product',
-          select: 'name price images deliveryType variants'
-        })
-        .lean();
-
-      if (!order) {
-        logger.warn(`Pedido não encontrado: ${id}`);
-        return NextResponse.json({ 
-          error: 'Pedido não encontrado', 
-          success: false,
-          order: null
-        }, { status: 404 });
-      }
-
-      // Carregar também os dados mais recentes dos produtos para verificar o deliveryType atual
-      if (order.orderItems && order.orderItems.length > 0) {
-        const updatedOrderItems = await Promise.all(order.orderItems.map(async (item: any) => {
-          if (item.product && item.product._id) {
-            // Buscar os dados mais recentes do produto
-            const product = await mongoose.model('Product').findById(item.product._id).lean();
-            
-            if (product) {
-              // Verificar o tipo de entrega do produto ou da variante
-              let deliveryType = product.deliveryType || 'automatic';
-              
-              // Se houver variante, verificar o deliveryType da variante específica
-              if (item.variant && product.variants && product.variants.length > 0) {
-                const variant = product.variants.find((v: any) => 
-                  v._id.toString() === item.variant.toString()
-                );
-                
-                if (variant && variant.deliveryType) {
-                  deliveryType = variant.deliveryType;
-                }
-              }
-              
-              // Atualizar o item com o tipo de entrega correto
-              return {
-                ...item,
-                product: {
-                  ...item.product,
-                  deliveryType: deliveryType
-                }
-              };
-            }
-          }
-          
-          return item;
-        }));
-        
-        // Substituir os itens do pedido pelos atualizados
-        order.orderItems = updatedOrderItems;
-      }
-
-      // Formatar o pedido para garantir que todos os campos estejam presentes
-      const formattedOrder = {
-        _id: order._id.toString(),
-        user: order.user ? {
-          _id: order.user._id.toString(),
-          username: order.user.username || 'Usuário desconhecido',
-          email: order.user.email || 'Email não disponível',
-          name: order.user.name || '',
-          cpf: order.user.cpf || '',
-          phone: order.user.phone || '',
-          address: order.user.address || ''
-        } : {
-          _id: 'desconhecido',
-          username: 'Usuário desconhecido',
-          email: 'Email não disponível',
-          name: '',
-          cpf: '',
-          phone: '',
-          address: ''
-        },
-        orderItems: Array.isArray(order.orderItems) ? order.orderItems.map((item: any) => {
-          // Processar o produto
-          const formattedProduct = item.product ? {
-            _id: item.product._id.toString(),
-            name: item.product.name || '',
-            slug: item.product.slug || '',
-            status: item.product.status || 'unknown',
-            price: typeof item.product.price === 'number' ? item.product.price : 0,
-            deliveryType: item.product.deliveryType || 'manual',
-            images: Array.isArray(item.product.images) 
-              ? item.product.images.map((img: string) => ensureValidImageUrl(img)) 
-              : []
-          } : null;
-
-          // Garantir quantidade correta
-          let quantity = processQuantity(item);
-
-          // Adicionar logs para diagnóstico
-          logger.info(`[API:ADMIN:ORDER] Item ${item._id}: Quantidade processada = ${quantity}`);
-
-          return {
-            _id: item._id.toString(),
-            product: formattedProduct,
-            price: item.price || 0,
-            name: item.name || '',
-            delivered: !!item.delivered,
-            quantity: quantity
-          };
-        }) : [],
-        totalAmount: order.totalAmount || 0,
-        paymentInfo: {
-          method: order.paymentInfo?.method || 'desconhecido',
-          status: order.paymentInfo?.status || 'pending',
-          transactionId: order.paymentInfo?.transactionId || order.paymentInfo?.id || '',
-          pixQrCodeBase64: order.paymentInfo?.pixQrCodeBase64 || '',
-          pixCopyPaste: order.paymentInfo?.pixCopyPaste || '',
-          expirationDate: order.paymentInfo?.expirationDate || null
-        },
-        statusHistory: Array.isArray(order.statusHistory) ? order.statusHistory.map((item: any) => ({
-          status: item.status,
-          changedBy: item.changedBy,
-          changedAt: item.changedAt ? item.changedAt.toISOString() : new Date().toISOString()
-        })) : [],
-        notes: Array.isArray(order.notes) ? order.notes.map((item: any) => ({
-          content: item.content,
-          addedBy: item.addedBy,
-          addedAt: item.addedAt ? item.addedAt.toISOString() : new Date().toISOString()
-        })) : [],
-        customerData: order.customerData || null,
-        productAssigned: !!order.productAssigned,
-        createdAt: order.createdAt ? order.createdAt.toISOString() : new Date().toISOString(),
-        updatedAt: order.updatedAt ? order.updatedAt.toISOString() : new Date().toISOString()
-      };
-
-      logger.info(`Pedido ${id} encontrado e formatado com sucesso`);
-      
-      return NextResponse.json({ 
-        order: formattedOrder, 
-        success: true 
+    
+    // Processar as imagens dos produtos no pedido
+    if (order.orderItems && Array.isArray(order.orderItems)) {
+      order.orderItems.forEach(item => {
+        if (item.product && item.product.images && Array.isArray(item.product.images)) {
+          item.product.images = item.product.images.map(ensureValidImageUrl);
+        }
       });
-    } catch (findError) {
-      logger.error(`Erro ao buscar pedido ${id}:`, findError);
-      return NextResponse.json({ 
-        error: 'Erro ao buscar pedido', 
-        details: findError instanceof Error ? findError.message : 'Erro desconhecido',
-        success: false,
-        order: null
-      }, { status: 500 });
     }
-  } catch (error) {
-    logger.error(`Erro geral ao buscar detalhes do pedido:`, error);
+    
+    // Retornar o pedido com informações completas
     return NextResponse.json({ 
-      error: 'Falha ao buscar detalhes do pedido', 
-      details: error instanceof Error ? error.message : 'Erro desconhecido',
-      success: false,
-      order: null
-    }, { status: 500 });
+      success: true, 
+      order
+    });
+  } catch (error) {
+    logger.error("Erro ao buscar pedido:", error);
+    
+    return NextResponse.json(
+      { 
+        error: "Erro ao buscar detalhes do pedido", 
+        details: error instanceof Error ? error.message : String(error)
+      }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -485,182 +370,152 @@ export async function PUT(
   context: { params: { id: string } }
 ) {
   try {
-    // Garantir que params seja await no Next.js 14
-    const id = (await context.params).id;
+    // Verificar autenticação de admin
+    const adminCheck = await verifyAdmin(request);
     
-    logger.info(`Requisição PUT para pedido ${id}`);
-    
-    // Verificar autenticação
-    const authResult = await verifyAdmin(request);
-    if (!authResult.isAdmin) {
-      return NextResponse.json({ 
-        error: authResult.error, 
-        success: false 
-      }, { status: authResult.status });
+    if (!adminCheck.isAdmin) {
+      return NextResponse.json(
+        { error: adminCheck.error || 'Não autorizado' }, 
+        { status: adminCheck.status || 401 }
+      );
     }
     
-    const currentUser = authResult.user;
-
-    if (!isValidObjectId(id)) {
-      return NextResponse.json({ 
-        error: 'ID de pedido inválido', 
-        success: false 
-      }, { status: 400 });
+    // Obter ID do pedido
+    const { id } = context.params;
+    
+    // Validar ID do pedido
+    if (!id || !isValidObjectId(id)) {
+      return NextResponse.json(
+        { error: "ID de pedido inválido" }, 
+        { status: 400 }
+      );
     }
-
+    
     // Obter dados da requisição
-    let status, notes;
-    try {
-      const body = await request.json();
-      status = body.status;
-      notes = body.notes;
-    } catch (parseError) {
-      logger.error(`Erro ao processar body da requisição:`, parseError);
-      return NextResponse.json({ 
-        error: 'Erro ao processar dados da requisição', 
-        details: 'O formato JSON enviado é inválido',
-        success: false 
-      }, { status: 400 });
-    }
-
-    if (!status) {
-      return NextResponse.json({ 
-        error: 'Status é obrigatório', 
-        success: false 
-      }, { status: 400 });
-    }
-
-    // Validar status
-    const validStatuses = ['pending', 'paid', 'failed', 'refunded'];
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json({ 
-        error: 'Status inválido', 
-        success: false 
-      }, { status: 400 });
-    }
-
-    const { Order } = await getModels();
+    const updateData = await request.json();
     
-    // Buscar o pedido atual
-    try {
-      const order = await Order.findById(id);
-      if (!order) {
-        return NextResponse.json({ 
-          error: 'Pedido não encontrado', 
-          success: false 
-        }, { status: 404 });
-      }
-
-      // Verificar se o status atual é igual ao novo status
-      const currentStatus = order.paymentInfo?.status || 'pending';
-      const isStatusChanging = currentStatus !== status;
-
-      // Atualizar pedido
-      const updateData: any = {
-        'paymentInfo.status': status,
-      };
-
-      // Adicionar o histórico de status se o status for alterado
-      if (isStatusChanging) {
-        const statusHistoryItem = {
-          status,
-          changedBy: `${currentUser.username || currentUser.email} (Admin)`,
-          changedAt: new Date()
-        };
-
-        updateData.$push = { statusHistory: statusHistoryItem };
-      }
-
-      // Adicionar nota se fornecida
-      if (notes && notes.trim()) {
-        const noteItem = {
-          content: notes.trim(),
-          addedBy: `${currentUser.username || currentUser.email} (Admin)`,
-          addedAt: new Date()
-        };
-
-        if (!updateData.$push) {
-          updateData.$push = {};
-        }
-        updateData.$push.notes = noteItem;
-      }
-
-      // Atualizar em uma única operação
-      await Order.findByIdAndUpdate(id, {
-        ...updateData,
-        ...(status === 'paid' ? { 
-          'paymentInfo.status': 'paid',
-          paymentStatus: 'paid', 
-          orderStatus: 'processing'
-        } : {})
-      });
-
-      // Assinalar produtos ao usuário se o status mudou para 'paid'
-      if (isStatusChanging && status === 'paid' && !order.productAssigned) {
-        try {
-          logger.info(`Iniciando atribuição de produtos para o pedido ${id} após aprovação manual`);
-          
-          // Buscar ordem completa para atribuição de produtos
-          const orderForAssignment = await Order.findById(id).lean();
-          
-          // Verificar se existem produtos sem variante
-          const orderItems = orderForAssignment.orderItems || [];
-          const hasSingleProductItems = orderItems.some(item => {
-            return !item.variantId || item.variantId === 'null' || item.variantId === 'undefined';
-          });
-          
-          if (hasSingleProductItems) {
-            logger.info(`Pedido ${id} contém produtos sem variantes`);
-          }
-          
-          const result = await assignProductsToUser(orderForAssignment);
-          logger.info(`Resultado da atribuição de produtos: ${JSON.stringify(result)}`);
-          
-          // Marcar pedido como tendo produtos atribuídos
-          await Order.findByIdAndUpdate(id, {
-            productAssigned: true,
-            'metadata.productAssignmentResult': result,
-            'metadata.productAssignmentTimestamp': new Date()
-          });
-          
-          // Verificar se a atribuição foi bem-sucedida
-          if (result.success) {
-            logger.info(`Produtos atribuídos com sucesso para o pedido ${id}`);
-          } else {
-            logger.warn(`Falha na atribuição automática de produtos para o pedido ${id}: ${result.message}`);
-          }
-        } catch (assignError) {
-          logger.error(`Erro ao atribuir produtos para o pedido ${id}:`, assignError);
-          // Continua a execução mesmo se falhar a atribuição
-        }
-      }
-
-      logger.info(`Pedido ${id} atualizado com sucesso para status ${status}`);
+    // Conectar ao banco de dados
+    const { Order, StockItem } = await getModels();
+    
+    // Buscar o pedido existente
+    const existingOrder = await Order.findById(id);
+    
+    if (!existingOrder) {
+      return NextResponse.json(
+        { error: "Pedido não encontrado" }, 
+        { status: 404 }
+      );
+    }
+    
+    // Verificar quais campos estão sendo atualizados e validá-los
+    const updates: any = {};
+    
+    // Atualizar status
+    if (updateData.status && typeof updateData.status === 'string') {
+      const validStatus = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'canceled', 'refunded'];
       
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Pedido atualizado com sucesso'
-      });
-    } catch (updateError) {
-      logger.error(`Erro ao atualizar pedido ${id}:`, updateError);
-      return NextResponse.json({ 
-        error: 'Falha ao atualizar pedido', 
-        details: updateError instanceof Error ? updateError.message : 'Erro desconhecido',
-        success: false 
-      }, { status: 500 });
+      if (!validStatus.includes(updateData.status)) {
+        return NextResponse.json(
+          { error: "Status inválido" }, 
+          { status: 400 }
+        );
+      }
+      
+      updates.status = updateData.status;
+      
+      // Adicionar ao histórico de status
+      const statusEntry = {
+        status: updateData.status,
+        changedBy: adminCheck.user?.username || adminCheck.user?.email || 'Admin',
+        changedAt: new Date()
+      };
+      
+      if (!existingOrder.statusHistory) {
+        existingOrder.statusHistory = [];
+      }
+      
+      existingOrder.statusHistory.push(statusEntry);
+      updates.statusHistory = existingOrder.statusHistory;
     }
-  } catch (error) {
-    let orderId = 'desconhecido';
-    try {
-      orderId = (await context.params).id;
-    } catch { /* ignorar erros ao obter id */ }
     
-    logger.error(`Erro geral ao atualizar pedido ${orderId}:`, error);
-    return NextResponse.json({ 
-      error: 'Falha ao atualizar pedido', 
-      details: error instanceof Error ? error.message : 'Erro desconhecido',
-      success: false 
-    }, { status: 500 });
+    // Adicionar notas
+    if (updateData.note && typeof updateData.note === 'string' && updateData.note.trim()) {
+      const noteEntry = {
+        content: updateData.note.trim(),
+        addedBy: adminCheck.user?.username || adminCheck.user?.email || 'Admin',
+        addedAt: new Date()
+      };
+      
+      if (!existingOrder.notes) {
+        existingOrder.notes = [];
+      }
+      
+      existingOrder.notes.push(noteEntry);
+      updates.notes = existingOrder.notes;
+    }
+    
+    // Atualizar dados de pagamento
+    if (updateData.paymentInfo) {
+      if (!existingOrder.paymentInfo) {
+        existingOrder.paymentInfo = {};
+      }
+      
+      if (updateData.paymentInfo.status) {
+        existingOrder.paymentInfo.status = updateData.paymentInfo.status;
+      }
+      
+      if (updateData.paymentInfo.transactionId) {
+        existingOrder.paymentInfo.transactionId = updateData.paymentInfo.transactionId;
+      }
+      
+      updates.paymentInfo = existingOrder.paymentInfo;
+    }
+    
+    // Marcar como entregue
+    if (updateData.deliverItems === true && !existingOrder.productAssigned) {
+      // Atribuir produtos ao usuário
+      await assignProductsToUser(existingOrder);
+      updates.productAssigned = true;
+    }
+    
+    // Aplicar atualizações
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json(
+        { error: "Nenhum dado válido para atualização" }, 
+        { status: 400 }
+      );
+    }
+    
+    // Atualizar a data de modificação
+    updates.updatedAt = new Date();
+    
+    // Atualizar o pedido
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      { new: true }
+    )
+    .populate('user', 'email username name')
+    .populate({
+      path: 'orderItems.product',
+      select: 'name slug images price'
+    })
+    .lean();
+    
+    return NextResponse.json({
+      success: true,
+      order: updatedOrder
+    });
+  } catch (error) {
+    logger.error("Erro ao atualizar pedido:", error);
+    
+    return NextResponse.json(
+      { 
+        error: "Erro ao atualizar pedido", 
+        details: error instanceof Error ? error.message : String(error) 
+      }, 
+      { status: 500 }
+    );
   }
 }
 
