@@ -5,7 +5,7 @@ import { checkAuth } from '@/app/lib/auth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     // Verificar autenticação e permissões
@@ -29,10 +29,10 @@ export async function POST(
     await connectDB();
 
     // Obter ID do pedido e item a ser marcado como entregue
-    const orderId = params.id;
+    const id = context?.params?.id;
     const { itemId, note } = await request.json();
 
-    if (!orderId || !itemId) {
+    if (!id || !itemId) {
       return NextResponse.json(
         { error: 'ID do pedido e do item são obrigatórios' },
         { status: 400 }
@@ -40,7 +40,7 @@ export async function POST(
     }
 
     // Buscar o pedido
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(id);
     if (!order) {
       return NextResponse.json(
         { error: 'Pedido não encontrado' },

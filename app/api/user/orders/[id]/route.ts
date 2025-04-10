@@ -96,14 +96,14 @@ try {
   logger.warn('Erro ao carregar modelos:', error);
 }
 
+// GET - Obter detalhes de um pedido específico do usuário
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
-    // Usar Promise.resolve em vez de React.use
-    const resolvedParams = await Promise.resolve(params);
-    const orderId = resolvedParams.id;
+    // Obter ID do pedido
+    const id = context?.params?.id;
     
     // Verificar autenticação
     const authData = await checkAuth(request);
@@ -115,7 +115,7 @@ export async function GET(
     }
 
     // Validar ID do pedido
-    if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { error: 'ID do pedido inválido' },
         { status: 400 }
@@ -126,7 +126,7 @@ export async function GET(
     await connectDB();
 
     // Buscar pedido com informações completas
-    const order = await Order.findById(orderId)
+    const order = await Order.findById(id)
       .populate('orderItems.product', 'name price description images deliveryType')
       .populate('couponApplied', 'code discount')
       .lean();
@@ -140,14 +140,14 @@ export async function GET(
 
     // Verificar se o pedido pertence ao usuário autenticado
     if (order.user.toString() !== authData.user._id.toString()) {
-      logger.warn(`Usuário ${authData.user._id} tentou acessar pedido ${orderId} que não lhe pertence`);
+      logger.warn(`Usuário ${authData.user._id} tentou acessar pedido ${id} que não lhe pertence`);
       return NextResponse.json(
         { error: 'Você não tem permissão para acessar este pedido' },
         { status: 403 }
       );
     }
 
-    logger.info(`Usuário ${authData.user._id} acessou detalhes do seu pedido ${orderId}`);
+    logger.info(`Usuário ${authData.user._id} acessou detalhes do seu pedido ${id}`);
 
     // Formatação de dados para resposta com verificação de existência dos campos
     const formattedOrder = {

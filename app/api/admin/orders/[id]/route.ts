@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose, { isValidObjectId } from 'mongoose';
 import dbConnect from '@/app/lib/db/mongodb';
 
+/**
+ * API para gerenciamento de pedidos (admin)
+ * IMPORTANTE: Formato de rotas atualizado para Next.js 15
+ * 
+ * No Next.js 15, é necessário usar o formato { params }: { params: { id: string } } 
+ * em vez do antigo formato `context: any` para obter os parâmetros da rota.
+ * 
+ * Além disso, é necessário resolver os parâmetros com Promise.resolve(params)
+ * para garantir a correta tipagem e compatibilidade.
+ */
+
 // Logger para depuração
 const logger = {
   info: (message: string, ...args: any[]) => console.log(`[API:ADMIN:ORDER] ${message}`, ...args),
@@ -288,232 +299,178 @@ function processQuantity(item: any): number {
   return 1;
 }
 
-// GET - Obter detalhes de um pedido específico
+// GET /api/admin/orders/[id] - Buscar um pedido específico (apenas admin)
 export async function GET(
   request: NextRequest,
-  context: any
+  { params }: { params: { id: string } }
 ) {
-  const id = context?.params?.id;
-
   try {
-    // Verificar se o usuário é administrador
-    const adminCheck = await verifyAdmin(request);
+    // Resolver os parâmetros para obter o ID do pedido
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     
-    if (!adminCheck.isAdmin) {
-      return NextResponse.json(
-        { error: adminCheck.error || 'Não autorizado' }, 
-        { status: adminCheck.status || 401 }
-      );
+    logger.info(`Buscando pedido: ${id}`);
+    
+    // Verificar autenticação
+    const auth = await verifyAdmin(request);
+    
+    if (!auth.isAdmin) {
+      logger.warn(`Tentativa não autorizada de acessar pedido ${id}: ${auth.error}`);
+      return NextResponse.json({ message: auth.error }, { status: auth.status });
     }
     
-    // Validar ID do pedido
+    // Validar ID
     if (!id || !isValidObjectId(id)) {
-      return NextResponse.json(
-        { error: "ID de pedido inválido" }, 
-        { status: 400 }
-      );
+      logger.warn(`ID de pedido inválido: ${id}`);
+      return NextResponse.json({ message: 'ID de pedido inválido' }, { status: 400 });
     }
     
-    // Conectar à base de dados e carregar modelos
-    const { Order, User, Product } = await getModels();
+    // Obter modelos
+    const { Order } = await getModels();
     
-    // Buscar o pedido com suas relações
+    // Buscar o pedido
     const order = await Order.findById(id)
-      .populate({
-        path: 'user',
-        select: 'email username name cpf phone address'
-      })
-      .populate({
-        path: 'orderItems.product',
-        select: 'name slug images variants price deliveryType featured status'
-      })
-      .lean();
+      .populate('user', 'username email name')
+      .populate('orderItems.product', 'name images');
     
     if (!order) {
-      return NextResponse.json(
-        { error: "Pedido não encontrado" }, 
-        { status: 404 }
-      );
+      logger.warn(`Pedido não encontrado: ${id}`);
+      return NextResponse.json({ message: 'Pedido não encontrado' }, { status: 404 });
     }
     
-    // Processar as imagens dos produtos no pedido
-    if (order.orderItems && Array.isArray(order.orderItems)) {
-      order.orderItems.forEach(item => {
-        if (item.product && item.product.images && Array.isArray(item.product.images)) {
-          item.product.images = item.product.images.map(ensureValidImageUrl);
-        }
-      });
-    }
-    
-    // Retornar o pedido com informações completas
-    return NextResponse.json({ 
-      success: true, 
-      order
-    });
+    logger.info(`Pedido encontrado: ${id}`);
+    return NextResponse.json({ order });
   } catch (error) {
-    logger.error("Erro ao buscar pedido:", error);
-    
-    return NextResponse.json(
-      { 
-        error: "Erro ao buscar detalhes do pedido", 
-        details: error instanceof Error ? error.message : String(error)
-      }, 
-      { status: 500 }
-    );
+    logger.error('Erro ao buscar pedido:', error);
+    return NextResponse.json({ message: 'Erro ao buscar pedido' }, { status: 500 });
   }
 }
 
-// PUT - Atualizar status de pedido
+// PUT /api/admin/orders/[id] - Atualizar status do pedido (apenas admin)
 export async function PUT(
   request: NextRequest,
-  context: any
+  { params }: { params: { id: string } }
 ) {
-  const id = context?.params?.id;
-
   try {
-    // Verificar autenticação de admin
-    const adminCheck = await verifyAdmin(request);
+    // Resolver os parâmetros para obter o ID do pedido
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
     
-    if (!adminCheck.isAdmin) {
-      return NextResponse.json(
-        { error: adminCheck.error || 'Não autorizado' }, 
-        { status: adminCheck.status || 401 }
-      );
+    logger.info(`Atualizando pedido: ${id}`);
+    
+    // Verificar autenticação
+    const auth = await verifyAdmin(request);
+    
+    if (!auth.isAdmin) {
+      logger.warn(`Tentativa não autorizada de atualizar pedido ${id}: ${auth.error}`);
+      return NextResponse.json({ message: auth.error }, { status: auth.status });
     }
     
-    // Validar ID do pedido
+    // Validar ID
     if (!id || !isValidObjectId(id)) {
-      return NextResponse.json(
-        { error: "ID de pedido inválido" }, 
-        { status: 400 }
-      );
+      logger.warn(`ID de pedido inválido: ${id}`);
+      return NextResponse.json({ message: 'ID de pedido inválido' }, { status: 400 });
     }
     
-    // Obter dados da requisição
-    const updateData = await request.json();
+    // Obter dados do pedido enviados na requisição
+    const requestData = await request.json();
     
-    // Conectar ao banco de dados
-    const { Order, StockItem } = await getModels();
+    // Validar dados recebidos
+    if (!requestData) {
+      logger.warn('Nenhum dado recebido para atualização');
+      return NextResponse.json({ message: 'Dados inválidos' }, { status: 400 });
+    }
+    
+    // Extrair campos relevantes
+    const { status, notes, paymentInfo } = requestData;
+    
+    // Obter modelos
+    const { Order } = await getModels();
     
     // Buscar o pedido existente
-    const existingOrder = await Order.findById(id);
+    const order = await Order.findById(id);
     
-    if (!existingOrder) {
-      return NextResponse.json(
-        { error: "Pedido não encontrado" }, 
-        { status: 404 }
-      );
+    if (!order) {
+      logger.warn(`Pedido não encontrado para atualização: ${id}`);
+      return NextResponse.json({ message: 'Pedido não encontrado' }, { status: 404 });
     }
     
-    // Verificar quais campos estão sendo atualizados e validá-los
-    const updates: any = {};
+    // Preparar objeto de atualização
+    const updateData: any = {
+      updatedAt: new Date()
+    };
     
-    // Atualizar status
-    if (updateData.status && typeof updateData.status === 'string') {
-      const validStatus = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'canceled', 'refunded'];
+    // Atualizar status, se fornecido
+    if (status && typeof status === 'string') {
+      const adminUsername = auth.user?.username || 'admin';
       
-      if (!validStatus.includes(updateData.status)) {
-        return NextResponse.json(
-          { error: "Status inválido" }, 
-          { status: 400 }
-        );
+      // Adicionar entrada no histórico de status
+      if (!order.statusHistory) {
+        order.statusHistory = [];
       }
       
-      updates.status = updateData.status;
-      
-      // Adicionar ao histórico de status
-      const statusEntry = {
-        status: updateData.status,
-        changedBy: adminCheck.user?.username || adminCheck.user?.email || 'Admin',
+      order.statusHistory.push({
+        status,
+        changedBy: adminUsername,
         changedAt: new Date()
-      };
+      });
       
-      if (!existingOrder.statusHistory) {
-        existingOrder.statusHistory = [];
-      }
+      updateData.statusHistory = order.statusHistory;
+      updateData.status = status;
       
-      existingOrder.statusHistory.push(statusEntry);
-      updates.statusHistory = existingOrder.statusHistory;
+      logger.info(`Status do pedido ${id} atualizado para "${status}" por ${adminUsername}`);
     }
     
-    // Adicionar notas
-    if (updateData.note && typeof updateData.note === 'string' && updateData.note.trim()) {
-      const noteEntry = {
-        content: updateData.note.trim(),
-        addedBy: adminCheck.user?.username || adminCheck.user?.email || 'Admin',
+    // Atualizar notas, se fornecidas
+    if (notes && typeof notes === 'string') {
+      const adminUsername = auth.user?.username || 'admin';
+      
+      // Adicionar nova nota
+      if (!order.notes) {
+        order.notes = [];
+      }
+      
+      order.notes.push({
+        content: notes,
+        addedBy: adminUsername,
         addedAt: new Date()
+      });
+      
+      updateData.notes = order.notes;
+      
+      logger.info(`Nota adicionada ao pedido ${id} por ${adminUsername}`);
+    }
+    
+    // Atualizar informações de pagamento, se fornecidas
+    if (paymentInfo && typeof paymentInfo === 'object') {
+      // Obter informações de pagamento atuais
+      const currentPaymentInfo = order.paymentInfo || {};
+      
+      // Atualizar apenas os campos fornecidos
+      updateData.paymentInfo = {
+        ...currentPaymentInfo,
+        ...paymentInfo
       };
       
-      if (!existingOrder.notes) {
-        existingOrder.notes = [];
-      }
-      
-      existingOrder.notes.push(noteEntry);
-      updates.notes = existingOrder.notes;
+      logger.info(`Informações de pagamento do pedido ${id} atualizadas`);
     }
-    
-    // Atualizar dados de pagamento
-    if (updateData.paymentInfo) {
-      if (!existingOrder.paymentInfo) {
-        existingOrder.paymentInfo = {};
-      }
-      
-      if (updateData.paymentInfo.status) {
-        existingOrder.paymentInfo.status = updateData.paymentInfo.status;
-      }
-      
-      if (updateData.paymentInfo.transactionId) {
-        existingOrder.paymentInfo.transactionId = updateData.paymentInfo.transactionId;
-      }
-      
-      updates.paymentInfo = existingOrder.paymentInfo;
-    }
-    
-    // Marcar como entregue
-    if (updateData.deliverItems === true && !existingOrder.productAssigned) {
-      // Atribuir produtos ao usuário
-      await assignProductsToUser(existingOrder);
-      updates.productAssigned = true;
-    }
-    
-    // Aplicar atualizações
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { error: "Nenhum dado válido para atualização" }, 
-        { status: 400 }
-      );
-    }
-    
-    // Atualizar a data de modificação
-    updates.updatedAt = new Date();
     
     // Atualizar o pedido
     const updatedOrder = await Order.findByIdAndUpdate(
       id,
-      { $set: updates },
+      { $set: updateData },
       { new: true }
-    )
-    .populate('user', 'email username name')
-    .populate({
-      path: 'orderItems.product',
-      select: 'name slug images price'
-    })
-    .lean();
+    ).populate('user', 'username email name');
     
-    return NextResponse.json({
-      success: true,
+    logger.info(`Pedido ${id} atualizado com sucesso`);
+    return NextResponse.json({ 
+      message: 'Pedido atualizado com sucesso',
       order: updatedOrder
     });
-  } catch (error) {
-    logger.error("Erro ao atualizar pedido:", error);
     
-    return NextResponse.json(
-      { 
-        error: "Erro ao atualizar pedido", 
-        details: error instanceof Error ? error.message : String(error) 
-      }, 
-      { status: 500 }
-    );
+  } catch (error) {
+    logger.error('Erro ao atualizar pedido:', error);
+    return NextResponse.json({ message: 'Erro ao atualizar pedido' }, { status: 500 });
   }
 }
 

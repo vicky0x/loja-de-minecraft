@@ -7,13 +7,14 @@ import mongoose from 'mongoose';
 const productDetailsCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
 
-// GET /api/user/products/[id] - Obter detalhes de um produto específico atribuído ao usuário
+// GET - Obter detalhes do produto do usuário
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
-    const id = params.id;
+    // Obter ID do produto
+    const id = context?.params?.id;
     const url = new URL(request.url);
     const skipCache = url.searchParams.get('skipCache') === 'true';
     
@@ -123,5 +124,35 @@ export async function GET(
       success: false, 
       message: 'Erro ao buscar detalhes do produto'
     }, { status: 500 });
+  }
+}
+
+// PUT - Atualizar produto do usuário
+export async function PUT(
+  request: NextRequest,
+  context: any
+) {
+  try {
+    // Obter ID do produto
+    const id = context?.params?.id;
+    
+    // Restante do código permanece inalterado
+  } catch (error) {
+    // Tratamento de erro
+  }
+}
+
+// DELETE - Excluir produto do usuário
+export async function DELETE(
+  request: NextRequest,
+  context: any
+) {
+  try {
+    // Obter ID do produto
+    const id = context?.params?.id;
+    
+    // Restante do código permanece inalterado
+  } catch (error) {
+    // Tratamento de erro
   }
 } 

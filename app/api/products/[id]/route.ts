@@ -61,14 +61,13 @@ async function checkAuth(request: NextRequest) {
 // GET /api/products/[id] - Buscar um produto pelo ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     await connectDB();
     
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID do produto
+    const id = context?.params?.id;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
@@ -108,12 +107,11 @@ export async function GET(
 // PUT /api/products/[id] - Atualizar um produto (apenas admin)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID do produto
+    const id = context?.params?.id;
     
     // Verificar autenticação
     const user = await checkAuth(request);
@@ -372,12 +370,11 @@ export async function PUT(
 // DELETE /api/products/[id] - Excluir um produto (apenas admin)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const id = resolvedParams.id;
+    // Obter o ID do produto
+    const id = context?.params?.id;
     
     // Verificar autenticação
     const user = await checkAuth(request);

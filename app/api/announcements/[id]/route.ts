@@ -5,13 +5,15 @@ import User from '@/app/lib/models/user';
 
 // GET - Obter um anúncio específico
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: any
 ) {
+  const id = context?.params?.id;
+
   try {
     await dbConnect();
     
-    const announcement = await Announcement.findById(params.id).lean();
+    const announcement = await Announcement.findById(id).lean();
     
     if (!announcement) {
       return NextResponse.json(
@@ -43,16 +45,16 @@ export async function GET(
 
 // PUT - Atualizar um anúncio (apenas para admins)
 export async function PUT(
-  req: NextRequest,
-  context: { params: { id: string } }
+  request: NextRequest,
+  context: any
 ) {
-  const { params } = context;
+  const id = context?.params?.id;
   
   try {
     await dbConnect();
     
     // Verificar autenticação e permissões
-    const authHeader = req.headers.get('authorization');
+    const authHeader = request.headers.get('authorization');
     
     if (!authHeader) {
       return NextResponse.json(
@@ -72,7 +74,7 @@ export async function PUT(
       );
     }
     
-    const data = await req.json();
+    const data = await request.json();
     
     // Validar dados
     if (!data.title || !data.content) {
@@ -83,7 +85,7 @@ export async function PUT(
     }
     
     // Verificar se o anúncio existe
-    const existingAnnouncement = await Announcement.findById(params.id);
+    const existingAnnouncement = await Announcement.findById(id);
     
     if (!existingAnnouncement) {
       return NextResponse.json(
@@ -105,7 +107,7 @@ export async function PUT(
     
     // Atualizar o anúncio
     const updatedAnnouncement = await Announcement.findByIdAndUpdate(
-      params.id,
+      id,
       {
         title: data.title,
         content: data.content.replace(/\n\n+/g, '\n\n'),
@@ -133,16 +135,16 @@ export async function PUT(
 
 // DELETE - Excluir um anúncio (apenas para admins)
 export async function DELETE(
-  req: NextRequest,
-  context: { params: { id: string } }
+  request: NextRequest,
+  context: any
 ) {
-  const { params } = context;
+  const id = context?.params?.id;
   
   try {
     await dbConnect();
     
     // Verificar autenticação e permissões
-    const authHeader = req.headers.get('authorization');
+    const authHeader = request.headers.get('authorization');
     
     if (!authHeader) {
       return NextResponse.json(
@@ -163,7 +165,7 @@ export async function DELETE(
     }
     
     // Buscar e excluir o anúncio
-    const announcement = await Announcement.findByIdAndDelete(params.id);
+    const announcement = await Announcement.findByIdAndDelete(id);
     
     if (!announcement) {
       return NextResponse.json(

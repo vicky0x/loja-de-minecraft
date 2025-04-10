@@ -6,9 +6,12 @@ import { checkAuth } from '@/app/lib/auth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
+    // Obter ID do produto a ser clonado
+    const id = context?.params?.id;
+    
     // Verificar autenticação
     const auth = await checkAuth(request);
     
@@ -32,7 +35,7 @@ export async function POST(
     await connectDB();
     
     // Verificar se o ID é válido
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { message: 'ID de produto inválido' },
         { status: 400 }
@@ -40,7 +43,7 @@ export async function POST(
     }
     
     // Buscar o produto original
-    const originalProduct = await Product.findById(params.id);
+    const originalProduct = await Product.findById(id);
     
     if (!originalProduct) {
       return NextResponse.json(
