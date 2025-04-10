@@ -42,20 +42,12 @@ const nextConfig = {
   poweredByHeader: false, // Remover cabeçalho X-Powered-By por segurança
   // Comprimir componentes para melhor desempenho
   compress: true,
-  // Otimização de fontes para melhor LCP
-  optimizeFonts: true,
   // Otimização experimental
   experimental: {
     optimizeCss: true,
     scrollRestoration: true,
     // Manter apenas CSS crítico na primeira carga
     optimizeServerReact: true,
-    serverExternalPackages: ['mongoose']
-  },
-  // Minificar HTML para melhor performance
-  minify: {
-    removeComments: true,
-    collapseWhitespace: true,
   },
   // Adicionar headers para segurança e otimização
   async headers() {
