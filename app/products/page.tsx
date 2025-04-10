@@ -54,8 +54,8 @@ export default function ProductsPage() {
   // Filtros e ordenação
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [sortDir, setSortDir] = useState('desc');
+  const [sortBy, setSortBy] = useState('price');
+  const [sortDir, setSortDir] = useState('asc');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   
@@ -63,8 +63,8 @@ export default function ProductsPage() {
     // Extrair parâmetros da URL
     const category = searchParams.get('category') || '';
     const search = searchParams.get('search') || '';
-    const sort = searchParams.get('sort') || 'createdAt';
-    const dir = searchParams.get('dir') || 'desc';
+    const sort = searchParams.get('sort') || 'price';
+    const dir = searchParams.get('dir') || 'asc';
     const status = searchParams.get('status') || 'all';
     
     // Configurar os filtros com os parâmetros da URL
@@ -210,8 +210,8 @@ export default function ProductsPage() {
     
     if (searchTerm) params.set('search', searchTerm);
     if (categoryValue) params.set('category', categoryValue);
-    if (sortBy !== 'createdAt') params.set('sort', sortBy);
-    if (sortDir !== 'desc') params.set('dir', sortDir);
+    if (sortBy !== 'price') params.set('sort', sortBy);
+    if (sortDir !== 'asc') params.set('dir', sortDir);
     if (statusFilter !== 'all') params.set('status', statusFilter);
     
     // Atualizar a URL com os parâmetros diretamente, sem timeout
@@ -224,8 +224,8 @@ export default function ProductsPage() {
     
     if (searchTerm) params.set('search', searchTerm);
     if (selectedCategory) params.set('category', selectedCategory);
-    if (sortBy !== 'createdAt') params.set('sort', sortBy);
-    if (sortDir !== 'desc') params.set('dir', sortDir);
+    if (sortBy !== 'price') params.set('sort', sortBy);
+    if (sortDir !== 'asc') params.set('dir', sortDir);
     if (statusFilter !== 'all') params.set('status', statusFilter);
     
     // Atualizar a URL com os parâmetros
@@ -315,9 +315,9 @@ export default function ProductsPage() {
                 value={sortBy}
                 onChange={(e) => handleSortChange(e.target.value)}
               >
+                <option value="price">Preço (Menor para Maior)</option>
                 <option value="createdAt">Data (Mais recentes)</option>
                 <option value="name">Nome</option>
-                <option value="price">Preço</option>
               </select>
               
               {/* Botão para inverter a ordem */}
@@ -359,9 +359,9 @@ export default function ProductsPage() {
                   value={sortBy}
                   onChange={(e) => handleSortChange(e.target.value)}
                 >
+                  <option value="price">Preço (Menor para Maior)</option>
                   <option value="createdAt">Data (Mais recentes)</option>
                   <option value="name">Nome</option>
-                  <option value="price">Preço</option>
                 </select>
               </div>
               
@@ -400,8 +400,8 @@ export default function ProductsPage() {
                 setSelectedCategory('');
                 setSearchTerm('');
                 setStatusFilter('all');
-                setSortBy('createdAt');
-                setSortDir('desc');
+                setSortBy('price');
+                setSortDir('asc');
                 router.push('/products');
               }}
               className="px-4 py-2 bg-dark-300 hover:bg-dark-400 text-white rounded-md transition-colors"
