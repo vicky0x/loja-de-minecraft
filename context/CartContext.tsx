@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 
 // Definição de tipos
 export interface CartItem {
@@ -22,11 +23,11 @@ interface CartContextType {
 }
 
 // Criação do contexto
-const CartContext = createContext<CartContextType | undefined>(undefined);
+const CartContext = createContext(undefined as CartContextType | undefined);
 
 // Provider do carrinho
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState([] as CartItem[]);
 
   // Carregar itens do localStorage ao iniciar
   useEffect(() => {
