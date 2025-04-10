@@ -7,14 +7,13 @@ import mongoose from 'mongoose';
 // GET /api/categories/slug/[slug] - Buscar uma categoria pelo slug
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: any
 ) {
   try {
     await connectDB();
     
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const slug = resolvedParams.slug;
+    // Obter o slug da categoria
+    const slug = params?.slug;
     
     if (!slug) {
       return NextResponse.json(

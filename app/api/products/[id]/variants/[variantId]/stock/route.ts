@@ -49,12 +49,12 @@ async function checkAuth(request: NextRequest) {
 // PATCH /api/products/[id]/variants/[variantId]/stock - Atualizar estoque de uma variante (apenas admin)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string, variantId: string } }
+  { params }: any
 ) {
   try {
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const { id, variantId } = resolvedParams;
+    // Obter IDs do produto e variante
+    const id = params?.id;
+    const variantId = params?.variantId;
     
     // Verificar autenticação
     const user = await checkAuth(request);
@@ -145,4 +145,19 @@ export async function PATCH(
       { status: 500 }
     );
   }
+}
+
+// GET /api/products/[id]/variants/[variantId]/stock
+export async function GET(
+  request: NextRequest,
+  { params }: any
+) {
+  try {
+    // Obter IDs do produto e variante
+    const productId = params?.id;
+    const variantId = params?.variantId;
+    
+    // ... rest of the function ...
+  }
+  // ... rest of the function ...
 } 

@@ -6,14 +6,13 @@ import mongoose from 'mongoose';
 // GET /api/products/slug/[slug] - Buscar um produto pelo slug
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: any
 ) {
   try {
     await connectDB();
     
-    // Garantir que params seja await corretamente no Next.js 14
-    const resolvedParams = await Promise.resolve(params);
-    const slug = resolvedParams.slug;
+    // Obter o slug do produto
+    const slug = params?.slug;
     
     if (!slug) {
       return NextResponse.json(
