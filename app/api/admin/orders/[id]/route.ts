@@ -291,7 +291,7 @@ function processQuantity(item: any): number {
 // GET - Obter detalhes de um pedido específico
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     // Verificar se o usuário é administrador
@@ -305,7 +305,7 @@ export async function GET(
     }
     
     // Obter ID do pedido da URL
-    const { id } = context.params;
+    const { id } = params;
     
     // Validar ID do pedido
     if (!id || !isValidObjectId(id)) {
@@ -367,7 +367,7 @@ export async function GET(
 // PUT - Atualizar status de pedido
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     // Verificar autenticação de admin
@@ -381,7 +381,7 @@ export async function PUT(
     }
     
     // Obter ID do pedido
-    const { id } = context.params;
+    const { id } = params;
     
     // Validar ID do pedido
     if (!id || !isValidObjectId(id)) {
