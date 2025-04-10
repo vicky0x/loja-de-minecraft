@@ -147,17 +147,62 @@ export async function PATCH(
   }
 }
 
-// GET /api/products/[id]/variants/[variantId]/stock
+// GET /api/products/[id]/variants/[variantId]/stock - Obter informações de estoque
 export async function GET(
   request: NextRequest,
   { params }: any
 ) {
   try {
     // Obter IDs do produto e variante
-    const productId = params?.id;
+    const id = params?.id;
     const variantId = params?.variantId;
     
-    // ... rest of the function ...
+    await connectDB();
+    
+    // Verificar se os IDs são válidos
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(variantId)) {
+      return NextResponse.json(
+        { message: 'ID de produto ou variante inválido' },
+        { status: 400 }
+      );
+    }
+    
+    // Buscar o produto para verificar se existe
+    const product = await Product.findById(id);
+    
+    if (!product) {
+      return NextResponse.json(
+        { message: 'Produto não encontrado' },
+        { status: 404 }
+      );
+    }
+    
+    // Buscar a variante
+    const variant = product.variants.find(
+      (v: any) => v._id.toString() === variantId
+    );
+    
+    if (!variant) {
+      return NextResponse.json(
+        { message: 'Variante não encontrada para este produto' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({ 
+      stock: variant.stock,
+      variant: {
+        _id: variant._id,
+        name: variant.name,
+        stock: variant.stock
+      }
+    });
+  } catch (error: any) {
+    console.error('Erro ao buscar estoque da variante:', error);
+    
+    return NextResponse.json(
+      { message: error.message || 'Falha ao buscar estoque da variante' },
+      { status: 500 }
+    );
   }
-  // ... rest of the function ...
 } 
