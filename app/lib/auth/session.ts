@@ -175,10 +175,34 @@ export async function logout() {
         credentials: 'include',
       });
       
-      console.log('Resposta da API de logout:', response.status);
+      console.log('Resposta da API de logout POST:', response.status);
+      
+      // Se o método POST falhar, tentar DELETE como alternativa
+      if (!response.ok) {
+        console.log('Tentando método alternativo DELETE para logout');
+        try {
+          const deleteResponse = await fetch('/api/auth/logout', {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          console.log('Resposta da API de logout DELETE:', deleteResponse.status);
+        } catch (deleteError) {
+          console.error('Erro ao fazer requisição DELETE para API de logout:', deleteError);
+        }
+      }
     } catch (apiError) {
-      // Se a requisição para a API falhar, apenas logar o erro mas continuar o processo local
-      console.error('Erro ao fazer requisição para API de logout:', apiError);
+      // Se a requisição para a API falhar, tentar o método DELETE
+      console.error('Erro ao fazer requisição POST para API de logout:', apiError);
+      
+      try {
+        console.log('Tentando método alternativo DELETE para logout após falha no POST');
+        await fetch('/api/auth/logout', {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+      } catch (deleteError) {
+        console.error('Erro ao fazer requisição DELETE para API de logout:', deleteError);
+      }
     }
     
     // Limpar cookies localmente de qualquer forma

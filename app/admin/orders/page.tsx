@@ -23,6 +23,15 @@ import { ptBR } from 'date-fns/locale';
 import OrderDetailModal from '@/app/components/OrderDetailModal';
 import OrderStatusBadge from '@/app/components/OrderStatusBadge';
 
+// Polyfill para AbortSignal.timeout para navegadores que não suportam
+if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+  AbortSignal.timeout = function timeout(ms) {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  };
+}
+
 // Interfaces TypeScript
 interface User {
   _id: string;

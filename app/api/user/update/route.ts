@@ -20,9 +20,10 @@ export async function PUT(req: NextRequest) {
     
     // Obter os dados a serem atualizados
     const data = await req.json();
+    console.log('Dados recebidos para atualização:', data);
     
     // Campos permitidos para atualização
-    const allowedFields = ['name', 'email', 'cpf', 'phone', 'address'];
+    const allowedFields = ['name', 'email', 'password', 'cpf', 'phone', 'address'];
     
     // Filtrando apenas os campos permitidos
     const updateData: any = {};
@@ -31,6 +32,8 @@ export async function PUT(req: NextRequest) {
         updateData[key] = data[key];
       }
     });
+    
+    console.log('Dados filtrados para atualização:', updateData);
     
     // Verificar se há campos para atualizar
     if (Object.keys(updateData).length === 0) {
@@ -59,10 +62,10 @@ export async function PUT(req: NextRequest) {
       }
     }
     
-    // Atualizar o usuário
+    // Atualizar usuário
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { $set: updateData },
+      updateData,
       { new: true, runValidators: true }
     ).select('-password');
     

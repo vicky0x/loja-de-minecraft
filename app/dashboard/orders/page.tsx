@@ -15,6 +15,15 @@ import {
 } from 'react-icons/fi';
 import OrderStatusBadge from '@/app/components/OrderStatusBadge';
 
+// Polyfill para AbortSignal.timeout para navegadores que não suportam
+if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+  AbortSignal.timeout = function timeout(ms) {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  };
+}
+
 interface OrderItem {
   _id: string;
   product: {

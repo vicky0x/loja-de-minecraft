@@ -431,9 +431,43 @@ export function useAuth() {
           }
         });
         
+        // Se o POST falhar, tentar com método DELETE
+        if (!response.ok) {
+          console.log('Tentando método alternativo DELETE para logout após falha no POST');
+          try {
+            await fetch('/api/auth/logout', {
+              method: 'DELETE',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authToken ? `Bearer ${authToken}` : '',
+                'X-CSRF-Token': csrfToken || ''
+              }
+            });
+          } catch (deleteError) {
+            // Continuar com logout local mesmo com erro no servidor
+            console.error('Erro ao tentar método DELETE para logout:', deleteError);
+          }
+        }
+        
         // Continuar com logout local mesmo com erro no servidor
       } catch (serverError) {
-        // Continuar com o logout local mesmo com erro no servidor
+        // Tentar método alternativo DELETE
+        try {
+          console.log('Tentando método alternativo DELETE para logout após falha na API');
+          await fetch('/api/auth/logout', {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authToken ? `Bearer ${authToken}` : '',
+              'X-CSRF-Token': csrfToken || ''
+            }
+          });
+        } catch (deleteError) {
+          // Continuar com o logout local mesmo com erro no servidor
+          console.error('Erro ao tentar método DELETE para logout:', deleteError);
+        }
       }
       
       // Limpar todos os dados de autenticação do localStorage

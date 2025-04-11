@@ -10,6 +10,7 @@ import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
 import GlobalAppInitializer from './_app/globals';
 import InitApp from './components/InitApp';
+import PolyfillLoader from './components/PolyfillLoader';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -277,17 +278,26 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>
       <body className={inter.className}>
+        {/* Carregar polyfills necessários */}
+        <PolyfillLoader />
+        
+        {/* Inicializador global da aplicação */}
+        <GlobalAppInitializer />
+        
+        {/* Componente de inicialização do app */}
+        <InitApp />
+        
+        <Providers>
           <AuthProvider>
             <CartProvider>
-            <Providers>
               <Navbar />
               <main className="pt-20">
                 {children}
               </main>
               <Footer />
-            </Providers>
-          </CartProvider>
-        </AuthProvider>
+            </CartProvider>
+          </AuthProvider>
+        </Providers>
       </body>
     </html>
   );

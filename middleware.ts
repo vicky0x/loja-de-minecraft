@@ -109,14 +109,16 @@ export function middleware(request: NextRequest) {
     const allowedOrigins = [
       'http://localhost:3000',
       'https://fantasystore.com.br',
+      'https://www.fantasystore.com.br', 
       process.env.NEXT_PUBLIC_API_URL || ''
     ].filter(Boolean);
     
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || allowedOrigins.some(allowed => origin.endsWith(allowed.replace(/^https?:\/\//, '')))) {
       response.headers.set('Access-Control-Allow-Origin', origin);
       response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token');
       response.headers.set('Access-Control-Allow-Credentials', 'true');
+      response.headers.set('Access-Control-Max-Age', '7200');
       
       // Responder diretamente para OPTIONS (preflight requests)
       if (request.method === 'OPTIONS') {
@@ -125,6 +127,27 @@ export function middleware(request: NextRequest) {
           headers: response.headers
         });
       }
+    }
+  }
+  
+  // Tratamento especial para rota de logout
+  if (request.nextUrl.pathname === '/api/auth/logout') {
+    // Aplicar CORS para qualquer origem em requisições de logout
+    const origin = request.headers.get('Origin') || '*';
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    // Responder imediatamente para OPTIONS em logout
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 204,
+        headers: response.headers
+      });
     }
   }
   

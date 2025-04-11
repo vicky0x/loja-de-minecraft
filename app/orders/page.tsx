@@ -8,6 +8,15 @@ import { ptBR } from 'date-fns/locale';
 import { FiArrowLeft, FiShoppingBag, FiClock, FiCheckCircle, FiAlertCircle, FiXCircle, FiArrowRight, FiEye } from 'react-icons/fi';
 import PixPaymentModal from '../components/PixPaymentModal';
 
+// Polyfill para AbortSignal.timeout para navegadores que não suportam
+if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+  AbortSignal.timeout = function timeout(ms) {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  };
+}
+
 interface OrderItem {
   _id: string;
   product: {

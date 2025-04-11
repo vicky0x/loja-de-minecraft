@@ -562,12 +562,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         
         if (!logoutResponse.ok) {
-          console.error('LOGOUT: Erro na API de logout, status:', logoutResponse.status);
+          console.error('LOGOUT: Erro na API de logout POST, status:', logoutResponse.status);
+          
+          // Tentar método alternativo DELETE se o POST falhar
+          try {
+            console.log("LOGOUT: Tentando método alternativo DELETE");
+            const deleteResponse = await fetch('/api/auth/logout', {
+              method: 'DELETE',
+              credentials: 'include',
+              cache: 'no-store',
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            });
+            
+            if (deleteResponse.ok) {
+              console.log('LOGOUT: API de logout DELETE retornou com sucesso');
+            } else {
+              console.error('LOGOUT: Erro na API de logout DELETE, status:', deleteResponse.status);
+            }
+          } catch (deleteError) {
+            console.error('LOGOUT: Erro ao chamar a API de logout DELETE:', deleteError);
+          }
         } else {
           console.log('LOGOUT: API de logout retornou com sucesso');
         }
       } catch (apiError) {
         console.error('LOGOUT: Erro ao chamar a API de logout:', apiError);
+        
+        // Tentar método alternativo DELETE se o POST falhar
+        try {
+          console.log("LOGOUT: Tentando método alternativo DELETE após falha no POST");
+          await fetch('/api/auth/logout', {
+            method: 'DELETE',
+            credentials: 'include',
+            cache: 'no-store'
+          });
+        } catch (deleteError) {
+          console.error('LOGOUT: Erro ao chamar a API de logout DELETE:', deleteError);
+        }
       }
       
       // 2. Limpar tokens de autenticação dos cookies diretamente (fallback)

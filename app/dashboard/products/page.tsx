@@ -18,6 +18,15 @@ import {
   FiImage
 } from 'react-icons/fi';
 
+// Polyfill para AbortSignal.timeout para navegadores que não suportam
+if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+  AbortSignal.timeout = function timeout(ms) {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  };
+}
+
 interface ProductItem {
   _id: string;
   productId: string | null;
