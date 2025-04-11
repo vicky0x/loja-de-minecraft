@@ -19,7 +19,7 @@ type RouteParams = {
 
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   try {
     // Em produção, desabilitar esta rota completamente
@@ -37,7 +37,7 @@ export async function POST(
     const db = client.db();
     
     // Obter o ID do pagamento
-    const paymentId = params.paymentId;
+    const paymentId = context.params.paymentId;
     
     if (!paymentId) {
       return NextResponse.json(
