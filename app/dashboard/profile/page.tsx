@@ -40,14 +40,12 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    confirmPassword: '',
     cpf: '',
-    address: '',
     phone: '',
+    address: '',
   });
 
-  const { updateProfileImage, forceRefreshUserData } = useAuth();
+  const { updateProfileImage, forceRefreshUserData, updateAuthTokens, logout } = useAuth();
 
   useEffect(() => {
     async function fetchUserProfile() {
@@ -130,11 +128,9 @@ export default function ProfilePage() {
           setFormData({
             name: data.user.name || '',
             email: data.user.email || '',
-            password: '',
-            confirmPassword: '',
             cpf: data.user.cpf || '',
-            address: data.user.address || '',
             phone: data.user.phone || '',
+            address: data.user.address || '',
           });
         } else {
           setError('Erro ao carregar perfil');
@@ -224,11 +220,20 @@ export default function ProfilePage() {
     
     // Aplica formatação específica para CPF e telefone
     if (name === 'cpf') {
-      setFormData({ ...formData, [name]: formatCPF(value) });
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatCPF(value)
+      }));
     } else if (name === 'phone') {
-      setFormData({ ...formData, [name]: formatPhone(value) });
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatPhone(value)
+      }));
     } else {
-      setFormData({ ...formData, [name]: value });
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
     }
   };
 
@@ -386,12 +391,6 @@ export default function ProfilePage() {
     setError('');
     setSuccess('');
     
-    // Validar formulário
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem');
-      return;
-    }
-    
     // Validação de CPF
     if (formData.cpf && !validateCPF(formData.cpf)) {
       setError('CPF inválido. Digite um CPF válido.');
@@ -418,10 +417,6 @@ export default function ProfilePage() {
         updateData.email = formData.email;
       }
       
-      if (formData.password) {
-        updateData.password = formData.password;
-      }
-      
       if (formData.cpf && formData.cpf !== user?.cpf) {
         updateData.cpf = formData.cpf;
       }
@@ -436,6 +431,7 @@ export default function ProfilePage() {
       
       // Só atualiza se houver alterações
       if (Object.keys(updateData).length > 0) {
+        console.log('Enviando requisição de atualização de perfil...');
         const response = await fetch('/api/user/update', {
           method: 'PUT',
           headers: {
@@ -444,8 +440,12 @@ export default function ProfilePage() {
           body: JSON.stringify(updateData),
         });
         
+        console.log('Resposta recebida com status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('Perfil atualizado com sucesso');
+          
           setSuccess('Perfil atualizado com sucesso');
           
           // Atualizar dados do usuário se o servidor retornou eles
@@ -454,10 +454,6 @@ export default function ProfilePage() {
               ...user,
               ...data.user
             });
-            
-            // Atualizar o contexto de autenticação forçando o refresh dos dados
-            // já que houve alterações significativas no perfil
-            forceRefreshUserData();
             
             // Atualizar dados do usuário no localStorage também
             try {
@@ -474,23 +470,17 @@ export default function ProfilePage() {
               console.error('Erro ao atualizar dados no localStorage:', storageError);
             }
           }
-          
-          // Limpar campos de senha
-          setFormData({
-            ...formData,
-            password: '',
-            confirmPassword: '',
-          });
         } else {
           const errorData = await response.json();
-          setError(errorData.message || 'Erro ao atualizar perfil');
+          console.error('Erro ao atualizar perfil:', errorData);
+          setError(errorData.error || errorData.message || 'Erro ao atualizar perfil');
         }
       } else {
         setSuccess('Nenhuma alteração detectada');
       }
     } catch (error) {
+      console.error('Erro durante a atualização do perfil:', error);
       setError('Erro ao atualizar perfil');
-      console.error(error);
     } finally {
       setSaving(false);
     }
@@ -793,50 +783,6 @@ export default function ProfilePage() {
                         onChange={handleChange}
                         className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
                         placeholder="Rua, número, complemento, bairro, cidade, estado, CEP"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="md:col-span-2 border-t border-dark-400 pt-4">
-                    <h4 className="font-medium text-white mb-4">Alterar Senha</h4>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
-                      Nova Senha (deixe em branco para manter a atual)
-                    </label>
-                    <div className="relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FiLock className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
-                      Confirmar Nova Senha
-                    </label>
-                    <div className="relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FiLock className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        type="password"
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        className="pl-10 block w-full pr-3 py-2 bg-dark-300 border border-dark-400 text-white rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                        placeholder="••••••••"
                       />
                     </div>
                   </div>

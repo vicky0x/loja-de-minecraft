@@ -511,92 +511,130 @@ export default function Navbar() {
   return (
     <header 
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-dark-200/90 backdrop-blur-md py-2 shadow-lg' : 'bg-dark-200/80 backdrop-blur-sm py-4'
-      }`}
+        isScrolled ? 'bg-dark-200/90 backdrop-blur-md shadow-lg' : 'bg-dark-200/80 backdrop-blur-sm'
+      } h-16 md:h-20 flex items-center`}
     >
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between">
-          {/* Store Name */}
-          <Link href="/" className="flex items-center group" style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-            <div className="flex items-center">
-              <Image 
-                src="/fantasy_logo.png" 
-                alt="Fantasy Store Logo" 
-                width={38} 
-                height={38} 
-                className="mr-2"
-                quality={100}
-                priority
-                style={{ objectFit: 'contain' }}
-                unoptimized
-              />
-              <span className="text-white font-bold text-xl md:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary-light to-primary group-hover:from-white group-hover:to-primary-light transition-all duration-500">
-                Fantasy<span className="text-white group-hover:text-primary-light transition-colors duration-500">Store</span><span className="text-primary text-2xl md:text-3xl">.</span>
-              </span>
+        <div className="flex items-center justify-between h-full">
+          {/* Logo e Nome da Loja - Desktop e Mobile */}
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center group" style={{ WebkitTapHighlightColor: 'transparent' }}>
+              <div className="flex items-center">
+                <div className="relative mr-2 overflow-hidden rounded-full w-8 h-8 md:w-9 md:h-9 flex-shrink-0 shadow-glow-sm group-hover:shadow-glow-md transition-all duration-300">
+                  <Image 
+                    src="/fantasy_logo.png" 
+                    alt="Fantasy Store Logo" 
+                    width={38} 
+                    height={38} 
+                    className="object-cover transform group-hover:scale-110 transition-all duration-300"
+                    quality={100}
+                    priority
+                  />
+                </div>
+                <span className="text-white font-bold text-xl md:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary-light to-primary group-hover:from-white group-hover:to-primary-light transition-all duration-500">
+                  Fantasy<span className="text-white group-hover:text-primary-light transition-colors duration-500">Store</span><span className="text-primary text-2xl md:text-3xl">.</span>
+                </span>
+              </div>
+            </Link>
+            
+            {/* Online Users Indicator - Colocado logo após o logo para telas médias e grandes */}
+            <div className="hidden md:flex items-center text-gray-300 bg-dark-300/60 px-2 py-1 rounded-full ml-3">
+              <IoWifi className="text-green-400 mr-1 animate-pulse" />
+              <span className="text-xs font-medium">{onlineUsers} ONLINE</span>
             </div>
-          </Link>
-          
-          {/* Online Users Indicator */}
-          <div className="hidden md:flex items-center text-gray-300 bg-dark-300/60 px-2 py-1 rounded-full ml-3">
-            <IoWifi className="text-green-400 mr-1 animate-pulse" />
-            <span className="text-xs font-medium">{onlineUsers} ONLINE</span>
           </div>
 
-          {/* Navigation Links - Desktop */}
-          <nav className="hidden md:flex items-center space-x-6 mx-4">
-            <Link href="/" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-              Início
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            <Link href="/products" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/products' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-              Produtos
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            <Link href="/category" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/category' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-              Categorias
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            <Link href="/dashboard/support" className={`text-sm font-medium transition-colors duration-300 ${pathname.startsWith('/dashboard/support') ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-              Suporte
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            <Link href="/#faq" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/' && hashFaq ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
-              FAQ
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-            </Link>
-          </nav>
+          {/* Área central da navbar - Somente para desktop */}
+          <div className="hidden lg:flex flex-1 items-center justify-center mx-6">
+            {/* Navigation Links - Desktop */}
+            <nav className="flex items-center space-x-8 mr-6">
+              <Link href="/" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                Início
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link href="/products" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/products' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                Produtos
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link href="/category" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/category' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                Categorias
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link href="/dashboard/support" className={`text-sm font-medium transition-colors duration-300 ${pathname.startsWith('/dashboard/support') ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                Suporte
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link href="/#faq" className={`text-sm font-medium transition-colors duration-300 ${pathname === '/' && hashFaq ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                FAQ
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+            </nav>
 
-          {/* Barra de pesquisa - versão desktop */}
-          <form 
-            onSubmit={handleSearch}
-            className="hidden md:flex mx-4 flex-1 max-w-md relative search-container"
-          >
-            <input 
-              type="text" 
-              placeholder="Buscar produtos..." 
-              className="w-full bg-dark-300/70 rounded-full py-2 px-4 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 border border-dark-400 hover:border-primary/30 transition-all duration-300"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setShowSearchPreview(true)}
-            />
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <FiSearch size={16} />
-            </div>
-            <button type="submit" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-primary/20 hover:bg-primary/40 text-primary rounded-full p-1 transition-all duration-300">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-          </form>
+            {/* Barra de pesquisa - versão desktop */}
+            <form 
+              onSubmit={handleSearch}
+              className="flex flex-1 max-w-md relative search-container"
+            >
+              <input 
+                type="text" 
+                placeholder="Buscar produtos..." 
+                className="w-full bg-dark-300/70 rounded-full py-2 px-4 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 border border-dark-400 hover:border-primary/30 transition-all duration-300"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setShowSearchPreview(true)}
+              />
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <FiSearch size={16} />
+              </div>
+              <button type="submit" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-primary/20 hover:bg-primary/40 text-primary rounded-full p-1 transition-all duration-300">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+            </form>
+          </div>
+
+          {/* Versão média - só menu de navegação sem busca */}
+          <div className="hidden md:flex lg:hidden justify-center mx-2">
+            <nav className="flex items-center space-x-4">
+              <Link href="/" className={`text-xs font-medium transition-colors duration-300 ${pathname === '/' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                Início
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link href="/products" className={`text-xs font-medium transition-colors duration-300 ${pathname === '/products' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                Produtos
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link href="/category" className={`text-xs font-medium transition-colors duration-300 ${pathname === '/category' ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                Categorias
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link href="/#faq" className={`text-xs font-medium transition-colors duration-300 ${pathname === '/' && hashFaq ? 'text-primary' : 'text-gray-300 hover:text-white'} relative group`} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}>
+                FAQ
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+              </Link>
+            </nav>
+          </div>
 
           {/* Botões e menu do usuário - versão desktop */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-3">
+            {/* Botão de pesquisa para telas médias */}
+            <div className="md:flex lg:hidden">
+              <button
+                className="text-white p-2 rounded-lg hover:bg-dark-300/50 transition-colors duration-300"
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                aria-label="Pesquisar"
+              >
+                <FiSearch className="h-5 w-5" />
+              </button>
+            </div>
+            
             {loadingUser ? (
               // Mostrar botões de login/cadastro mesmo durante o carregamento
               <div className="flex space-x-3">
                 <Link 
                   href="/auth/login" 
-                  className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+                  className="relative overflow-hidden group px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
                   style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                 >
                   <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-dark-300 group-hover:bg-dark-400"></span>
@@ -605,7 +643,7 @@ export default function Navbar() {
                 </Link>
                 <Link 
                   href="/auth/register" 
-                  className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+                  className="relative overflow-hidden group px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
                   style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                 >
                   <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-primary group-hover:bg-primary-light"></span>
@@ -795,7 +833,7 @@ export default function Navbar() {
               <div className="flex space-x-3">
                 <Link 
                   href="/auth/login" 
-                  className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+                  className="relative overflow-hidden group px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
                   style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                 >
                   <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-dark-300 group-hover:bg-dark-400"></span>
@@ -804,7 +842,7 @@ export default function Navbar() {
                 </Link>
                 <Link 
                   href="/auth/register" 
-                  className="relative overflow-hidden group px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
+                  className="relative overflow-hidden group px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-300 flex items-center justify-center"
                   style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                 >
                   <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-0 -skew-x-0 bg-primary group-hover:bg-primary-light"></span>
@@ -869,7 +907,7 @@ export default function Navbar() {
 
       {/* Barra de pesquisa mobile */}
       {isSearchOpen && (
-        <div className="absolute top-[calc(100%)] left-0 right-0 p-3 bg-dark-300/95 backdrop-blur-lg border-t border-dark-400/30 search-container z-[60]">
+        <div className="absolute top-[calc(100%)] left-0 right-0 p-3 bg-dark-300/95 backdrop-blur-lg border-t border-dark-400/30 search-container z-[60] shadow-md">
           <form onSubmit={handleSearch} className="relative">
             <input 
               type="text" 
@@ -899,13 +937,13 @@ export default function Navbar() {
 
       {/* Menu Mobile - Enhanced */}
       <div 
-        className={`md:hidden bg-dark-200/95 backdrop-blur-md ${
-          isMenuOpen ? 'max-h-screen overflow-y-auto py-4 shadow-lg' : 'max-h-0 py-0'
+        className={`md:hidden fixed top-16 left-0 right-0 z-50 bg-dark-200/95 backdrop-blur-md border-t border-dark-400/30 ${
+          isMenuOpen ? 'max-h-[calc(100vh-4rem)] overflow-y-auto py-4 shadow-lg' : 'max-h-0 py-0 border-t-0'
         } overflow-hidden transition-all duration-500`}
       >
         <div className="container mx-auto px-4 flex flex-col space-y-4 pb-6">
           {/* Navigation Links - Mobile */}
-          <nav className="flex flex-col space-y-2 border-b border-dark-300/50 pb-3">
+          <nav className="flex flex-col space-y-3 border-b border-dark-300/50 pb-4">
             <Link 
               href="/" 
               className={`py-2 text-sm font-medium ${pathname === '/' ? 'text-primary' : 'text-gray-300'}`}

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   FiMessageCircle, 
   FiMail, 
@@ -18,7 +18,49 @@ import {
   FaDiscord 
 } from 'react-icons/fa';
 
+// Declaração de tipos para o JivoChat
+declare global {
+  interface Window {
+    jivo_api?: {
+      open: () => void;
+    };
+  }
+}
+
 export default function SupportPage() {
+  const [jivoAvailable, setJivoAvailable] = useState(false);
+
+  // Verificar periodicamente se o Jivo API está disponível
+  useEffect(() => {
+    // Função para verificar disponibilidade do JivoChat
+    const checkJivoAvailability = () => {
+      if (window.jivo_api) {
+        setJivoAvailable(true);
+        console.log("JivoChat API disponível");
+        return true;
+      }
+      return false;
+    };
+
+    // Verificar imediatamente
+    const isAvailable = checkJivoAvailability();
+    
+    // Se não estiver disponível, configurar um intervalo para verificar periodicamente
+    let intervalId: NodeJS.Timeout;
+    if (!isAvailable) {
+      intervalId = setInterval(() => {
+        if (checkJivoAvailability()) {
+          clearInterval(intervalId);
+        }
+      }, 2000); // Verificar a cada 2 segundos
+    }
+
+    // Limpar intervalo quando o componente for desmontado
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-8">
@@ -94,8 +136,32 @@ export default function SupportPage() {
               <FiClock className="mr-2" /> Resposta imediata
             </span>
           </div>
-          <button className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition-colors">
-            Iniciar Chat
+          <button className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition-colors"
+            onClick={() => {
+              if (window.jivo_api) {
+                window.jivo_api.open();
+              } else {
+                // Fallback se o Jivo não estiver carregado
+                alert('O chat está carregando. Por favor, tente novamente em alguns segundos.');
+              }
+            }}
+          >
+            <div className="flex items-center justify-center">
+              {jivoAvailable ? (
+                <>
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></span>
+                  <span>Iniciar Chat</span>
+                </>
+              ) : (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Carregando Chat...</span>
+                </>
+              )}
+            </div>
           </button>
         </div>
 
@@ -292,8 +358,8 @@ export default function SupportPage() {
           <div className="border-b border-dark-300 pb-4">
             <h3 className="font-semibold text-lg mb-2">Qual o tempo de entrega do produto?</h3>
             <p className="text-gray-300">
-              A entrega dos nossos produtos digitais é feita imediatamente após a confirmação do pagamento.
-              Você receberá acesso instantâneo ao produto através da área "Meus Produtos" no Dashboard.
+              A entrega é instantânea caso haja estoque disponível. Caso contrário, o pedido pode ser entregue 
+              em até 24h. Você será notificado assim que seu produto estiver disponível para acesso.
             </p>
           </div>
           
@@ -306,20 +372,12 @@ export default function SupportPage() {
             </p>
           </div>
           
-          <div className="border-b border-dark-300 pb-4">
-            <h3 className="font-semibold text-lg mb-2">Como posso alterar minha senha?</h3>
-            <p className="text-gray-300">
-              Você pode alterar sua senha acessando a seção "Meu Perfil" no Dashboard e clicando em "Alterar Senha".
-              Caso tenha esquecido sua senha atual, utilize a opção "Esqueci minha senha" na tela de login.
-            </p>
-          </div>
-          
           <div>
             <h3 className="font-semibold text-lg mb-2">Os produtos do site têm garantia?</h3>
             <p className="text-gray-300">
-              Sim, todos os nossos produtos possuem garantia de funcionamento. Caso encontre algum problema 
-              técnico, você tem até 7 dias para solicitar suporte ou reembolso. Detalhes específicos sobre a garantia 
-              de cada produto estão disponíveis na página do produto e nos termos de uso.
+              Sim, todos os nossos produtos possuem garantia padrão de 30 dias. Esta garantia pode ser estendida
+              mediante pagamento adicional. Detalhes específicos sobre extensão de garantia estão disponíveis 
+              na página do produto e nos termos de uso.
             </p>
           </div>
         </div>

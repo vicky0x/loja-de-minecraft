@@ -665,7 +665,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser,
     pendingProfileImage,
     updateProfileImage,
-    logout
+    logout,
   };
 
   return (

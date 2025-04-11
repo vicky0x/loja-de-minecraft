@@ -532,15 +532,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Cabeçalho da página */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-400">Bem-vindo, </span>
-          <span className="font-medium">{state.userInfo?.name || state.userInfo?.username || 'Usuário'}</span>
-        </div>
-      </div>
-
+    <div className="space-y-4">
       {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Card 1: Produtos */}
@@ -586,10 +578,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <h2 className="text-xl font-semibold mb-4">Meus Produtos</h2>
-          <ProductGrid products={state.products} isLoading={false} />
+          <div className="h-[460px] overflow-y-auto pr-1">
+            <ProductGrid products={state.products} isLoading={false} />
+          </div>
         </div>
         
         <div>
@@ -616,4 +610,4 @@ export default function Dashboard() {
       />
     </div>
   );
-} 
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
@@ -12,6 +12,27 @@ import { useCart } from '@/app/contexts/CartContext';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
 import { formatProductName } from '@/app/utils/formatters';
+import { toast as hotToast } from 'react-hot-toast';
+import ProductCard from '@/app/components/ProductCard';
+import ProductReviews from '@/app/components/products/ProductReviews';
+import ProductVariantSelector from '@/app/components/products/ProductVariantSelector';
+
+// Função auxiliar para extrair o ID do vídeo do YouTube
+const extractYouTubeId = (url: string): string => {
+  // Se já for um ID simples (sem URL)
+  if (!url || url.trim() === '') return '';
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+  
+  // Se for uma URL de incorporação, extrair o ID
+  if (url.includes('youtube.com/embed/')) {
+    return url.split('youtube.com/embed/')[1].split('?')[0];
+  }
+  
+  // Se for uma URL completa, extrair o ID
+  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+  const match = url.match(regex);
+  return match ? match[1] : url;
+};
 
 // Interface para os ícones
 interface IconProps extends IconBaseProps {
@@ -49,6 +70,7 @@ interface Product {
   deliveryType?: 'automatic' | 'manual';
   originalPrice?: number;
   discountPercentage?: number;
+  tutorial_video_url?: string;
 }
 
 // Cor primária mais clara para efeitos de luz
@@ -587,7 +609,7 @@ export default function ProductPage() {
       <div className="container mx-auto px-4 py-10 max-w-7xl">
         {/* Navegação e Breadcrumb */}
         <motion.div 
-          className="flex items-center mb-8 text-sm"
+          className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8 text-sm"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -599,21 +621,21 @@ export default function ProductPage() {
             <IconFiArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
             <span>Voltar à loja</span>
           </Link>
-          <div className="ml-auto flex items-center space-x-2 text-gray-400">
+          <div className="flex flex-wrap items-center space-x-2 text-gray-400 mt-2 sm:mt-0 sm:ml-auto">
             <Link href="/" className="hover:text-primary transition-colors">Início</Link>
             <span>/</span>
             {product.category && (
               <>
                 <Link 
                   href={`/category/${product.category.slug}`} 
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors max-w-[120px] truncate"
                 >
                   {product.category.name}
                 </Link>
                 <span>/</span>
               </>
             )}
-            <span className="text-white">{formatProductName(product.name)}</span>
+            <span className="text-white max-w-[150px] sm:max-w-full truncate">{formatProductName(product.name)}</span>
           </div>
         </motion.div>
 
@@ -658,44 +680,46 @@ export default function ProductPage() {
                 )}
               </motion.div>
               
-              {/* Galeria de miniaturas */}
-              <div className="relative">
-                <motion.div 
-                  className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-dark-300/20 scrollbar-thumb-dark-400/50"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.3 }}
-                >
-                  {product.images.map((image, index) => (
-                    <motion.div
-                      key={index}
-                      className={`relative cursor-pointer rounded-lg overflow-hidden flex-shrink-0 transition-all duration-200 ${
-                        currentImageIndex === index 
-                          ? 'ring-2 ring-primary shadow-lg shadow-primary/20 scale-105' 
-                          : 'ring-1 ring-dark-400/30 hover:ring-primary/50'
-                      }`}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setCurrentImageIndex(index)}
-                    >
-                      <div className="w-20 h-20">
-                        <img 
-                          src={image} 
-                          alt={`${product.name} - Visualização ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        {currentImageIndex === index && (
-                          <motion.div 
-                            className="absolute inset-0 bg-primary/10"
-                            layoutId="thumbnailHighlight"
-                            transition={{ duration: 0.2 }}
+              {/* Galeria de miniaturas - Exibida apenas quando houver mais de uma imagem */}
+              {product.images.length > 1 && (
+                <div className="relative">
+                  <motion.div 
+                    className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-dark-300/20 scrollbar-thumb-dark-400/50"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.3 }}
+                  >
+                    {product.images.map((image, index) => (
+                      <motion.div
+                        key={index}
+                        className={`relative cursor-pointer rounded-lg overflow-hidden flex-shrink-0 transition-all duration-200 ${
+                          currentImageIndex === index 
+                            ? 'ring-2 ring-primary shadow-lg shadow-primary/20 scale-105' 
+                            : 'hover:ring-1 hover:ring-primary/50'
+                        }`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setCurrentImageIndex(index)}
+                      >
+                        <div className="w-20 h-20 bg-dark-500 flex items-center justify-center">
+                          <img 
+                            src={image} 
+                            alt={`${product.name} - Visualização ${index + 1}`}
+                            className="w-full h-full object-contain p-1"
                           />
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </div>
+                          {currentImageIndex === index && (
+                            <motion.div 
+                              className="absolute inset-0 bg-primary/10"
+                              layoutId="thumbnailHighlight"
+                              transition={{ duration: 0.2 }}
+                            />
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </div>
+              )}
             </div>
             
             {/* Detalhes do produto */}
@@ -1141,7 +1165,13 @@ export default function ProductPage() {
                                 : 'bg-dark-300/70 text-white hover:bg-dark-400/80'
                             } relative overflow-hidden group transition-all duration-300`}
                             whileHover={quantity > 1 ? { scale: 1.03 } : {}}
-                            whileTap={quantity > 1 ? { scale: 0.95 } : {}}
+                            whileTap={quantity > 1 ? { scale: 0.97 } : {}}
+                            type="button"
+                            aria-label="Diminuir quantidade"
+                            style={{
+                              WebkitAppearance: 'none',
+                              WebkitTapHighlightColor: 'transparent'
+                            }}
                           >
                             {quantity > 1 && (
                               <span className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1185,7 +1215,13 @@ export default function ProductPage() {
                                 : 'bg-dark-300/70 text-white hover:bg-dark-400/80'
                             } relative overflow-hidden group transition-all duration-300`}
                             whileHover={quantity < variant.stock ? { scale: 1.03 } : {}}
-                            whileTap={quantity < variant.stock ? { scale: 0.95 } : {}}
+                            whileTap={quantity < variant.stock ? { scale: 0.97 } : {}}
+                            type="button"
+                            aria-label="Aumentar quantidade"
+                            style={{
+                              WebkitAppearance: 'none',
+                              WebkitTapHighlightColor: 'transparent'
+                            }}
                           >
                             {quantity < variant.stock && (
                               <span className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1384,7 +1420,6 @@ export default function ProductPage() {
                               whileHover={variant && variant.stock > 0 && !isAddingToCart ? { scale: 1.03 } : {}}
                               whileTap={variant && variant.stock > 0 && !isAddingToCart ? { scale: 0.97 } : {}}
                             >
-                              <IconFiShoppingCart className="mr-2" />
                               <span>Adicionar ao Carrinho</span>
                             </motion.div>
                           </motion.button>
@@ -1591,6 +1626,26 @@ export default function ProductPage() {
         isOpen={isStockModalOpen}
         onClose={() => setIsStockModalOpen(false)}
       />
+
+      {/* Vídeo Tutorial - Se disponível */}
+      {product.tutorial_video_url && (
+        <div className="mt-8">
+          <h3 className="text-xl font-bold text-white mb-4">Tutorial em Vídeo</h3>
+          <div className="bg-dark-300 rounded-lg p-4">
+            <div className="aspect-video relative bg-black/50 rounded-md flex items-center justify-center">
+              <iframe 
+                className="w-full h-full rounded-md"
+                src={`https://www.youtube.com/embed/${extractYouTubeId(product.tutorial_video_url)}?autoplay=0&rel=0&modestbranding=1`}
+                title="Tutorial de uso do produto"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                loading="lazy"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

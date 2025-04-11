@@ -13,7 +13,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/profile': 'Meu Perfil',
   '/dashboard/orders': 'Meus Pedidos',
   '/dashboard/products': 'Meus Produtos',
-  '/dashboard/downloads': 'Downloads',
   '/dashboard/announcements': 'Anúncios',
   '/dashboard/support': 'Suporte',
   '/admin': 'Painel Admin',
@@ -85,15 +84,15 @@ const Header: React.FC = () => {
   // Se não estiver montado ainda, exibir um placeholder do header
   if (!isMounted) {
     return (
-      <header className="fixed top-0 left-0 right-0 h-16 bg-dark-200 z-30 shadow-md px-4 flex items-center">
+      <header className="fixed top-0 left-0 right-0 bg-dark-200 z-30 shadow-md px-4 flex items-center" style={{ height: "64px" }}>
         <div className="animate-pulse bg-dark-300 h-8 w-40 rounded"></div>
       </header>
     );
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-dark-200 z-30 shadow-md">
-      <div className="flex items-center justify-between px-4 h-16">
+    <header className="fixed top-0 left-0 right-0 bg-dark-200 z-30 shadow-md" style={{ height: "64px" }}>
+      <div className="flex items-center justify-between px-4 h-full">
         {/* Logo e Toggle de Menu Mobile */}
         <div className="flex items-center">
           <button
@@ -105,7 +104,13 @@ const Header: React.FC = () => {
           </button>
           
           <Link href="/dashboard" className="flex items-center">
-            <span className="text-xl font-bold">FantasyStore</span>
+            <span className="text-xl font-bold">
+              {user ? (
+                <>Olá, <span className="text-primary">{user.username}</span></>
+              ) : (
+                'FantasyStore'
+              )}
+            </span>
           </Link>
         </div>
 
@@ -194,14 +199,6 @@ const Header: React.FC = () => {
                 >
                   <FiPackage className="mr-2" size={16} />
                   Meus Produtos
-                </Link>
-                <Link
-                  href="/dashboard/downloads"
-                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-400 hover:text-white"
-                  onClick={() => setShowUserMenu(false)}
-                >
-                  <FiDownload className="mr-2" size={16} />
-                  Downloads
                 </Link>
                 <Link
                   href="/dashboard/support"

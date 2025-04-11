@@ -297,54 +297,82 @@ export default function ProductsPage() {
             {filteredProducts.map((product) => (
               <div
                 key={product._id}
-                className="bg-[#1e1e1e] rounded-lg overflow-hidden"
+                className="bg-gradient-to-b from-dark-300/90 to-dark-200 rounded-xl overflow-hidden shadow-md transition-all duration-400 hover:shadow-xl hover:shadow-dark-400/30 transform hover:-translate-y-1 flex flex-col h-[420px]"
               >
-                {/* Imagem de capa */}
-                <div className="w-full h-48 overflow-hidden">
-                  {product.image ? (
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.warn(`Erro ao carregar imagem para produto: ${product._id}`);
-                        const target = e.currentTarget as HTMLImageElement;
-                        target.src = '/placeholder-image.jpg';
-                        target.onerror = null; // Evita loop infinito
-                      }}
-                    />
-                  ) : (
-                    <div className="h-48 w-full bg-dark-400 flex items-center justify-center">
-                      <FiImage size={32} className="text-gray-500" />
+                <div className="relative rounded-lg overflow-hidden z-10">
+                  {/* Container da imagem com padding */}
+                  <div className="pt-3 px-3 pb-0 bg-gradient-to-br from-dark-800 to-dark-900">
+                    {/* Imagem com efeitos */}
+                    <div className="h-44 relative overflow-hidden rounded-lg">
+                      <div className="absolute inset-0 z-0 overflow-hidden">
+                        <div className="bg-gradient-to-br from-dark-800 to-dark-900 h-full w-full opacity-90"></div>
+                        {/* Padrão sutil no fundo */}
+                        <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:20px_20px] opacity-20"></div>
+                      </div>
+                      
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover relative z-10 transition-all duration-500"
+                          onError={(e) => {
+                            console.warn(`Erro ao carregar imagem para produto: ${product._id}`);
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.src = '/placeholder-image.jpg';
+                            target.onerror = null; // Evita loop infinito
+                          }}
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center relative z-10">
+                          <FiImage size={32} className="text-gray-500" />
+                        </div>
+                      )}
+                      
+                      {/* Gradiente na parte inferior para melhorar transição com o conteúdo */}
+                      <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-dark-300/90 to-transparent z-10"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Badge de status */}
+                  {product.status && (
+                    <div className="absolute bottom-[8px] left-4 bg-dark-800/80 text-green-400 border border-green-500/30 text-xs px-3 py-1 rounded-full flex items-center backdrop-blur-xl z-20 shadow-sm transition-all duration-300">
+                      <FiCheck size={12} className="mr-1.5 flex-shrink-0" />
+                      {product.status}
                     </div>
                   )}
                 </div>
                 
                 {/* Conteúdo do card */}
-                <div className="p-4">
+                <div className="p-5 relative z-10 flex-grow flex flex-col">
                   {/* Título do produto */}
-                  <h3 className="text-white font-semibold text-lg mb-2">
-                    {product.name}
-                  </h3>
+                  <div className="relative group">
+                    <h3 className="text-white font-medium text-lg mb-1 transition-colors duration-300 line-clamp-2 h-14">
+                      {product.name}
+                    </h3>
+                    <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-primary/30 group-hover:w-1/4 transition-all duration-500"></span>
+                  </div>
                   
                   {/* Tipo do produto/variante */}
-                  <p className="text-gray-400 text-sm">
-                    Padrão
+                  <p className="text-gray-400 text-sm mb-2">
+                    {product.variant?.name || 'Padrão'}
                   </p>
                   
                   {/* Data de aquisição */}
-                  <p className="text-gray-500 text-xs mt-1">
+                  <p className="text-gray-500 text-xs mb-4 flex items-center">
+                    <span className="inline-block w-2 h-2 rounded-full bg-primary/50 mr-2"></span>
                     Adquirido em: {formatDate(product.assignedAt)}
                   </p>
                   
                   {/* Botão de ver detalhes */}
-                  <div className="mt-4 text-right">
+                  <div className="mt-auto">
                     <Link 
                       href={`/dashboard/products/${product._id}`}
-                      className="text-[#ff6b00] hover:text-[#ff8533] inline-flex items-center"
+                      className="block w-full"
                     >
-                      <span>Ver detalhes</span>
-                      <span className="text-lg ml-1">›</span>
+                      <button className="w-full py-2.5 px-4 rounded-lg text-center font-medium transition-all duration-300 relative overflow-hidden bg-primary text-white hover:bg-primary-dark group">
+                        <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">Ver detalhes</span>
+                        <span className="absolute bottom-0 left-1/2 right-1/2 h-[1px] bg-white/20 group-hover:left-4 group-hover:right-4 transition-all duration-500"></span>
+                      </button>
                     </Link>
                   </div>
                 </div>

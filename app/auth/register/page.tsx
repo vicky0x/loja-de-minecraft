@@ -245,6 +245,11 @@ export default function RegisterPage() {
                     ? 'border-red-500'
                     : 'border-dark-300'
                 } rounded-md py-2 px-3 pr-10 text-white focus:outline-none focus:ring-1 focus:ring-primary`}
+                style={{
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  appearance: 'none'
+                }}
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                 {usernameStatus === 'checking' && (
@@ -286,6 +291,11 @@ export default function RegisterPage() {
               required
               placeholder="seu@email.com"
               className="w-full bg-dark-200 border border-dark-300 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-primary"
+              style={{
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                appearance: 'none'
+              }}
             />
           </div>
           
@@ -303,6 +313,11 @@ export default function RegisterPage() {
               required
               placeholder="••••••••"
               className="w-full bg-dark-200 border border-dark-300 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-primary"
+              style={{
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                appearance: 'none'
+              }}
             />
           </div>
           
@@ -320,6 +335,11 @@ export default function RegisterPage() {
               required
               placeholder="••••••••"
               className="w-full bg-dark-200 border border-dark-300 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-primary"
+              style={{
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                appearance: 'none'
+              }}
             />
           </div>
           

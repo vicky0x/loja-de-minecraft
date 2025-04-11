@@ -38,6 +38,18 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
     }
   }, [editingAnnouncement]);
 
+  // Adicionar esta função para extrair o ID do vídeo do YouTube
+  const extractYouTubeId = (url: string): string => {
+    // Se já for um ID simples (sem URL)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+    
+    // Se for uma URL completa, extrair o ID
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+    const match = url.match(regex);
+    return match ? match[1] : url;
+  };
+
+  // Modificar o handleSubmit para converter o ID em URL de incorporação
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -69,12 +81,21 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
       // Garantir que quebras de linha múltiplas sejam preservadas
       const formattedContent = content.replace(/\n{2,}/g, '\n\n').trim();
       
+      // Processar URL do vídeo se houver
+      let processedVideoUrl = '';
+      if (videoUrl.trim()) {
+        const videoId = extractYouTubeId(videoUrl.trim());
+        if (videoId) {
+          processedVideoUrl = `https://www.youtube.com/embed/${videoId}`;
+        }
+      }
+      
       // Debugging: verificar os valores antes de enviar
       console.log('Enviando requisição com dados:', {
         title,
         content: formattedContent,
         imageUrl,
-        videoUrl
+        videoUrl: processedVideoUrl
       });
 
       const response = await fetch(url, {
@@ -87,7 +108,7 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
           title,
           content: formattedContent,
           imageUrl: imageUrl || undefined,
-          videoUrl: videoUrl || undefined,
+          videoUrl: processedVideoUrl || undefined,
         }),
       });
       
@@ -383,22 +404,22 @@ const AnnouncementEditor = ({ onSave, editingAnnouncement, onCancel }: Announcem
             <span className="mr-2">
               <FiVideo />
             </span>
-            URL do Vídeo (opcional)
+            ID ou URL do Vídeo do YouTube (opcional)
           </span>
         </label>
         <input
-          type="url"
+          type="text"
           id="videoUrl"
           value={videoUrl}
           onChange={(e) => setVideoUrl(e.target.value)}
           className="w-full bg-dark-300 border border-dark-400 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="https://youtube.com/embed/video-id"
+          placeholder="Ex: dQw4w9WgXcQ ou https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         />
         <div className="flex items-center text-xs text-gray-400 mt-1">
           <span className="inline-flex mr-1">
             <FiAlertCircle />
           </span>
-          <span>Use URLs de incorporação (embed) para vídeos do YouTube ou Vimeo.</span>
+          <span>Você pode inserir o ID do vídeo do YouTube (11 caracteres) ou a URL completa do vídeo.</span>
         </div>
       </div>
       

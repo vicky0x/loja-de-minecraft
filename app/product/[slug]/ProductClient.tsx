@@ -575,7 +575,7 @@ export function ProductClient({ initialProduct, slug }: { initialProduct: Produc
       <div className="container mx-auto px-4 py-10 max-w-7xl">
         {/* Navegação e Breadcrumb */}
         <motion.div 
-          className="flex items-center mb-8 text-sm"
+          className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8 text-sm"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -587,21 +587,21 @@ export function ProductClient({ initialProduct, slug }: { initialProduct: Produc
             <IconFiArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
             <span>Voltar à loja</span>
           </Link>
-          <div className="ml-auto flex items-center space-x-2 text-gray-400">
+          <div className="flex flex-wrap items-center space-x-2 text-gray-400 mt-2 sm:mt-0 sm:ml-auto">
             <Link href="/" className="hover:text-primary transition-colors">Início</Link>
             <span>/</span>
             {product.category && (
               <>
                 <Link 
                   href={`/category/${product.category.slug}`} 
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors max-w-[120px] truncate"
                 >
                   {product.category.name}
                 </Link>
                 <span>/</span>
               </>
             )}
-            <span className="text-white">{formatProductName(product.name)}</span>
+            <span className="text-white max-w-[150px] sm:max-w-full truncate">{formatProductName(product.name)}</span>
           </div>
         </motion.div>
 

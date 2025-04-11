@@ -129,7 +129,7 @@ export default function Home() {
   return (
     <main className="flex flex-col min-h-screen bg-dark-100">
       {/* Hero Section */}
-      <section className="relative flex items-center justify-center min-h-screen overflow-hidden">
+      <section className="relative flex items-center justify-center min-h-screen overflow-hidden pt-10 md:pt-14">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-dark-100">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,96,0,0.08),transparent_70%)]"></div>
@@ -140,11 +140,11 @@ export default function Home() {
         </div>
         
         <div className="container relative z-10 px-4 mx-auto">
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="max-w-4xl mx-auto text-center mt-0">
             {/* Main Title */}
-            <div className="mb-8 opacity-0 animate-fade-in" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
+            <div className="mb-6 opacity-0 animate-fade-in" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
               {/* Badge premium */}
-              <div className="inline-flex items-center px-4 py-2 mb-4 rounded-full bg-gradient-to-r from-primary/20 to-primary/30 backdrop-blur-md border border-primary/40 text-white text-sm font-medium group relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_20px_rgba(255,96,0,0.35)] hover:scale-[1.03] shadow-[0_0_12px_rgba(0,0,0,0.15)] animate-pulse-subtle">
+              <div className="inline-flex items-center px-4 py-2 mb-3 rounded-full bg-gradient-to-r from-primary/20 to-primary/30 backdrop-blur-md border border-primary/40 text-white text-sm font-medium group relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_20px_rgba(255,96,0,0.35)] hover:scale-[1.03] shadow-[0_0_12px_rgba(0,0,0,0.15)] animate-pulse-subtle">
                 {/* Brilho de fundo animado */}
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/20 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-md"></div>
                 
@@ -183,8 +183,8 @@ export default function Home() {
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
                 Minecraft Original Barato
               </h1>
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold mb-6 tracking-wide">
-                Contas de Minecraft <span className="text-primary">Full Acesso</span> e <span className="text-primary">Premium</span>
+              <h2 className="text-2xl md:text-4xl font-semibold mb-6 tracking-wide">
+                Contas de Minecraft <span className="text-primary">Full Acesso</span> e <span className="text-primary">Originais</span>
               </h2>
               <p className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
                 Contas de Minecraft original com as versões Java e Bedrock Edition, garantia e preço justo. Acesso completo, entrega imediata e suporte 24h.

@@ -8,9 +8,6 @@ import Head from 'next/head';
 export default function NotFound() {
   return (
     <>
-      <Head>
-        <meta httpEquiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; font-src * data:; img-src * data: blob:; connect-src * ws: wss:;" />
-      </Head>
       <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200 flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <motion.div

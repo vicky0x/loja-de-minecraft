@@ -122,7 +122,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   const validProducts = products.filter(p => p && (typeof p === 'object'));
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {validProducts.map((product) => {
         const productId = getProductId(product);
         
@@ -139,49 +139,82 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         // Determinar a variante ou usar "Padrão" como fallback
         const variant = product.variant?.name || 'Padrão';
         
+        // Configuração de status (se existir)
+        const statusConfig = product.status ? getStatusConfig(product.status) : null;
+        
         return (
           <div 
             key={productId} 
-            className="bg-[#1e1e1e] rounded-lg overflow-hidden"
+            className="bg-gradient-to-b from-dark-300/90 to-dark-200 rounded-xl overflow-hidden shadow-md transition-all duration-400 hover:shadow-xl hover:shadow-dark-400/30 transform hover:-translate-y-1 flex flex-col h-[420px]"
           >
-            {/* Imagem de capa */}
-            <div className="w-full h-60 overflow-hidden">
-              <img 
-                src={imageUrl}
-                alt={productName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.currentTarget as HTMLImageElement;
-                  target.src = 'https://placehold.co/600x400/111/222?text=Sem+Imagem';
-                }}
-              />
+            <div className="relative rounded-lg overflow-hidden z-10">
+              {/* Container da imagem com padding */}
+              <div className="pt-3 px-3 pb-0 bg-gradient-to-br from-dark-800 to-dark-900">
+                {/* Imagem com efeitos */}
+                <div className="h-44 relative overflow-hidden rounded-lg">
+                  <div className="absolute inset-0 z-0 overflow-hidden">
+                    <div className="bg-gradient-to-br from-dark-800 to-dark-900 h-full w-full opacity-90"></div>
+                    {/* Padrão sutil no fundo */}
+                    <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:20px_20px] opacity-20"></div>
+                  </div>
+                  
+                  <img 
+                    src={imageUrl}
+                    alt={productName}
+                    className="w-full h-full object-cover relative z-10 transition-all duration-500"
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.src = 'https://placehold.co/600x400/111/222?text=Sem+Imagem';
+                    }}
+                  />
+                  
+                  {/* Gradiente na parte inferior para melhorar transição com o conteúdo */}
+                  <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-dark-300/90 to-transparent z-10"></div>
+                </div>
+              </div>
+              
+              {/* Badge de status */}
+              {statusConfig && (
+                <div className={`absolute bottom-[8px] left-4 bg-dark-800/80 ${statusConfig.textColor} border ${statusConfig.borderColor}/30 text-xs px-3 py-1 rounded-full flex items-center backdrop-blur-xl z-20 shadow-sm transition-all duration-300`}>
+                  {statusConfig.icon && (
+                    <span className="mr-1.5">{statusConfig.icon}</span>
+                  )}
+                  {statusConfig.label}
+                </div>
+              )}
             </div>
             
             {/* Conteúdo do card */}
-            <div className="p-6 pt-5 pb-4">
+            <div className="p-5 relative z-10 flex-grow flex flex-col">
               {/* Título do produto */}
-              <h3 className="text-white font-semibold text-xl mb-2">
-                {formatProductName(productName)}
-              </h3>
+              <div className="relative group">
+                <h3 className="text-white font-medium text-lg mb-1 transition-colors duration-300 line-clamp-2 h-14">
+                  {formatProductName(productName)}
+                </h3>
+                <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-primary/30 group-hover:w-1/4 transition-all duration-500"></span>
+              </div>
               
               {/* Tipo do produto/variante */}
-              <p className="text-gray-400 text-sm mb-1">
+              <p className="text-gray-400 text-sm mb-2">
                 {variant}
               </p>
               
               {/* Data de aquisição */}
-              <p className="text-gray-500 text-xs">
+              <p className="text-gray-500 text-xs mb-4 flex items-center">
+                <span className="inline-block w-2 h-2 rounded-full bg-primary/50 mr-2"></span>
                 Adquirido em: {assignedDate}
               </p>
               
               {/* Botão de ver detalhes */}
-              <div className="mt-4 text-right">
+              <div className="mt-auto">
                 <Link 
                   href={`/dashboard/products/${productId}`}
-                  className="text-[#ff6b00] hover:text-[#ff8533] inline-flex items-center font-medium"
+                  className="block w-full"
                 >
-                  <span>Ver detalhes</span>
-                  <span className="text-lg ml-1">›</span>
+                  <button className="w-full py-2.5 px-4 rounded-lg text-center font-medium transition-all duration-300 relative overflow-hidden bg-primary text-white hover:bg-primary-dark group">
+                    <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">Ver detalhes</span>
+                    <span className="absolute bottom-0 left-1/2 right-1/2 h-[1px] bg-white/20 group-hover:left-4 group-hover:right-4 transition-all duration-500"></span>
+                  </button>
                 </Link>
               </div>
             </div>

@@ -62,63 +62,8 @@ const nextConfig = {
     // Manter apenas CSS crítico na primeira carga
     optimizeServerReact: true,
   },
-  // Adicionar headers para segurança e otimização
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
-        ],
-      },
-      {
-        source: '/fonts/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      {
-        source: '/images/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=31536000',
-          },
-        ],
-      },
-      {
-        source: '/products/debug',
-        headers: [
-          {
-            key: 'x-static-page',
-            value: 'false',
-          },
-        ],
-      },
-    ];
-  },
+  // CSP e outros headers de segurança REMOVIDOS
+  
   // Configuração de webpack para melhor otimização
   webpack: (config, { dev, isServer }) => {
     // Otimizar apenas em produção

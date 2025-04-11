@@ -23,7 +23,7 @@ function getClientIp(request: NextRequest): string {
   return forwardedFor || realIp || '127.0.0.1';
 }
 
-// Middleware que adiciona cabeçalhos de segurança para todas as solicitações
+// Middleware que processa solicitações (CSP completamente removido)
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   
@@ -74,34 +74,6 @@ export function middleware(request: NextRequest) {
       loginAttempts.set(ip, { count: 1, timestamp: now });
     }
   }
-  
-  // Adicionar cabeçalhos de segurança para todas as requisições
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  
-  // Configuração avançada de Content-Security-Policy para todos os ambientes
-  const cspDirectives = [
-    "default-src 'self'",
-    "script-src 'self'", 
-    "style-src 'self'",
-    "img-src 'self' data: blob:",
-    "font-src 'self'",
-    "connect-src 'self' https://*.mercadopago.com",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'"
-  ];
-  
-  // Em desenvolvimento, permitir unsafe-inline e unsafe-eval para facilitar o debug
-  if (process.env.NODE_ENV === 'development') {
-    cspDirectives[1] += " 'unsafe-inline' 'unsafe-eval'"; // script-src
-    cspDirectives[2] += " 'unsafe-inline'"; // style-src
-  }
-  
-  response.headers.set('Content-Security-Policy', cspDirectives.join('; '));
   
   // Tratamento especial para páginas de autenticação (login/logout)
   if (request.nextUrl.pathname === '/auth/login') {

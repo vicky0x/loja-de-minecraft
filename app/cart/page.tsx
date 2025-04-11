@@ -74,6 +74,13 @@ interface CustomerData {
   phone: string;
 }
 
+// Interface para o estado da animação de processamento
+interface ProcessingPaymentState {
+  show: boolean;
+  message: string;
+  isRedirecting: boolean;
+}
+
 export default function CartPage() {
   const router = useRouter();
   const { 
@@ -124,6 +131,13 @@ export default function CartPage() {
   // Estado para indicar se está carregando
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
+  // Estado para controlar a animação de processamento
+  const [processingPayment, setProcessingPayment] = useState<ProcessingPaymentState>({
+    show: false,
+    message: '',
+    isRedirecting: false
+  });
+  
   // Efeito para recuperar dados de PIX do localStorage
   useEffect(() => {
     // Marcar componente como montado
@@ -606,7 +620,23 @@ export default function CartPage() {
     if (!isMounted.current) return false;
     
     try {
-      updateStateIfMounted(() => setIsLoading(true));
+      updateStateIfMounted(() => {
+        setIsLoading(true);
+        setProcessingPayment({
+          show: true,
+          message: "Preparando o checkout do Mercado Pago...",
+          isRedirecting: false
+        });
+      });
+      
+      // Mostrar toast informando que está sendo redirecionado
+      toast.loading(
+        "Preparando o checkout do Mercado Pago. Você será redirecionado em instantes...",
+        { duration: 6000 }
+      );
+      
+      // Mostrar indicação de processamento
+      updateStateIfMounted(() => setIsProcessingPayment(true));
       
       // Preparar dados para enviar à API
       const paymentData = {
@@ -650,8 +680,23 @@ export default function CartPage() {
       // Limpar o carrinho após redirecionamento para checkout
       clearCart();
       
-      // Redirecionar para a página de checkout do Mercado Pago
-      window.location.href = cardData.checkoutUrl;
+      // Atualizar mensagem antes de redirecionar
+      updateStateIfMounted(() => {
+        setProcessingPayment({
+          show: true,
+          message: "Redirecionando para o checkout seguro do Mercado Pago...",
+          isRedirecting: true
+        });
+      });
+      
+      // Mostrar toast de confirmação antes de redirecionar
+      toast.success("Redirecionando para o checkout seguro do Mercado Pago...");
+      
+      // Adicionar um pequeno delay para dar tempo de mostrar a mensagem
+      setTimeout(() => {
+        // Redirecionar para a página de checkout do Mercado Pago
+        window.location.href = cardData.checkoutUrl;
+      }, 1500);
       
       return true;
     } catch (error: any) {
@@ -660,6 +705,12 @@ export default function CartPage() {
       if (isMounted.current) {
         setError(error instanceof Error ? error.message : 'Erro ao processar pagamento com cartão');
         setIsLoading(false);
+        setIsProcessingPayment(false);
+        setProcessingPayment({
+          show: false,
+          message: '',
+          isRedirecting: false
+        });
         toast.error('Não foi possível processar o pagamento com cartão. Tente novamente.');
       }
       
@@ -1349,561 +1400,612 @@ export default function CartPage() {
     };
   }, [isPixModalOpen, pixPaymentData]);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200">
-      {/* Barra de progresso */}
-      {!isCartEmpty && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-dark-300 h-1">
-          <div 
-            className="h-full bg-gradient-to-r from-primary to-primary-light"
-            style={{ width: showCheckoutForm ? '66%' : '33%' }}
+  // Componente para exibir o indicador de processamento de pagamento
+  const PaymentProcessingIndicator = () => {
+    if (!processingPayment.show) return null;
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-dark-100/90 flex items-center justify-center z-50 backdrop-blur-sm"
+      >
+        <div className="bg-dark-200 p-8 rounded-xl shadow-xl max-w-md w-full text-center">
+          <div className="flex justify-center mb-6">
+            {processingPayment.isRedirecting ? (
+              <div className="animate-pulse">
+                <FiCreditCard size={48} className="text-primary" />
+              </div>
+            ) : (
+              <div className="animate-spin h-12 w-12 rounded-full border-t-2 border-b-2 border-primary"></div>
+            )}
+          </div>
+          
+          <h3 className="text-xl font-semibold mb-2">
+            {processingPayment.isRedirecting ? 'Redirecionando...' : 'Processando...'}
+          </h3>
+          
+          <p className="text-gray-300 mb-4">{processingPayment.message}</p>
+          
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: '100%' }}
+            transition={{ duration: processingPayment.isRedirecting ? 1.5 : 3 }}
+            className="h-1 bg-primary rounded-full mt-4"
           />
+          
+          <p className="text-xs text-gray-400 mt-6">
+            Aguarde enquanto preparamos seu pagamento com segurança.
+            {processingPayment.isRedirecting && ' Você será redirecionado automaticamente.'}
+          </p>
         </div>
-      )}
+      </motion.div>
+    );
+  };
+
+  return (
+    <>
+      {/* Modal de processamento de pagamento */}
+      <AnimatePresence>
+        {processingPayment.show && <PaymentProcessingIndicator />}
+      </AnimatePresence>
       
-      <div className="container mx-auto max-w-6xl px-4 py-12">
-        {/* Cabeçalho */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-            Seu Carrinho
-          </h1>
-          
-          {/* Aviso de pagamento PIX pendente */}
-          {pixPaymentData && !isPixModalOpen && (
-            <div className="mt-4 mx-auto max-w-2xl bg-primary/10 border border-primary/30 rounded-lg p-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 text-primary">
-                  <IconFiInfo size={24} />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-primary">Pagamento PIX pendente</h3>
-                  <div className="mt-1 text-sm text-gray-200">
-                    <p>Você tem um pagamento PIX no valor de {formatCurrency(pixPaymentData.total || 0)} aguardando confirmação.</p>
-                  </div>
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsPixModalOpen(true)}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none"
-                    >
-                      <IconFiCreditCard className="mr-2 -ml-1 h-4 w-4" aria-hidden="true" />
-                      Ver código PIX
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {!isCartEmpty && (
-            <div className="flex items-center justify-center space-x-8 mt-6">
-              <div className={`flex flex-col items-center ${activeStep >= 1 ? 'text-primary' : 'text-gray-500'}`}>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${activeStep >= 1 ? 'bg-primary text-white' : 'bg-dark-300 text-gray-500'}`}>1</div>
-                <span className="text-sm font-medium">Carrinho</span>
-              </div>
-              
-              <div className="w-16 h-px bg-gray-700 mt-[-14px]"></div>
-              
-              <div className={`flex flex-col items-center ${activeStep >= 2 ? 'text-primary' : 'text-gray-500'}`}>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${activeStep >= 2 ? 'bg-primary text-white' : 'bg-dark-300 text-gray-500'}`}>2</div>
-                <span className="text-sm font-medium">Dados</span>
-              </div>
-              
-              <div className="w-16 h-px bg-gray-700 mt-[-14px]"></div>
-              
-              <div className={`flex flex-col items-center ${activeStep >= 3 ? 'text-primary' : 'text-gray-500'}`}>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${activeStep >= 3 ? 'bg-primary text-white' : 'bg-dark-300 text-gray-500'}`}>3</div>
-                <span className="text-sm font-medium">Pagamento</span>
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="min-h-screen bg-gradient-to-b from-dark-100 to-dark-200">
+        {/* Barra de progresso */}
+        {!isCartEmpty && (
+          <div className="fixed top-0 left-0 right-0 z-50 bg-dark-300 h-1">
+            <div 
+              className="h-full bg-gradient-to-r from-primary to-primary-light"
+              style={{ width: showCheckoutForm ? '66%' : '33%' }}
+            />
+          </div>
+        )}
         
-        {cartIsLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-gray-400 text-lg">Carregando seu carrinho...</p>
-          </div>
-        ) : isCartEmpty ? (
-          <div className="text-center py-20">
-            <div className="text-8xl text-gray-300 mb-6 flex justify-center">
-              <HiOutlineShoppingCart />
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-300 mb-4">Seu carrinho está vazio</h2>
-            <p className="text-gray-400 mb-8 max-w-md mx-auto">
-              Parece que você ainda não adicionou nenhum produto ao seu carrinho. Continue comprando para encontrar produtos incríveis.
-            </p>
-            <Link href="/products">
-              <button className="bg-primary text-white py-3 px-8 rounded-lg font-medium hover:bg-primary-600 transition-colors">
-                Continuar Comprando
-              </button>
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Coluna do carrinho ou formulário de checkout */}
-            <div className="lg:col-span-2">
-              {!showCheckoutForm ? (
-                // Card de itens do carrinho
-                <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
-                  <div className="p-6 border-b border-dark-300 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white flex items-center">
-                      <span className="mr-2"><IconFiShoppingBag size={18} /></span>
-                      <span>Itens do Carrinho ({items.length})</span>
-                    </h2>
-                    <div className="flex items-center text-sm">
-                      <span className="text-green-400">Estoque disponível</span>
+        <div className="container mx-auto max-w-6xl px-4 py-12">
+          {/* Cabeçalho */}
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              Seu Carrinho
+            </h1>
+            
+            {/* Aviso de pagamento PIX pendente */}
+            {pixPaymentData && !isPixModalOpen && (
+              <div className="mt-4 mx-auto max-w-2xl bg-primary/10 border border-primary/30 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 text-primary">
+                    <IconFiInfo size={24} />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-primary">Pagamento PIX pendente</h3>
+                    <div className="mt-1 text-sm text-gray-200">
+                      <p>Você tem um pagamento PIX no valor de {formatCurrency(pixPaymentData.total || 0)} aguardando confirmação.</p>
+                    </div>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsPixModalOpen(true)}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none"
+                      >
+                        <IconFiCreditCard className="mr-2 -ml-1 h-4 w-4" aria-hidden="true" />
+                        Ver código PIX
+                      </button>
                     </div>
                   </div>
-                  
-                  <div className="divide-y divide-dark-300">
-                    {items.map((item: CartItem, index: number) => (
-                      <div key={`${item.productId}-${item.variantId}`} className="relative">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center p-6 group hover:bg-dark-300/30 transition-colors duration-300">
-                          <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
-                            {/* Imagem do produto */}
-                            <div className="w-24 h-24 rounded-lg overflow-hidden bg-dark-300 flex-shrink-0 shadow-md transition-transform duration-300 group-hover:scale-105">
-                              {item.productImage ? (
-                                <Image 
-                                  src={item.productImage} 
-                                  alt={item.productName}
-                                  width={96}
-                                  height={96}
-                                  className="w-full h-full object-cover"
-                                  unoptimized={true}
-                                  priority={index < 2}
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-dark-300 text-dark-100">
-                                  <IconFiShoppingBag size={24} />
+                </div>
+              </div>
+            )}
+            
+            {!isCartEmpty && (
+              <div className="flex items-center justify-center space-x-8 mt-6">
+                <div className={`flex flex-col items-center ${activeStep >= 1 ? 'text-primary' : 'text-gray-500'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${activeStep >= 1 ? 'bg-primary text-white' : 'bg-dark-300 text-gray-500'}`}>1</div>
+                  <span className="text-sm font-medium">Carrinho</span>
+                </div>
+                
+                <div className="w-16 h-px bg-gray-700 mt-[-14px]"></div>
+                
+                <div className={`flex flex-col items-center ${activeStep >= 2 ? 'text-primary' : 'text-gray-500'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${activeStep >= 2 ? 'bg-primary text-white' : 'bg-dark-300 text-gray-500'}`}>2</div>
+                  <span className="text-sm font-medium">Dados</span>
+                </div>
+                
+                <div className="w-16 h-px bg-gray-700 mt-[-14px]"></div>
+                
+                <div className={`flex flex-col items-center ${activeStep >= 3 ? 'text-primary' : 'text-gray-500'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${activeStep >= 3 ? 'bg-primary text-white' : 'bg-dark-300 text-gray-500'}`}>3</div>
+                  <span className="text-sm font-medium">Pagamento</span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {cartIsLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-gray-400 text-lg">Carregando seu carrinho...</p>
+            </div>
+          ) : isCartEmpty ? (
+            <div className="text-center py-20">
+              <div className="text-8xl text-gray-300 mb-6 flex justify-center">
+                <HiOutlineShoppingCart />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-300 mb-4">Seu carrinho está vazio</h2>
+              <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                Parece que você ainda não adicionou nenhum produto ao seu carrinho. Continue comprando para encontrar produtos incríveis.
+              </p>
+              <Link href="/products">
+                <button className="bg-primary text-white py-3 px-8 rounded-lg font-medium hover:bg-primary-600 transition-colors">
+                  Continuar Comprando
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Coluna do carrinho ou formulário de checkout */}
+              <div className="lg:col-span-2">
+                {!showCheckoutForm ? (
+                  // Card de itens do carrinho
+                  <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-dark-300 flex justify-between items-center">
+                      <h2 className="text-xl font-bold text-white flex items-center">
+                        <span className="mr-2"><IconFiShoppingBag size={18} /></span>
+                        <span>Itens do Carrinho ({items.length})</span>
+                      </h2>
+                      <div className="flex items-center text-sm">
+                        <span className="text-green-400">Estoque disponível</span>
+                      </div>
+                    </div>
+                    
+                    <div className="divide-y divide-dark-300">
+                      {items.map((item: CartItem, index: number) => (
+                        <div key={`${item.productId}-${item.variantId}`} className="relative">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center p-6 group hover:bg-dark-300/30 transition-colors duration-300">
+                            <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
+                              {/* Imagem do produto */}
+                              <div className="w-24 h-24 rounded-lg overflow-hidden bg-dark-300 flex-shrink-0 shadow-md transition-transform duration-300 group-hover:scale-105">
+                                {item.productImage ? (
+                                  <Image 
+                                    src={item.productImage} 
+                                    alt={item.productName}
+                                    width={96}
+                                    height={96}
+                                    className="w-full h-full object-cover"
+                                    unoptimized={true}
+                                    priority={index < 2}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-dark-300 text-dark-100">
+                                    <IconFiShoppingBag size={24} />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="mt-4 sm:mt-0 sm:ml-4 flex-grow">
+                                <h3 className="text-white font-medium text-lg group-hover:text-primary transition-colors duration-300">{formatProductName(item.productName)}</h3>
+                                <p className="text-gray-400 text-sm mt-1">Variante: {item.variantName}</p>
+                                <div className="flex items-center mt-2">
+                                  <p className="text-primary font-bold text-lg">R$ {item.price.toFixed(2)}</p>
                                 </div>
-                              )}
-                            </div>
-                            <div className="mt-4 sm:mt-0 sm:ml-4 flex-grow">
-                              <h3 className="text-white font-medium text-lg group-hover:text-primary transition-colors duration-300">{formatProductName(item.productName)}</h3>
-                              <p className="text-gray-400 text-sm mt-1">Variante: {item.variantName}</p>
-                              <div className="flex items-center mt-2">
-                                <p className="text-primary font-bold text-lg">R$ {item.price.toFixed(2)}</p>
+                              </div>
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center mt-4 sm:mt-0 space-y-3 sm:space-y-0 sm:space-x-4 self-start sm:self-center">
+                                {/* Botão de incremento/decremento de quantidade */}
+                                <div className="flex items-center bg-dark-300 border border-dark-400 rounded-full shadow-inner overflow-hidden">
+                                  <button 
+                                    onClick={() => handleUpdateQuantity(item.variantId, Math.max(1, item.quantity - 1), item.productId)}
+                                    className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-white hover:bg-dark-400 transition-colors"
+                                    aria-label="Diminuir quantidade"
+                                  >
+                                    <div className="flex items-center justify-center">
+                                      <IconFiMinus size={16} />
+                                    </div>
+                                  </button>
+                                  <span className="w-10 text-center py-1 font-medium text-white">{item.quantity}</span>
+                                  <button 
+                                    onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1, item.productId)}
+                                    className={`w-9 h-9 flex items-center justify-center ${!!item.stock && item.quantity >= item.stock ? 'text-gray-600 cursor-not-allowed' : 'text-gray-300 hover:text-white hover:bg-dark-400'} transition-colors`}
+                                    disabled={!!item.stock && item.quantity >= item.stock}
+                                    aria-label="Aumentar quantidade"
+                                  >
+                                    <div className="flex items-center justify-center">
+                                      <IconFiPlus size={16} />
+                                    </div>
+                                  </button>
+                                </div>
+                                {/* Botão de remover item */}
+                                <button 
+                                  onClick={() => setShowDeleteConfirm({variantId: item.variantId, productId: item.productId})}
+                                  className="group/trash w-9 h-9 rounded-full bg-red-500/10 hover:bg-red-500 flex items-center justify-center transition-colors duration-300"
+                                  aria-label="Remover item"
+                                >
+                                  <IconFiTrash2 size={16} className="text-red-500 group-hover/trash:text-white transition-colors duration-300" />
+                                </button>
                               </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center mt-4 sm:mt-0 space-y-3 sm:space-y-0 sm:space-x-4 self-start sm:self-center">
-                              {/* Botão de incremento/decremento de quantidade */}
-                              <div className="flex items-center bg-dark-300 border border-dark-400 rounded-full shadow-inner overflow-hidden">
+                          </div>
+                          {/* Confirmação de exclusão */}
+                          {showDeleteConfirm && showDeleteConfirm.variantId === item.variantId && showDeleteConfirm.productId === item.productId && (
+                            <div className="bg-dark-300/80 backdrop-blur-sm p-5 flex flex-col sm:flex-row items-center justify-between border-t border-dark-400">
+                              <div className="flex items-center mb-4 sm:mb-0">
+                                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center mr-3">
+                                  <IconFiAlertTriangle size={16} className="text-red-500" />
+                                </div>
+                                <p className="text-white font-medium">Remover este item do carrinho?</p>
+                              </div>
+                              <div className="flex space-x-3">
                                 <button 
-                                  onClick={() => handleUpdateQuantity(item.variantId, Math.max(1, item.quantity - 1), item.productId)}
-                                  className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-white hover:bg-dark-400 transition-colors"
-                                  aria-label="Diminuir quantidade"
+                                  onClick={() => handleRemoveItem(item.variantId, item.productId)}
+                                  className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-300 flex items-center"
                                 >
-                                  <div className="flex items-center justify-center">
-                                    <IconFiMinus size={16} />
-                                  </div>
+                                  <IconFiCheck size={16} className="mr-1" /> Sim, remover
                                 </button>
-                                <span className="w-10 text-center py-1 font-medium text-white">{item.quantity}</span>
                                 <button 
-                                  onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1, item.productId)}
-                                  className={`w-9 h-9 flex items-center justify-center ${!!item.stock && item.quantity >= item.stock ? 'text-gray-600 cursor-not-allowed' : 'text-gray-300 hover:text-white hover:bg-dark-400'} transition-colors`}
-                                  disabled={!!item.stock && item.quantity >= item.stock}
-                                  aria-label="Aumentar quantidade"
+                                  onClick={() => setShowDeleteConfirm(null)}
+                                  className="px-4 py-2 bg-dark-400 text-white rounded-full hover:bg-dark-500 transition-colors duration-300"
                                 >
-                                  <div className="flex items-center justify-center">
-                                    <IconFiPlus size={16} />
-                                  </div>
+                                  Cancelar
                                 </button>
                               </div>
-                              {/* Botão de remover item */}
-                              <button 
-                                onClick={() => setShowDeleteConfirm({variantId: item.variantId, productId: item.productId})}
-                                className="group/trash w-9 h-9 rounded-full bg-red-500/10 hover:bg-red-500 flex items-center justify-center transition-colors duration-300"
-                                aria-label="Remover item"
-                              >
-                                <IconFiTrash2 size={16} className="text-red-500 group-hover/trash:text-white transition-colors duration-300" />
-                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-6 border-t border-dark-300 flex justify-between items-center">
+                      <button
+                        onClick={handleClearCart}
+                        className="text-gray-400 hover:text-white transition-colors flex items-center"
+                      >
+                        <IconFiX className="mr-1" /> Limpar Carrinho
+                      </button>
+                      <div className="text-white">
+                        <span className="text-gray-400 mr-2">Subtotal:</span>
+                        <span className="font-bold text-lg">R$ {cartSubtotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Card de formulário de checkout
+                  <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-dark-300">
+                      <h2 className="text-xl font-bold text-white flex items-center">
+                        <span className="mr-2"><IconFiUser size={18} /></span>
+                        <span>Seus Dados</span>
+                      </h2>
+                    </div>
+                    
+                    <div className="p-6">
+                      <form className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label htmlFor="firstName" className="block text-gray-300 mb-1 text-sm">Nome *</label>
+                            <input
+                              type="text"
+                              id="firstName"
+                              name="firstName"
+                              value={customerData.firstName}
+                              onChange={handleCustomerDataChange}
+                              className="w-full bg-dark-300 border border-dark-400 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                              placeholder="Seu nome"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="lastName" className="block text-gray-300 mb-1 text-sm">Sobrenome *</label>
+                            <input
+                              type="text"
+                              id="lastName"
+                              name="lastName"
+                              value={customerData.lastName}
+                              onChange={handleCustomerDataChange}
+                              className="w-full bg-dark-300 border border-dark-400 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                              placeholder="Seu sobrenome"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="email" className="block text-gray-300 mb-1 text-sm">E-mail *</label>
+                          <div className="relative">
+                            <input
+                              type="email"
+                              id="email"
+                              name="email"
+                              value={customerData.email}
+                              onChange={handleCustomerDataChange}
+                              className="w-full bg-dark-300 border border-dark-400 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-primary"
+                              placeholder="seu@email.com"
+                            />
+                            <div style={{ position: "absolute", left: "12px", top: "10px" }}>
+                              <IconFiMail size={16} color="#6B7280" />
                             </div>
                           </div>
                         </div>
-                        {/* Confirmação de exclusão */}
-                        {showDeleteConfirm && showDeleteConfirm.variantId === item.variantId && showDeleteConfirm.productId === item.productId && (
-                          <div className="bg-dark-300/80 backdrop-blur-sm p-5 flex flex-col sm:flex-row items-center justify-between border-t border-dark-400">
-                            <div className="flex items-center mb-4 sm:mb-0">
-                              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center mr-3">
-                                <IconFiAlertTriangle size={16} className="text-red-500" />
-                              </div>
-                              <p className="text-white font-medium">Remover este item do carrinho?</p>
-                            </div>
-                            <div className="flex space-x-3">
-                              <button 
-                                onClick={() => handleRemoveItem(item.variantId, item.productId)}
-                                className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-300 flex items-center"
-                              >
-                                <IconFiCheck size={16} className="mr-1" /> Sim, remover
-                              </button>
-                              <button 
-                                onClick={() => setShowDeleteConfirm(null)}
-                                className="px-4 py-2 bg-dark-400 text-white rounded-full hover:bg-dark-500 transition-colors duration-300"
-                              >
-                                Cancelar
-                              </button>
+                        
+                        <div>
+                          <label htmlFor="cpf" className="block text-gray-300 mb-1 text-sm">CPF *</label>
+                          <input
+                            type="text"
+                            id="cpf"
+                            name="cpf"
+                            value={customerData.cpf}
+                            onChange={handleCustomerDataChange}
+                            className="w-full bg-dark-300 border border-dark-400 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                            placeholder="000.000.000-00"
+                            maxLength={14}
+                          />
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="phone" className="block text-gray-300 mb-1 text-sm">Telefone (opcional)</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              id="phone"
+                              name="phone"
+                              value={customerData.phone}
+                              onChange={handleCustomerDataChange}
+                              className="w-full bg-dark-300 border border-dark-400 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-primary"
+                              placeholder="(00) 00000-0000"
+                              maxLength={15}
+                            />
+                            <div style={{ position: "absolute", left: "12px", top: "10px" }}>
+                              <IconFiPhone size={16} color="#6B7280" />
                             </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="p-6 border-t border-dark-300 flex justify-between items-center">
-                    <button
-                      onClick={handleClearCart}
-                      className="text-gray-400 hover:text-white transition-colors flex items-center"
-                    >
-                      <IconFiX className="mr-1" /> Limpar Carrinho
-                    </button>
-                    <div className="text-white">
-                      <span className="text-gray-400 mr-2">Subtotal:</span>
-                      <span className="font-bold text-lg">R$ {cartSubtotal.toFixed(2)}</span>
+                        </div>
+                        
+                        <div className="pt-4">
+                          <h3 className="text-white font-medium mb-3">Método de Pagamento</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPaymentMethod('pix')}
+                              className={`flex items-center justify-center p-3 rounded-lg border transition-colors ${
+                                selectedPaymentMethod === 'pix'
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-dark-400 bg-dark-300 text-gray-300 hover:border-gray-400'
+                              }`}
+                            >
+                              <Image src="/icons8-pix-480.png" alt="PIX" width={24} height={24} className="mr-2" />
+                              <span>PIX</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPaymentMethod('card')}
+                              className={`flex items-center justify-center p-3 rounded-lg border transition-colors ${
+                                selectedPaymentMethod === 'card'
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-dark-400 bg-dark-300 text-gray-300 hover:border-gray-400'
+                              }`}
+                            >
+                              <Image src="/credit.png" alt="Cartão de Crédito" width={24} height={24} className="mr-2" />
+                              <span>Cartão</span>
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4">
+                          <button
+                            type="button"
+                            onClick={() => setShowCheckoutForm(false)}
+                            className="text-gray-400 hover:text-white transition-colors flex items-center"
+                          >
+                            <span className="mr-2"><IconFiArrowLeft size={16} /></span>
+                            <span>Voltar para o carrinho</span>
+                          </button>
+                        </div>
+                      </form>
                     </div>
                   </div>
-                </div>
-              ) : (
-                // Card de formulário de checkout
+                )}
+              </div>
+              {/* Resumo do pedido */}
+              <div className="lg:col-span-1">
                 <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
                   <div className="p-6 border-b border-dark-300">
                     <h2 className="text-xl font-bold text-white flex items-center">
-                      <span className="mr-2"><IconFiUser size={18} /></span>
-                      <span>Seus Dados</span>
+                      <span className="mr-2"><IconFiShoppingBag size={20} /></span> 
+                      Resumo do Pedido
                     </h2>
                   </div>
                   
                   <div className="p-6">
-                    <form className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="firstName" className="block text-gray-300 mb-1 text-sm">Nome *</label>
+                    {/* Cupom de desconto */}
+                    <div className="mb-6">
+                      <h3 className="text-white font-medium mb-3">Cupom de Desconto</h3>
+                      <div className="flex">
+                        <div className="relative flex-grow">
                           <input
                             type="text"
-                            id="firstName"
-                            name="firstName"
-                            value={customerData.firstName}
-                            onChange={handleCustomerDataChange}
-                            className="w-full bg-dark-300 border border-dark-400 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-                            placeholder="Seu nome"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="lastName" className="block text-gray-300 mb-1 text-sm">Sobrenome *</label>
-                          <input
-                            type="text"
-                            id="lastName"
-                            name="lastName"
-                            value={customerData.lastName}
-                            onChange={handleCustomerDataChange}
-                            className="w-full bg-dark-300 border border-dark-400 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-                            placeholder="Seu sobrenome"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="email" className="block text-gray-300 mb-1 text-sm">E-mail *</label>
-                        <div className="relative">
-                          <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={customerData.email}
-                            onChange={handleCustomerDataChange}
-                            className="w-full bg-dark-300 border border-dark-400 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-primary"
-                            placeholder="seu@email.com"
-                          />
-                          <div style={{ position: "absolute", left: "12px", top: "10px" }}>
-                            <IconFiMail size={16} color="#6B7280" />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="cpf" className="block text-gray-300 mb-1 text-sm">CPF *</label>
-                        <input
-                          type="text"
-                          id="cpf"
-                          name="cpf"
-                          value={customerData.cpf}
-                          onChange={handleCustomerDataChange}
-                          className="w-full bg-dark-300 border border-dark-400 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-                          placeholder="000.000.000-00"
-                          maxLength={14}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="phone" className="block text-gray-300 mb-1 text-sm">Telefone (opcional)</label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            id="phone"
-                            name="phone"
-                            value={customerData.phone}
-                            onChange={handleCustomerDataChange}
-                            className="w-full bg-dark-300 border border-dark-400 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-primary"
-                            placeholder="(00) 00000-0000"
-                            maxLength={15}
-                          />
-                          <div style={{ position: "absolute", left: "12px", top: "10px" }}>
-                            <IconFiPhone size={16} color="#6B7280" />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-4">
-                        <h3 className="text-white font-medium mb-3">Método de Pagamento</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPaymentMethod('pix')}
-                            className={`flex items-center justify-center p-3 rounded-lg border transition-colors ${
-                              selectedPaymentMethod === 'pix'
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-dark-400 bg-dark-300 text-gray-300 hover:border-gray-400'
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            placeholder="Digite seu cupom"
+                            className={`w-full bg-dark-300 border rounded-l-xl pl-10 pr-4 py-2.5 text-white focus:outline-none ${
+                              isCouponValid === true
+                                ? 'border-green-500' 
+                                : isCouponValid === false 
+                                  ? 'border-red-500' 
+                                  : 'border-dark-400'
                             }`}
-                          >
-                            <Image src="/icons8-pix-480.png" alt="PIX" width={24} height={24} className="mr-2" />
-                            <span>PIX</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPaymentMethod('card')}
-                            className={`flex items-center justify-center p-3 rounded-lg border transition-colors ${
-                              selectedPaymentMethod === 'card'
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-dark-400 bg-dark-300 text-gray-300 hover:border-gray-400'
-                            }`}
-                          >
-                            <Image src="/credit.png" alt="Cartão de Crédito" width={24} height={24} className="mr-2" />
-                            <span>Cartão</span>
-                          </button>
+                          />
+                          <div className="absolute left-3 top-3.5 text-gray-500"><IconFiTag size={16} /></div>
+                          {isCouponValid === true && (
+                            <div className="absolute right-3 top-3.5">
+                              <IconFiCheck className="text-green-500" />
+                            </div>
+                          )}
+                          {isCouponValid === false && (
+                            <div className="absolute right-3 top-3.5">
+                              <IconFiX className="text-red-500" />
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      
-                      <div className="pt-4">
                         <button
-                          type="button"
-                          onClick={() => setShowCheckoutForm(false)}
-                          className="text-gray-400 hover:text-white transition-colors flex items-center"
+                          onClick={applyCoupon}
+                          disabled={isApplyingCoupon || !couponCode.trim()}
+                          className={`px-4 rounded-r-xl font-medium transition-colors duration-300 ${
+                            isApplyingCoupon || !couponCode.trim()
+                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                              : 'bg-primary text-white hover:bg-primary-dark'
+                          }`}
                         >
-                          <span className="mr-2"><IconFiArrowLeft size={16} /></span>
-                          <span>Voltar para o carrinho</span>
+                          {isApplyingCoupon ? (
+                            <span className="flex items-center">
+                              <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></span>
+                            </span>
+                          ) : (
+                            'Aplicar'
+                          )}
                         </button>
                       </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* Resumo do pedido */}
-            <div className="lg:col-span-1">
-              <div className="bg-dark-200 border border-dark-300 rounded-2xl overflow-hidden">
-                <div className="p-6 border-b border-dark-300">
-                  <h2 className="text-xl font-bold text-white flex items-center">
-                    <span className="mr-2"><IconFiShoppingBag size={20} /></span> 
-                    Resumo do Pedido
-                  </h2>
-                </div>
-                
-                <div className="p-6">
-                  {/* Cupom de desconto */}
-                  <div className="mb-6">
-                    <h3 className="text-white font-medium mb-3">Cupom de Desconto</h3>
-                    <div className="flex">
-                      <div className="relative flex-grow">
-                        <input
-                          type="text"
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          placeholder="Digite seu cupom"
-                          className={`w-full bg-dark-300 border rounded-l-xl pl-10 pr-4 py-2.5 text-white focus:outline-none ${
-                            isCouponValid === true
-                              ? 'border-green-500' 
-                              : isCouponValid === false 
-                                ? 'border-red-500' 
-                                : 'border-dark-400'
-                          }`}
-                        />
-                        <div className="absolute left-3 top-3.5 text-gray-500"><IconFiTag size={16} /></div>
-                        {isCouponValid === true && (
-                          <div className="absolute right-3 top-3.5">
-                            <IconFiCheck className="text-green-500" />
-                          </div>
-                        )}
-                        {isCouponValid === false && (
-                          <div className="absolute right-3 top-3.5">
-                            <IconFiX className="text-red-500" />
-                          </div>
-                        )}
+                      {isCouponValid === true && (
+                        <p className="text-green-500 text-sm mt-2 flex items-center">
+                          <span className="mr-1"><IconFiCheck size={14} /></span> Cupom aplicado com sucesso!
+                        </p>
+                      )}
+                      {isCouponValid === false && (
+                        <p className="text-red-500 text-sm mt-2 flex items-center">
+                          <span className="mr-1"><IconFiX size={14} /></span> Cupom inválido ou expirado
+                        </p>
+                      )}
+                    </div>
+                    {/* Resumo de valores */}
+                    <div className="space-y-3 mb-6">
+                      <div className="flex justify-between text-gray-300">
+                        <span>Subtotal</span>
+                        <span>R$ {cartSubtotal.toFixed(2)}</span>
                       </div>
-                      <button
-                        onClick={applyCoupon}
-                        disabled={isApplyingCoupon || !couponCode.trim()}
-                        className={`px-4 rounded-r-xl font-medium transition-colors duration-300 ${
-                          isApplyingCoupon || !couponCode.trim()
-                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                            : 'bg-primary text-white hover:bg-primary-dark'
-                        }`}
-                      >
-                        {isApplyingCoupon ? (
+                      {couponDiscount > 0 && (
+                        <div className="flex justify-between text-green-500">
                           <span className="flex items-center">
-                            <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></span>
+                            <span className="mr-1"><IconFiTag size={14} /></span> Desconto
                           </span>
-                        ) : (
-                          'Aplicar'
-                        )}
-                      </button>
+                          <span>- R$ {couponDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-white pt-4 border-t border-dark-300">
+                        <span>Total</span>
+                        <span className="text-primary text-xl">R$ {cartTotal.toFixed(2)}</span>
+                      </div>
                     </div>
-                    {isCouponValid === true && (
-                      <p className="text-green-500 text-sm mt-2 flex items-center">
-                        <span className="mr-1"><IconFiCheck size={14} /></span> Cupom aplicado com sucesso!
-                      </p>
-                    )}
-                    {isCouponValid === false && (
-                      <p className="text-red-500 text-sm mt-2 flex items-center">
-                        <span className="mr-1"><IconFiX size={14} /></span> Cupom inválido ou expirado
-                      </p>
-                    )}
-                  </div>
-                  {/* Resumo de valores */}
-                  <div className="space-y-3 mb-6">
-                    <div className="flex justify-between text-gray-300">
-                      <span>Subtotal</span>
-                      <span>R$ {cartSubtotal.toFixed(2)}</span>
-                    </div>
-                    {couponDiscount > 0 && (
-                      <div className="flex justify-between text-green-500">
+                    {/* Botão de checkout */}
+                    <button
+                      onClick={handleCheckout}
+                      disabled={isLoading || isCartEmpty}
+                      className={`w-full py-3.5 px-6 rounded-xl font-medium text-white flex items-center justify-center transition-all duration-300 ${
+                        isLoading || isCartEmpty
+                          ? 'bg-gray-600 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary shadow-lg shadow-primary/20'
+                      }`}
+                    >
+                      {isLoading ? (
                         <span className="flex items-center">
-                          <span className="mr-1"><IconFiTag size={14} /></span> Desconto
+                          <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></span>
+                          Processando...
                         </span>
-                        <span>- R$ {couponDiscount.toFixed(2)}</span>
+                      ) : (
+                        <span className="flex items-center">
+                          <span className="mr-2">{showCheckoutForm ? <IconFiCreditCard size={18} /> : <IconFiArrowRight size={18} />}</span>
+                          <span>{showCheckoutForm ? 'Finalizar Compra' : 'Continuar'}</span>
+                        </span>
+                      )}
+                    </button>
+                    {/* Mensagens de segurança */}
+                    <div className="mt-6 space-y-3">
+                      <div className="flex items-center text-gray-400 text-sm">
+                        <span className="mr-2"><IconFiLock size={16} color="#10b981" /></span>
+                        <span>Pagamento 100% seguro</span>
+                      </div>
+                      <div className="flex items-center text-gray-400 text-sm">
+                        <span className="mr-2"><IconFiShield size={16} color="#10b981" /></span>
+                        <span>Seus dados estão protegidos</span>
+                      </div>
+                      <div className="flex items-center text-gray-400 text-sm">
+                        <span className="mr-2"><IconFiAlertCircle size={16} color="#10b981" /></span>
+                        <span>Suporte 24/7</span>
+                      </div>
+                    </div>
+                    {error && (
+                      <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                        <p className="text-red-400 text-sm flex items-start">
+                          <IconFiAlertTriangle className="mr-2 mt-0.5 flex-shrink-0" />
+                          {error}
+                        </p>
                       </div>
                     )}
-                    <div className="flex justify-between font-bold text-white pt-4 border-t border-dark-300">
-                      <span>Total</span>
-                      <span className="text-primary text-xl">R$ {cartTotal.toFixed(2)}</span>
-                    </div>
                   </div>
-                  {/* Botão de checkout */}
-                  <button
-                    onClick={handleCheckout}
-                    disabled={isLoading || isCartEmpty}
-                    className={`w-full py-3.5 px-6 rounded-xl font-medium text-white flex items-center justify-center transition-all duration-300 ${
-                      isLoading || isCartEmpty
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary shadow-lg shadow-primary/20'
-                    }`}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center">
-                        <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></span>
-                        Processando...
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <span className="mr-2">{showCheckoutForm ? <IconFiCreditCard size={18} /> : <IconFiArrowRight size={18} />}</span>
-                        <span>{showCheckoutForm ? 'Finalizar Compra' : 'Continuar'}</span>
-                      </span>
-                    )}
-                  </button>
-                  {/* Mensagens de segurança */}
-                  <div className="mt-6 space-y-3">
-                    <div className="flex items-center text-gray-400 text-sm">
-                      <span className="mr-2"><IconFiLock size={16} color="#10b981" /></span>
-                      <span>Pagamento 100% seguro</span>
-                    </div>
-                    <div className="flex items-center text-gray-400 text-sm">
-                      <span className="mr-2"><IconFiShield size={16} color="#10b981" /></span>
-                      <span>Seus dados estão protegidos</span>
-                    </div>
-                    <div className="flex items-center text-gray-400 text-sm">
-                      <span className="mr-2"><IconFiAlertCircle size={16} color="#10b981" /></span>
-                      <span>Suporte 24/7</span>
-                    </div>
-                  </div>
-                  {error && (
-                    <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-                      <p className="text-red-400 text-sm flex items-start">
-                        <IconFiAlertTriangle className="mr-2 mt-0.5 flex-shrink-0" />
-                        {error}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
+          )}
+        </div>
+        {/* Modal de pagamento PIX */}
+        {isPixModalOpen && pixPaymentData ? (
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4"
+            data-modal-container="true"
+            onClick={(e) => {
+              // Verificar se o clique foi no overlay (fundo escuro) e não no conteúdo do modal
+              // E se o pagamento não foi confirmado - não permitir fechar se o pagamento foi confirmado
+              if (e.target === e.currentTarget && !pixPaymentData.isPaid) {
+                // Fechar o modal apenas se o clique foi no overlay
+                setIsPixModalOpen(false);
+                // Quando o modal é fechado intencionalmente pelo usuário, limpar dados do localStorage
+                localStorage.removeItem('pixPaymentData');
+                localStorage.removeItem('createdOrderId');
+                
+                // Garantir que a página possa receber interações novamente
+                document.body.style.pointerEvents = 'auto';
+                document.body.style.overflow = 'auto';
+                
+                // Forçar a remoção de qualquer overlay invisível bloqueante
+                setTimeout(() => {
+                  const overlays = document.querySelectorAll('.fixed.inset-0');
+                  overlays.forEach(overlay => {
+                    const el = overlay as HTMLElement;
+                    if (!el.contains(document.activeElement)) {
+                      el.style.pointerEvents = 'none';
+                    }
+                  });
+                }, 100);
+              }
+            }}
+          >
+            <PixPaymentModal 
+              isOpen={isPixModalOpen}
+              onClose={() => {
+                // Não permitir fechar o modal se o pagamento foi confirmado
+                if (pixPaymentData.isPaid) return;
+                
+                setIsPixModalOpen(false);
+                // Quando o modal é fechado intencionalmente pelo usuário, limpar dados do localStorage
+                localStorage.removeItem('pixPaymentData');
+                localStorage.removeItem('createdOrderId');
+                
+                // Garantir que a página possa receber interações novamente
+                document.body.style.pointerEvents = 'auto';
+                document.body.style.overflow = 'auto';
+              }}
+              paymentData={pixPaymentData}
+              onPaymentConfirmed={() => {
+                if (createdOrderId) {
+                  checkPaymentStatus(createdOrderId);
+                  // Limpar os dados do localStorage quando o pagamento é confirmado
+                  localStorage.removeItem('pixPaymentData');
+                  localStorage.removeItem('createdOrderId');
+                }
+              }}
+              clearCart={clearCart}
+            />
+          </div>
+        ) : null}
+        {/* Modal de intenção de saída */}
+        {showExitIntent && (
+          <div className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4"
+               data-modal-container="true">
+            {/* Conteúdo do modal aqui */}
           </div>
         )}
       </div>
-      {/* Modal de pagamento PIX */}
-      {isPixModalOpen && pixPaymentData ? (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4"
-          data-modal-container="true"
-          onClick={(e) => {
-            // Verificar se o clique foi no overlay (fundo escuro) e não no conteúdo do modal
-            // E se o pagamento não foi confirmado - não permitir fechar se o pagamento foi confirmado
-            if (e.target === e.currentTarget && !pixPaymentData.isPaid) {
-              // Fechar o modal apenas se o clique foi no overlay
-              setIsPixModalOpen(false);
-              // Quando o modal é fechado intencionalmente pelo usuário, limpar dados do localStorage
-              localStorage.removeItem('pixPaymentData');
-              localStorage.removeItem('createdOrderId');
-              
-              // Garantir que a página possa receber interações novamente
-              document.body.style.pointerEvents = 'auto';
-              document.body.style.overflow = 'auto';
-              
-              // Forçar a remoção de qualquer overlay invisível bloqueante
-              setTimeout(() => {
-                const overlays = document.querySelectorAll('.fixed.inset-0');
-                overlays.forEach(overlay => {
-                  const el = overlay as HTMLElement;
-                  if (!el.contains(document.activeElement)) {
-                    el.style.pointerEvents = 'none';
-                  }
-                });
-              }, 100);
-            }
-          }}
-        >
-          <PixPaymentModal 
-            isOpen={isPixModalOpen}
-            onClose={() => {
-              // Não permitir fechar o modal se o pagamento foi confirmado
-              if (pixPaymentData.isPaid) return;
-              
-              setIsPixModalOpen(false);
-              // Quando o modal é fechado intencionalmente pelo usuário, limpar dados do localStorage
-              localStorage.removeItem('pixPaymentData');
-              localStorage.removeItem('createdOrderId');
-              
-              // Garantir que a página possa receber interações novamente
-              document.body.style.pointerEvents = 'auto';
-              document.body.style.overflow = 'auto';
-            }}
-            paymentData={pixPaymentData}
-            onPaymentConfirmed={() => {
-              if (createdOrderId) {
-                checkPaymentStatus(createdOrderId);
-                // Limpar os dados do localStorage quando o pagamento é confirmado
-                localStorage.removeItem('pixPaymentData');
-                localStorage.removeItem('createdOrderId');
-              }
-            }}
-            clearCart={clearCart}
-          />
-        </div>
-      ) : null}
-      {/* Modal de intenção de saída */}
-      {showExitIntent && (
-        <div className="fixed inset-0 bg-dark-900/70 flex items-center justify-center z-50 p-4"
-             data-modal-container="true">
-          {/* Conteúdo do modal aqui */}
-        </div>
-      )}
-    </div>
+    </>
   );
 }

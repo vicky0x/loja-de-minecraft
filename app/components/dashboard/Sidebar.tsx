@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiHome, FiUser, FiShoppingCart, FiDownload, FiHelpCircle, FiLogOut, FiMessageSquare } from 'react-icons/fi';
+import { FiHome, FiUser, FiShoppingCart, FiDownload, FiHelpCircle, FiLogOut, FiMessageSquare, FiPackage } from 'react-icons/fi';
 import { useAuth } from '@/app/contexts/AuthContext';
 
 // Definir os itens do menu fora do componente para evitar recriação
@@ -12,7 +12,7 @@ const menuItems = [
   { name: 'Anúncios', path: '/dashboard/announcements', icon: <FiMessageSquare size={20} /> },
   { name: 'Meu Perfil', path: '/dashboard/profile', icon: <FiUser size={20} /> },
   { name: 'Meus Pedidos', path: '/dashboard/orders', icon: <FiShoppingCart size={20} /> },
-  { name: 'Meus Produtos', path: '/dashboard/products', icon: <FiDownload size={20} /> },
+  { name: 'Meus Produtos', path: '/dashboard/products', icon: <FiPackage size={20} /> },
   { name: 'Suporte', path: '/dashboard/support', icon: <FiHelpCircle size={20} /> },
 ];
 
@@ -106,11 +106,12 @@ const Sidebar = () => {
       
       {/* Sidebar principal */}
       <aside
-        className={`fixed left-0 top-16 bottom-0 z-10 transition-all duration-300 shadow-lg 
-          bg-dark-200/95 border-r border-dark-300
+        className={`fixed left-0 bottom-0 z-10 transition-all duration-300 shadow-lg 
+          bg-dark-200 border-r border-dark-300
           overflow-y-auto
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           ${isCollapsed ? 'w-16' : 'w-56'} md:translate-x-0`}
+        style={{ top: "64px" }}
       >
         <div className="flex flex-col h-full">
           {/* Botão de colapso */}

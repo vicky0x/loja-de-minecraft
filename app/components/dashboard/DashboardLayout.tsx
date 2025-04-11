@@ -49,12 +49,12 @@ const DashboardLayoutWrapper: React.FC<DashboardLayoutWrapperProps> = ({ childre
   // Se o componente não estiver montado, exibir um layout simplificado
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-dark-100">
+      <div className="min-h-screen bg-dark-100 overflow-hidden">
         <DashboardHeaderFallback />
-        <div className="flex pt-16">
+        <div className="flex bg-dark-100" style={{ marginTop: "0" }}>
           <DashboardSidebarFallback />
-          <div className="w-full px-4 sm:px-6 md:pl-24 lg:pl-[280px]">
-            <main className="p-2 sm:p-4 md:p-6">
+          <div className="w-full px-4 sm:px-6 md:pl-24 lg:pl-[280px] bg-dark-100" style={{ paddingTop: "60px" }}>
+            <main className="pt-0 pb-4 px-2 sm:px-4 md:px-6">
               {/* Placeholder de carregamento para o conteúdo */}
               <div className="animate-pulse bg-dark-200 h-40 rounded-lg"></div>
             </main>
@@ -65,18 +65,18 @@ const DashboardLayoutWrapper: React.FC<DashboardLayoutWrapperProps> = ({ childre
   }
 
   return (
-    <div className="min-h-screen bg-dark-100">
+    <div className="min-h-screen bg-dark-100 overflow-hidden">
       {/* Cabeçalho unificado para dispositivos móveis */}
       <DashboardHeader />
       
       {/* Conteúdo principal com sidebar */}
-      <div className="flex pt-16 lg:pt-0">
+      <div className="flex bg-dark-100" style={{ marginTop: "0" }}>
         {/* Sidebar */}
         <DashboardSidebar />
         
         {/* Área de conteúdo principal */}
-        <div className="w-full transition-all duration-300 px-4 sm:px-6 md:pl-24 lg:pl-[280px]">
-          <main className="p-2 sm:p-4 md:p-6">
+        <div className="w-full transition-all duration-300 px-4 sm:px-6 md:pl-24 lg:pl-[280px] bg-dark-100" style={{ paddingTop: "60px" }}>
+          <main className="pt-0 pb-4 px-2 sm:px-4 md:px-6">
             {children}
           </main>
         </div>

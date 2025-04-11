@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FiArrowLeft, FiDownload, FiCopy, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiDownload, FiCopy, FiCheck, FiAlertCircle, FiShare2, FiLock } from 'react-icons/fi';
 import { formatProductName } from '@/app/utils/formatters';
+import { toast } from 'react-hot-toast';
+import DashboardLayout from '@/app/layouts/DashboardLayout';
 
 interface ProductDetail {
   _id: string;
@@ -331,18 +333,26 @@ export default function ProductDetailPage() {
           </div>
           
           <div className="space-y-6">
-            {/* Vídeo Tutorial */}
-            <div className="bg-dark-300 rounded-lg p-4">
-              <h3 className="text-lg font-medium text-primary mb-3">Vídeo Tutorial: Como Acessar a Conta</h3>
-              <div className="aspect-video relative bg-black/50 rounded-md flex items-center justify-center">
-                <iframe 
-                  className="w-full h-full rounded-md"
-                  src="https://www.youtube.com/embed/A-sZWDlYBF8" 
-                  title="Tutorial de acesso à conta Minecraft/Microsoft"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+            {/* Vídeo Tutorial - Substituído por card informativo */}
+            <div className="bg-dark-300 rounded-lg p-6">
+              <h3 className="text-xl font-bold text-primary mb-3">Vídeo Tutorial: Como Acessar a Conta</h3>
+              
+              <div className="bg-dark-400/50 p-5 rounded-lg text-center">
+                <p className="text-white mb-4">
+                  Assista ao vídeo tutorial completo no YouTube para aprender como acessar sua conta corretamente.
+                </p>
+                
+                <a 
+                  href="https://www.youtube.com/watch?v=A-sZWDlYBF8" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-md inline-flex items-center gap-2 font-medium"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                  </svg>
+                  <span>Assistir no YouTube</span>
+                </a>
               </div>
             </div>
             

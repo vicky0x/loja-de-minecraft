@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { FiLogOut, FiMenu, FiUser, FiChevronDown, FiHome, FiShoppingBag, FiDownload, FiPackage, FiSettings, FiHelpCircle } from 'react-icons/fi';
+import { FiLogOut, FiMenu, FiUser, FiChevronDown, FiHome, FiShoppingBag, FiDownload, FiPackage, FiHelpCircle } from 'react-icons/fi';
 import { useAuth } from '@/app/contexts/AuthContext';
 
 const Header = () => {
@@ -27,7 +27,6 @@ const Header = () => {
       '/admin/coupons': 'Cupons',
       '/admin/coupons/new': 'Novo Cupom',
       '/admin/categories': 'Categorias',
-      '/admin/config': 'Configurações',
     };
     
     // Verifica rotas específicas primeiro
@@ -226,14 +225,6 @@ const Header = () => {
                   <FiPackage className="mr-2" size={16} />
                   Produtos
                 </Link>
-                <Link
-                  href="/admin/config"
-                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-dark-500 hover:text-white"
-                  onClick={() => setShowUserMenu(false)}
-                >
-                  <FiSettings className="mr-2" size={16} />
-                  Configurações
-                </Link>
 
                 {/* Links de navegação para outras áreas */}
                 <div className="border-t border-dark-500 my-1"></div>
@@ -251,14 +242,17 @@ const Header = () => {
                   onClick={() => setShowUserMenu(false)}
                 >
                   <FiHome className="mr-2" size={16} />
-                  Voltar à Loja
+                  Voltar ao Site
                 </Link>
 
                 {/* Logout */}
                 <div className="border-t border-dark-500 my-1"></div>
                 <button
-                  onClick={handleLogout}
-                  className="flex items-center w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-dark-500"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center px-4 py-2 text-sm text-red-400 hover:bg-dark-500 hover:text-red-300"
                 >
                   <FiLogOut className="mr-2" size={16} />
                   Sair

@@ -10,23 +10,23 @@
   --primary-dark: #e05400;
   --primary-glow: rgba(255, 96, 0, 0.35);
   
-  /* Nova paleta escura mais moderna */
-  --background-dark-100: #0f0f13;
-  --background-dark-200: #14141b;
-  --background-dark-300: #1a1a24;
-  --background-dark-400: #21212e;
-  --background-dark-500: #2a2a38;
+  /* Paleta escura padronizada */
+  --background-dark-100: #121212;
+  --background-dark-200: #171717;
+  --background-dark-300: #1e1e1e;
+  --background-dark-400: #242424;
+  --background-dark-500: #2a2a2a;
   
   /* Acentos e destaques */
   --accent-100: #ffe1d0;
   --accent-200: #ffc3a0;
   --accent-300: #ffb088;
-  --accent-purple: #8a52ff;
+  --accent-orange: #ff6000;
   --accent-blue: #3d5afe;
   
   --text-color: #ffffff;
   --text-color-secondary: #e0e0e0;
-  --text-color-tertiary: #a0a0b0;
+  --text-color-tertiary: #a0a0a0;
   
   --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-default: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -51,46 +51,75 @@ body {
   overscroll-behavior-y: contain;
 }
 
-/* Completely remove all outlines, borders, and focus rings */
+/* Corrigir problemas de input em dispositivos iOS */
+input, 
+textarea, 
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0.5rem;
+  background-color: var(--background-dark-200);
+  color: white;
+}
+
+/* Permitir seleção de texto em inputs */
+input, 
+textarea, 
+select, 
+option {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+/* Remover estilos automáticos de iOS */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  outline: none;
+  background-color: var(--background-dark-200);
+  color: white;
+}
+
+/* Removendo comportamentos de foco que atrapalham a usabilidade no mobile */
 * {
-  outline: none !important;
-  box-shadow: none !important;
+  outline: none;
 }
 
-*:focus, *:active, *:hover {
-  outline: none !important;
-  box-shadow: none !important;
+/* Manter foco apenas no estado focus-visible para acessibilidade via teclado */
+*:focus-visible {
+  outline: 2px solid var(--primary-color) !important;
+  outline-offset: 2px !important;
+}
+
+/* Remover outline e highlight apenas para elementos clicáveis, mantendo para inputs */
+a, button, [role="button"] {
   -webkit-tap-highlight-color: transparent !important;
-  -webkit-touch-callout: none !important;
-  -webkit-user-select: none !important;
-  user-select: none !important;
-  border-color: transparent !important;
+  outline: none !important;
 }
 
-/* Specifically target images and icons */
+/* Específico para elementos não-input */
 img, svg, .icon, [class*="icon"], [class*="Icon"] {
   -webkit-tap-highlight-color: transparent !important;
   outline: none !important;
   border: none !important;
 }
 
+/* Para imagens dentro de links ou botões */
 a img, button img, a svg, button svg {
   outline: none !important;
   border: none !important;
 }
 
-a, button, [role="button"], input, select, textarea, [tabindex] {
-  outline: none !important;
-  -webkit-tap-highlight-color: transparent !important;
-}
-
-/* For keyboard accessibility, we'll keep a subtle indicator that doesn't use outlines */
-*:focus-visible {
-  /* This will be invisible but still technically present for accessibility */
-  outline: 1px solid transparent !important;
-}
-
-/* Removendo referências a font-bold temporariamente */
 @layer base {
   h1 {
     @apply text-3xl;
@@ -105,11 +134,11 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
   }
   
   /* Melhorar a experiência de foco para acessibilidade */
-  a:focus, button:focus, input:focus, select:focus, textarea:focus {
+  a:focus-visible, button:focus-visible, select:focus-visible, textarea:focus-visible {
     @apply outline-none ring-2 ring-offset-1;
     --tw-ring-opacity: 0.6;
     --tw-ring-color: rgba(255, 96, 0, var(--tw-ring-opacity));
-    --tw-ring-offset-color: #1a1a24;
+    --tw-ring-offset-color: #1e1e1e;
   }
   
   /* Melhorar aparência de seleção de texto */
@@ -192,6 +221,9 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
     background-color: var(--background-dark-200);
     color: white;
     border: 1.5px solid var(--background-dark-400);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
   }
   
   .input:focus {
@@ -570,12 +602,12 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-image: linear-gradient(to right, var(--primary-color), var(--accent-purple));
+  background-image: linear-gradient(to right, var(--primary-color), var(--accent-orange));
 }
 
 /* Componentes de vidro (glassmorphism) */
 .glass-card {
-  background: rgba(20, 20, 27, 0.6);
+  background: rgba(23, 23, 23, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 96, 0, 0.1);
@@ -803,7 +835,7 @@ a, button, [role="button"], input, select, textarea, [tabindex] {
 }
 
 .glass-card {
-  background: rgba(30, 30, 35, 0.7);
+  background: rgba(30, 30, 30, 0.7);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.75rem;

@@ -6,6 +6,10 @@ import { ptBR } from 'date-fns/locale';
 import ReactMarkdown from 'react-markdown';
 import { FiClock, FiEdit2, FiTrash2, FiX, FiMaximize, FiUser, FiCheck, FiMessageSquare } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
+import ImageZoom from '../ui/ImageZoom';
+import { formatDistanceToNow } from 'date-fns';
+import { motion } from 'framer-motion';
+import ConfirmationModal from '../ui/ConfirmationModal';
 
 interface AnnouncementCardProps {
   announcement: {
@@ -23,6 +27,22 @@ interface AnnouncementCardProps {
   onDelete?: (id: string) => void;
   isAdmin?: boolean;
 }
+
+// Função auxiliar para extrair o ID do vídeo do YouTube
+const extractYouTubeId = (url: string): string => {
+  // Se já for um ID simples (sem URL)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+  
+  // Se for uma URL de incorporação, extrair o ID
+  if (url.includes('youtube.com/embed/')) {
+    return url.split('youtube.com/embed/')[1].split('?')[0];
+  }
+  
+  // Se for uma URL completa, extrair o ID
+  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+  const match = url.match(regex);
+  return match ? match[1] : url;
+};
 
 const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: AnnouncementCardProps) => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
@@ -203,13 +223,20 @@ const AnnouncementCard = ({ announcement, onEdit, onDelete, isAdmin = false }: A
           )}
           
           {announcement.videoUrl && !announcement.imageUrl && (
-            <div className="mt-4 aspect-video overflow-hidden rounded-lg shadow-lg border border-dark-400" style={{ maxWidth: '80%' }}>
-              <iframe
-                src={announcement.videoUrl}
-                className="w-full h-full rounded-lg"
-                title={announcement.title}
-                allowFullScreen
-              ></iframe>
+            <div className="mt-4 overflow-hidden rounded-lg shadow-lg border border-dark-400" style={{ maxWidth: '80%' }}>
+              <div className="aspect-video">
+                <iframe
+                  src={announcement.videoUrl.includes('youtube.com/embed/') 
+                    ? announcement.videoUrl 
+                    : `https://www.youtube.com/embed/${extractYouTubeId(announcement.videoUrl)}?rel=0&modestbranding=1`}
+                  className="w-full h-full rounded-lg"
+                  title={announcement.title}
+                  allowFullScreen
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  frameBorder="0"
+                ></iframe>
+              </div>
             </div>
           )}
           

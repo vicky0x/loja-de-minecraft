@@ -15,9 +15,23 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Minecraft Original Barato - Contas Full Acesso | Entrega Imediata | Fantasy Store",
-  description: "Compre Minecraft Original barato e confiável com Full Acesso. Entrega imediata após pagamento e suporte 24/7. Melhor loja de contas originais de Minecraft com garantia de até 365 dias.",
-  keywords: "loja de minecraft, contas de minecraft, minecraft premium, minecraft original, minecraft java, minecraft bedrock, comprar minecraft, minecraft barato, minecraft full acesso, minecraft original barato, garantia minecraft, loja confiável de minecraft, comprar conta de minecraft, entrega imediata minecraft",
-  authors: [{ name: "Fantasy Store" }],
+  description: "Compre Minecraft Java e Bedrock com menor preço do Brasil. Entrega automática, pagamento seguro e suporte 24/7. Contas originais com garantia e acesso completo.",
+  keywords: "minecraft, minecraft original, minecraft barato, minecraft java edition, minecraft bedrock, comprar minecraft, minecraft account, minecraft full access, minecraft original barato",
+  robots: "index, follow",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+  applicationName: "Fantasy Store",
+  publisher: "Fantasy Store",
+  authors: [{ name: "Fantasy Store Team" }],
+  creator: "Fantasy Store Team",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#121212" },
+    { media: "(prefers-color-scheme: light)", color: "#6C63FF" },
+  ],
+  appleWebApp: {
+    capable: true,
+    title: "Fantasy Store",
+    statusBarStyle: "black-translucent",
+  },
   generator: "Next.js",
   openGraph: {
     title: "Minecraft Original Barato - Contas Full Acesso | Fantasy Store",
@@ -31,10 +45,6 @@ export const metadata: Metadata = {
     title: "Minecraft Original Barato - Contas Full Acesso | Fantasy Store",
     description: "Compre Minecraft Original barato e confiável com Full Acesso. Entrega imediata após pagamento e suporte 24/7.",
   },
-  robots: {
-      index: true,
-      follow: true,
-    },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },
@@ -228,6 +238,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/favicon/favicon-180x180.png" />
         <meta name="theme-color" content="#6C63FF" />
         
+        {/* Meta tag para desativar CSP */}
+        <meta httpEquiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline'; font-src * data:;" />
+        
         {/* JSON-LD Scripts para SEO */}
         <script
           type="application/ld+json"
@@ -253,6 +266,15 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(reviewsJsonLd) }}
         />
+
+        {/* JivoChat */}
+        <script src="//code.jivosite.com/widget/OnhTfOXQRg" async></script>
+
+        {/* Meta tags específicas para iOS que não podem ser configuradas através da API de metadados */}
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>
       <body className={inter.className}>
           <AuthProvider>
