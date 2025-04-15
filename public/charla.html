@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teste Charla</title>
+</head>
+<body>
+  <h1>Teste do Widget Charla</h1>
+  <p>Esta página é para testar o widget do Charla.</p>
+
+  <script type="text/javascript" charset="utf-8"> 
+    window.addEventListener('load', () => { 
+      const widgetElement = document.createElement('charla-widget'); 
+      widgetElement.setAttribute("p", "fa696af4-1622-4275-8c59-6fa5175705cd"); 
+      document.body.appendChild(widgetElement); 
+      const widgetCode = document.createElement('script'); 
+      widgetCode.src = 'https://app.getcharla.com/widget/widget.js'; 
+      document.body.appendChild(widgetCode); 
+    }) 
+  </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# robots.txt para minecraftloja.com.br
+# Atualizado em 2023
+
+User-agent: *
+Allow: /
+Allow: /products/
+Allow: /product/
+Allow: /products/category/
+Allow: /auth/login
+Allow: /auth/register
+
+# Desabilitar acesso a áreas administrativas e sensíveis
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /cart/checkout
+Disallow: /auth/reset-password/
+
+# Não rastrear páginas duplicadas ou de utilidade
+Disallow: /*?sort=
+Disallow: /*?filter=
+Disallow: /*?page=
+Disallow: /search?q=
+
+# Velocidade de rastreamento recomendada
+Crawl-delay: 1
+
+# Sitemap
+Sitemap: https://minecraftloja.com.br/sitemap.xml 

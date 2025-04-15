@@ -1,0 +1,1843 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #ff6000;
+  --primary-light: #ff8a42;
+  --primary-dark: #e05400;
+  --primary-glow: rgba(255, 96, 0, 0.35);
+  
+  /* Paleta escura padronizada */
+  --background-dark-100: #121212;
+  --background-dark-200: #171717;
+  --background-dark-300: #1e1e1e;
+  --background-dark-400: #242424;
+  --background-dark-500: #2a2a2a;
+  
+  /* Acentos e destaques */
+  --accent-100: #ffe1d0;
+  --accent-200: #ffc3a0;
+  --accent-300: #ffb088;
+  --accent-orange: #ff6000;
+  --accent-blue: #3d5afe;
+  
+  --text-color: #ffffff;
+  --text-color-secondary: #e0e0e0;
+  --text-color-tertiary: #a0a0a0;
+  
+  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-default: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 6px 15px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
+  --shadow-primary: 0 5px 20px var(--primary-glow);
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background-dark-100);
+  color: var(--text-color);
+  scroll-behavior: smooth;
+  transition: var(--transition-default);
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  scroll-padding-block: 1rem;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+}
+
+/* Corrigir problemas de input em dispositivos iOS */
+input, 
+textarea, 
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0.5rem;
+  background-color: var(--background-dark-300);
+  border: 1px solid var(--background-dark-400);
+  color: white;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Permitir seleção de texto em inputs */
+input, 
+textarea, 
+select, 
+option {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+/* Remover estilos automáticos de iOS */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  outline: none;
+  background-color: var(--background-dark-300);
+  border: 1px solid var(--background-dark-400);
+  color: white;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Estilo para inputs quando estiverem em foco */
+input:focus,
+textarea:focus,
+select:focus {
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  border-color: var(--primary-color) !important;
+  background-color: var(--background-dark-400);
+}
+
+/* Removendo comportamentos de foco que atrapalham a usabilidade no mobile */
+* {
+  outline: none;
+}
+
+/* Manter foco apenas no estado focus-visible para acessibilidade via teclado */
+*:focus-visible {
+  outline: 2px solid var(--primary-color) !important;
+  outline-offset: 2px !important;
+}
+
+/* Remover outline e highlight apenas para elementos clicáveis, mantendo para inputs */
+a, button, [role="button"] {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+}
+
+/* Específico para elementos não-input */
+img, svg, .icon, [class*="icon"], [class*="Icon"] {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+  border: none !important;
+}
+
+/* Para imagens dentro de links ou botões */
+a img, button img, a svg, button svg {
+  outline: none !important;
+  border: none !important;
+}
+
+@layer base {
+  h1 {
+    @apply text-3xl;
+  }
+  
+  h2 {
+    @apply text-2xl;
+  }
+  
+  h3 {
+    @apply text-xl;
+  }
+  
+  /* Melhorar a experiência de foco para acessibilidade */
+  a:focus-visible, button:focus-visible, select:focus-visible, textarea:focus-visible {
+    @apply outline-none ring-2 ring-offset-1;
+    --tw-ring-opacity: 0.6;
+    --tw-ring-color: rgba(255, 96, 0, var(--tw-ring-opacity));
+    --tw-ring-offset-color: #1e1e1e;
+  }
+  
+  /* Melhorar aparência de seleção de texto */
+  ::selection {
+    background-color: rgba(255, 96, 0, 0.3);
+    color: white;
+  }
+}
+
+@layer components {
+  /* Botões modernos com efeitos avançados */
+  .btn {
+    @apply px-4 py-2 rounded-2xl font-medium relative overflow-hidden;
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  .btn:hover::before {
+    transform: translateX(100%);
+  }
+  
+  .btn:hover {
+    transform: translateY(-3px);
+  }
+  
+  .btn:active {
+    transform: translateY(1px);
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    box-shadow: 0 5px 15px rgba(255, 96, 0, 0.2);
+  }
+  
+  .btn-primary:hover {
+    box-shadow: 0 5px 20px rgba(255, 96, 0, 0.4);
+  }
+  
+  .btn-outline {
+    background: transparent;
+    backdrop-filter: blur(4px);
+    border: 1.5px solid var(--primary-color);
+    color: var(--primary-color);
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  .btn-outline:hover {
+    background: rgba(255, 96, 0, 0.1);
+    border-color: var(--primary-light);
+    color: var(--primary-light);
+    box-shadow: 0 5px 15px rgba(255, 96, 0, 0.15);
+  }
+  
+  .btn-dark {
+    background: linear-gradient(135deg, var(--background-dark-300), var(--background-dark-400));
+    color: white;
+    border: 1px solid var(--background-dark-500);
+  }
+  
+  .btn-dark:hover {
+    background: linear-gradient(135deg, var(--background-dark-400), var(--background-dark-500));
+    border-color: var(--primary-color);
+  }
+  
+  /* Campos de entrada refinados */
+  .input {
+    @apply w-full px-4 py-3 rounded-xl transition-all duration-300;
+    background-color: var(--background-dark-200);
+    color: white;
+    border: 1.5px solid var(--background-dark-400);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  
+  .input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(255, 96, 0, 0.2);
+    background-color: var(--background-dark-300);
+  }
+  
+  /* Animação de brilho para botões */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+  }
+  
+  /* Cards com visual premium */
+  .card {
+    background-color: var(--background-dark-200);
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-default);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Card com efeito de hover */
+  .card-hover {
+    background-color: var(--background-dark-200);
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-default);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+  }
+  
+  .card-hover::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent, rgba(255, 96, 0, 0.03), transparent);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    transition: transform 0.6s ease-out;
+  }
+  
+  .card-hover:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    border-color: rgba(255, 96, 0, 0.1);
+  }
+  
+  .card-hover:hover::before {
+    transform: scaleX(1);
+  }
+  
+  /* Títulos com sublinhado estiloso */
+  .title-underline {
+    position: relative;
+    padding-bottom: 0.75rem;
+  }
+  
+  .title-underline::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 4rem;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+    border-radius: 9999px;
+    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  .title-underline:hover::after {
+    width: 5rem;
+  }
+  
+  .title-underline-center::after {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  /* Estilos para acordeão com animações suaves */
+  details {
+    border-radius: 16px;
+    background-color: var(--background-dark-200);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  details[open] {
+    box-shadow: var(--shadow-md);
+    border-color: rgba(255, 96, 0, 0.1);
+  }
+  
+  details summary {
+    cursor: pointer;
+    padding: 1.25rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  details summary::after {
+    content: '+';
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  details[open] summary::after {
+    transform: rotate(45deg);
+  }
+  
+  details summary:hover {
+    background-color: var(--background-dark-300);
+  }
+  
+  details summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  details .content {
+    padding: 0 1.25rem 1.25rem;
+    color: var(--text-color-secondary);
+    animation: fadeDown 0.5s ease forwards;
+    transform-origin: top center;
+  }
+  
+  @keyframes fadeDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* Estilizações para o scroll */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-dark-200);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-light);
+}
+
+/* Classes de peso de fonte */
+.font-normal {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* Classes de tamanho responsivas */
+.text-mobile-4xl {
+  font-size: 2.25rem;
+}
+
+.text-mobile-3xl {
+  font-size: 1.875rem;
+}
+
+.text-mobile-2xl {
+  font-size: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .text-mobile-4xl {
+    font-size: 2.5rem;
+  }
+  
+  .text-mobile-3xl {
+    font-size: 2.25rem;
+  }
+  
+  .text-mobile-2xl {
+    font-size: 1.75rem;
+  }
+}
+
+/* Adicionar estilos para o conteúdo formatado de produtos */
+.product-description h1 {
+  font-size: 1.8rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.product-description h2 {
+  font-size: 1.5rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.875rem;
+}
+
+.product-description h3 {
+  font-size: 1.25rem;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.product-description p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+.product-description ul, 
+.product-description ol {
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.product-description li {
+  margin-bottom: 0.5rem;
+}
+
+.product-description blockquote {
+  border-left: 3px solid var(--primary-color);
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
+  background-color: rgba(30, 30, 45, 0.3);
+  font-style: italic;
+}
+
+.product-description a {
+  color: var(--primary-light);
+  text-decoration: none;
+  transition: var(--transition-default);
+}
+
+.product-description a:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+/* Adicionar estilos para preservar quebras de linha */
+.product-description {
+  white-space: pre-wrap;
+}
+
+.product-description br {
+  display: block;
+  content: "";
+  margin-top: 0.15rem;
+}
+
+/* Espaçamento entre parágrafos */
+.product-description p + p {
+  margin-top: 0.5rem;
+}
+
+/* Efeitos de hover aprimorados */
+.hover-lift {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-lg);
+}
+
+.hover-grow {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hover-grow:hover {
+  transform: scale(1.05);
+}
+
+/* Animação de loading */
+.loading-skeleton {
+  background: linear-gradient(90deg, var(--background-dark-200) 25%, var(--background-dark-300) 50%, var(--background-dark-200) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Overlay de imagem com hover */
+.image-overlay {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.image-overlay:hover {
+  transform: scale(1.03);
+}
+
+.image-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 96, 0, 0), rgba(255, 96, 0, 0));
+  opacity: 0;
+  transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.image-overlay:hover::after {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(255, 96, 0, 0.2), rgba(138, 82, 255, 0.2));
+}
+
+.image-overlay .overlay-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 10;
+}
+
+.image-overlay:hover .overlay-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Efeito de neon para texto */
+.neon-text {
+  text-shadow: 0 0 5px var(--primary-color), 0 0 15px var(--primary-color);
+}
+
+/* Estilos para textos gradientes */
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(to right, var(--primary-color), var(--accent-orange));
+}
+
+/* Componentes de vidro (glassmorphism) */
+.glass-card {
+  background: rgba(23, 23, 23, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 96, 0, 0.1);
+  border-radius: 16px;
+  padding: 1.75rem;
+  transition: var(--transition-default);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 96, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 15px rgba(255, 96, 0, 0.15);
+  transform: translateY(-5px);
+}
+
+/* Divisor elegante */
+.divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(to right, transparent, var(--primary-color), transparent);
+  margin: 2rem 0;
+  opacity: 0.4;
+}
+
+/* Estilo para badges */
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.85rem;
+  border-radius: 30px;
+  background: var(--background-dark-300);
+  color: var(--text-color-secondary);
+  transition: var(--transition-default);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.badge-primary {
+  background: linear-gradient(135deg, rgba(255, 96, 0, 0.1), rgba(255, 96, 0, 0.2));
+  color: var(--primary-light);
+  box-shadow: inset 0 0 0 1px rgba(255, 96, 0, 0.3);
+}
+
+.badge-primary:hover {
+  background: linear-gradient(135deg, rgba(255, 96, 0, 0.15), rgba(255, 96, 0, 0.25));
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 0 1px rgba(255, 96, 0, 0.4), 0 3px 10px rgba(255, 96, 0, 0.1);
+}
+
+/* Novas animações para a página inicial */
+@keyframes floatUp {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+.animate-float {
+  animation: floatUp 6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-slow {
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(255, 96, 0, 0.3); }
+  50% { border-color: rgba(255, 96, 0, 0.6); }
+}
+
+.animate-border-glow {
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+/* Custom Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(255, 96, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 96, 0, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 96, 0, 0.5);
+  }
+}
+
+/* Animation Utility Classes */
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.8s ease-out forwards;
+}
+
+.animate-fade-in-left {
+  animation: fadeInLeft 0.8s ease-out forwards;
+}
+
+.animate-fade-in-right {
+  animation: fadeInRight 0.8s ease-out forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+.animate-float {
+  animation: float 3s infinite ease-in-out;
+}
+
+.animate-glow {
+  animation: glow 2s infinite ease-in-out;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.glass-card {
+  background: rgba(30, 30, 30, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 96, 0, 0.3);
+  box-shadow: 0 0 20px rgba(255, 96, 0, 0.1);
+}
+
+/* Dashboard Components - Para padronizar entre admin e usuário comum */
+.dashboard-card {
+  background-color: var(--background-dark-200);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dashboard-card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--background-dark-300);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-card-title svg {
+  margin-right: 0.5rem;
+}
+
+.dashboard-card-body {
+  padding: 1.5rem;
+}
+
+.dashboard-stat-card {
+  background-color: var(--background-dark-200);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dashboard-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dashboard-table {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.dashboard-table th {
+  background-color: var(--background-dark-300);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-color-tertiary);
+}
+
+.dashboard-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--background-dark-300);
+}
+
+.dashboard-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dashboard-table tr:hover td {
+  background-color: var(--background-dark-300);
+}
+
+.dashboard-stat-icon {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+}
+
+.dashboard-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.dashboard-empty-state svg {
+  width: 3rem;
+  height: 3rem;
+  color: var(--text-color-tertiary);
+  margin-bottom: 1rem;
+}
+
+.dashboard-empty-state h3 {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.dashboard-empty-state p {
+  color: var(--text-color-tertiary);
+  margin-bottom: 1.5rem;
+}
+
+/* Status badges com cores consistentes */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge-success {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: rgb(52, 211, 153);
+}
+
+.status-badge-warning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: rgb(252, 211, 77);
+}
+
+.status-badge-error {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: rgb(248, 113, 113);
+}
+
+.status-badge-info {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: rgb(96, 165, 250);
+}
+
+/* Dashboard header consistente */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Animações para os componentes de anúncios */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes borderPulse {
+  0% {
+    border-color: rgba(255, 96, 0, 0.3);
+  }
+  50% {
+    border-color: rgba(255, 96, 0, 0.8);
+  }
+  100% {
+    border-color: rgba(255, 96, 0, 0.3);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.4s ease-out forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-borderPulse {
+  animation: borderPulse 2s ease-in-out infinite;
+}
+
+/* Estilos específicos para os cards de anúncios */
+.announcement-card {
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.announcement-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+}
+
+.announcement-image {
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+  overflow: hidden;
+}
+
+.announcement-image img {
+  border-radius: 20px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.3s ease;
+  object-fit: cover !important;
+}
+
+.announcement-image:hover img {
+  border-radius: 20px !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.announcement-header {
+  transition: var(--transition-default);
+}
+
+.announcement-header:hover {
+  background-color: var(--background-dark-400);
+}
+
+/* Nova classe para evitar o efeito hover */
+.announcement-header-static {
+  transition: none !important;
+  background-color: #14141b !important;
+  border-color: var(--background-dark-400) !important;
+  z-index: 5 !important;
+}
+
+.announcement-header-static:hover {
+  background-color: #14141b !important;
+  border-color: var(--background-dark-400) !important;
+}
+
+.announcement-zoom-modal {
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.announcement-button {
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.announcement-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.announcement-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+@layer utilities {
+  /* Animações personalizadas para o modal de pagamento */
+  .animate-fadeIn {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+  
+  .animate-fade-up {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeUp 0.8s ease-out forwards;
+  }
+  
+  .animate-fade-up.delay-200 {
+    animation-delay: 0.2s;
+  }
+  
+  .animate-fade-up.delay-300 {
+    animation-delay: 0.3s;
+  }
+  
+  .animate-fade-up.delay-400 {
+    animation-delay: 0.4s;
+  }
+  
+  .animate-scale-check {
+    animation: scaleCheck 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  .animate-fade-check {
+    opacity: 0;
+    animation: fadeCheck 0.8s ease-out 0.2s forwards;
+  }
+  
+  .animate-progress-bar {
+    width: 0%;
+    animation: progressBar 4.5s linear forwards;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulseSlow 4s infinite ease-in-out;
+  }
+  
+  .animate-pulse-slow.delay-700 {
+    animation-delay: 0.7s;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleCheck {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeCheck {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes progressBar {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes pulseSlow {
+  0% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+}
+
+/* Animações adicionais */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-10px) translateX(5px); }
+  50% { transform: translateY(-5px) translateX(10px); }
+  75% { transform: translateY(-8px) translateX(2px); }
+}
+
+@keyframes float-medium {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  33% { transform: translateY(-6px) translateX(-4px); }
+  66% { transform: translateY(-3px) translateX(-7px); }
+}
+
+@keyframes float-fast {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-4px) translateX(3px); }
+}
+
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 4s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 3s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+.shadow-text-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Animações para cards de produtos */
+@keyframes cardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 96, 0, 0);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(255, 96, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 96, 0, 0);
+  }
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) rotate(20deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(20deg);
+  }
+}
+
+.animate-card-reveal {
+  animation: cardReveal 0.8s cubic-bezier(0.3, 0.7, 0.4, 1.1) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s infinite;
+}
+
+.animate-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: rotate(30deg);
+  animation: shine 3s infinite;
+}
+
+/* Product Card Animations for Products Page */
+.product-card {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: productCardAppear 0.5s forwards ease-out;
+  will-change: transform, opacity, box-shadow;
+  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out, opacity 0.3s ease-out;
+  overflow: hidden;
+  backface-visibility: hidden;
+}
+
+.product-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 96, 0, 0.05);
+}
+
+/* Animação suave de entrada dos cards */
+@keyframes productCardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Efeito suave para a imagem */
+.product-card-image img {
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), filter 0.4s ease-out;
+}
+
+.product-card:hover .product-card-image img {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+/* Efeito de destaque no preço */
+.product-card .text-primary {
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.product-card:hover .text-primary {
+  color: #ff7a1f;
+  transform: translateY(-2px);
+  text-shadow: 0 0 15px rgba(255, 96, 0, 0.3);
+}
+
+/* Animação para o botão */
+.product-card-button {
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease-out;
+}
+
+.product-card-button::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 0;
+  background: rgba(255, 255, 255, 0.1);
+  transition: height 0.3s ease;
+}
+
+.product-card:hover .product-card-button::after {
+  height: 100%;
+}
+
+/* Refinamento do efeito de hover nos cards */
+.product-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, 
+              rgba(255, 255, 255, 0.01), 
+              rgba(255, 255, 255, 0.03));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.product-card:hover::after {
+  opacity: 1;
+}
+
+/* Borda sutil ao redor do card */
+.product-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom right, rgba(255, 96, 0, 0), rgba(255, 96, 0, 0.3), rgba(255, 96, 0, 0));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.product-card:hover::before {
+  opacity: 1;
+  animation: cardGlow 2s infinite alternate ease-in-out;
+}
+
+/* Animação mais subtil para os efeitos de highlight */
+@keyframes cardGlow {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 0.6;
+  }
+}
+
+/* Animação de fade-in mais suave para cards */
+@keyframes cardFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-fade-in {
+  animation: cardFadeIn 0.5s ease-out forwards;
+}
+
+/* Efeito sútil de hover em botões */
+.button-hover-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.button-hover-effect::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.4s ease;
+}
+
+.button-hover-effect:hover::after {
+  transform: scaleX(1);
+}
+
+/* Animação suave para FAQ */
+@keyframes faqReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.faq-answer-reveal {
+  animation: faqReveal 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Transição suave para o indicador vertical */
+.faq-indicator {
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background-color 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.faq-indicator-active {
+  transform: scaleY(1.2);
+}
+
+/* Impedir mudanças bruscas de layout */
+#faq-section {
+  contain: content;
+}
+
+/* Animações para cards FAQ */
+@keyframes faqCardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.faq-card {
+  position: relative;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.faq-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.faq-card button {
+  width: 100%;
+  text-align: left;
+  transition: all 0.3s ease;
+}
+
+.faq-card button:focus {
+  outline: none;
+}
+
+/* Conteúdo do FAQ */
+.faq-content {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.4s ease-out;
+}
+
+/* Quando o botão tem aria-expanded="true", mostramos o conteúdo */
+.faq-card button[aria-expanded="true"] + .faq-content {
+  max-height: 1000px;
+}
+
+/* Animação suave para o conteúdo */
+.faq-card .faq-content > div {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.faq-card button[aria-expanded="true"] + .faq-content > div {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Transição suave para o ícone de seta */
+.faq-card svg {
+  transition: transform 0.3s ease;
+}
+
+/* Indicador lateral */
+.faq-card button .w-1 {
+  transition: background-color 0.3s ease;
+}
+
+/* SOBRESCRIÇÃO FORÇADA DO HOVER - PRIORIDADE MÁXIMA */
+.announcement-header-static,
+.announcement-header,
+[class*="announcement-header"],
+[class^="announcement-header"],
+div[class*="announcement-header"] {
+  transition: none !important;
+  background-color: #14141b !important;
+  border-color: var(--background-dark-400) !important;
+  z-index: 5 !important;
+}
+
+.announcement-header-static:hover,
+.announcement-header:hover,
+[class*="announcement-header"]:hover,
+[class^="announcement-header"]:hover,
+div[class*="announcement-header"]:hover {
+  background-color: #14141b !important;
+  border-color: var(--background-dark-400) !important;
+}
+
+/* Fixar problema de sobreposição de anúncios na sidebar */
+.announcement-card,
+.announcement-card *,
+[class*="announcement"] * {
+  z-index: 5 !important;
+}
+
+/* Garantir que a sidebar tem prioridade máxima */
+.sidebar, 
+[class*="sidebar"],
+div[class*="sidebar"],
+nav[class*="sidebar"],
+aside[class*="sidebar"] {
+  z-index: 20 !important;
+}
+
+/* Garantir que o header também tem prioridade */
+header, 
+[class*="header"],
+div[class*="header"] {
+  z-index: 20 !important;
+}
+
+/* Garantir que os menus dropdown tem z-index ainda maior */
+[id="admin-menu"],
+div[id="admin-menu"] {
+  z-index: 50 !important;
+}
+
+/* Garantir que o modal de zoom tem prioridade máxima */
+.announcement-zoom-modal,
+.announcement-zoom-modal *,
+[class*="announcement-zoom-modal"] {
+  z-index: 100 !important;
+}
+
+.announcement-zoom-modal button {
+  z-index: 101 !important;
+}
+
+/* Quando o modal de zoom está aberto, esconder outros cards */
+body.modal-open .announcement-item:not(:has(.announcement-zoom-modal)) {
+  visibility: hidden;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Animações para contador de vendas e avaliações */
+@keyframes countUp {
+  0% {
+    opacity: 0.5;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ratingPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeNumberChange {
+  0% {
+    opacity: 0.3;
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sales-count {
+  display: inline-block;
+  animation: fadeNumberChange 0.5s ease-out;
+}
+
+.rating-value {
+  display: inline-flex;
+  align-items: center;
+  animation: ratingPulse 1s ease-out;
+}
+
+.customer-counter {
+  position: relative;
+  overflow: hidden;
+}
+
+.customer-counter-number {
+  display: inline-block;
+  animation: countUp 0.7s ease-out;
+}
+
+.customer-counter-icon {
+  animation: ratingPulse 2s infinite;
+}
+
+.rating-star {
+  display: inline-flex;
+  color: #FFD700;
+  position: relative;
+}
+
+.rating-star.filled {
+  color: #FFD700;
+}
+
+.rating-star.half {
+  position: relative;
+}
+
+.rating-star.half::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, #FFD700 50%, transparent 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Animação para incremento do contador de clientes */
+@keyframes clientCounterIncrement {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.8) translateY(5px);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.1) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.increment-animation {
+  animation: clientCounterIncrement 0.7s ease-out;
+}
+
+/* Estilização das imagens dos anúncios */
+.announcement-image img {
+  border-radius: 20px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.3s ease;
+  object-fit: cover !important;
+}
+
+.announcement-image:hover img {
+  border-radius: 20px !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Modal de zoom com imagem arredondada */
+.announcement-zoom-modal img {
+  border-radius: 20px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+  object-fit: cover !important;
+}
+
+.product-description strong {
+  color: white;
+  font-weight: 600;
+  font-size: 1.1em;
+}
